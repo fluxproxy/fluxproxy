@@ -1,7 +1,11 @@
 package avoidy
 
-import "avoidy/net"
+import (
+	"avoidy/net"
+	"context"
+)
 
 type Router interface {
-	Network() []net.Network
+	Networks() []net.Network
+	Route(ctx context.Context, conn net.Connection) error
 }

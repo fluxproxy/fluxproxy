@@ -19,6 +19,14 @@ type TcpListener struct {
 	listener *ionet.Listener
 }
 
+func (t *TcpListener) Tag() string {
+	return "tcp"
+}
+
+func (t *TcpListener) Network() net.Network {
+	return t.options.Network
+}
+
 func (t *TcpListener) Init(options avoidy.ListenerOptions) error {
 	t.options = options
 	return nil
@@ -32,18 +40,24 @@ func (t *TcpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 		return fmt.Errorf("failed to listen tcp address %s %w", addr, err)
 	}
 	t.listener = &listener
-	go func() {
-		defer listener.Close()
-		defer func() {
-			if rerr := recover(); rerr != nil {
-				log.Printf("TcpListener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
-			}
-		}()
-		for {
+	defer func() {
+		log.Printf("TcpListener terminaled: %s", addr)
+		listener.Close()
+	}()
+	defer func() {
+		if rerr := recover(); rerr != nil {
+			log.Printf("TcpListener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
+		}
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
 			conn, aerr := listener.Accept()
 			if aerr != nil {
 				log.Printf("TcpListener accept err: %s, \ntrace:%s", aerr, string(debug.Stack()))
-				return
+				return fmt.Errorf("tcp listener error: %w", aerr)
 			}
 			go func() {
 				defer func() {
@@ -54,13 +68,12 @@ func (t *TcpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 				defer conn.Close()
 				connCtx := ctx
 				handler(connCtx, net.Connection{
-					Context:    connCtx,
-					ReadWriter: conn,
-					Address:    conn.RemoteAddr(),
-					Network:    net.Network_TCP,
+					Context:         connCtx,
+					ReadWriteCloser: conn,
+					Source:          conn.RemoteAddr(),
+					Network:         net.Network_TCP,
 				})
 			}()
 		}
-	}()
-	return nil
+	}
 }

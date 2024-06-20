@@ -7,8 +7,9 @@ import (
 )
 
 type Connection struct {
-	Context context.Context
-	Address net.Addr
-	Network Network
-	io.ReadWriter
+	Context     context.Context
+	Source      net.Addr // 来源地址
+	Distinction net.Addr // 目标地址
+	Network     Network
+	io.ReadWriteCloser
 }

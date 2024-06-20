@@ -22,6 +22,14 @@ type UdpListener struct {
 	listener *ionet.UDPConn
 }
 
+func (t *UdpListener) Tag() string {
+	return "udp"
+}
+
+func (t *UdpListener) Network() net.Network {
+	return t.options.Network
+}
+
 func (t *UdpListener) Init(options avoidy.ListenerOptions) error {
 	t.options = options
 	return nil
@@ -34,25 +42,27 @@ func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 	if err != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
 	}
-	t.listener = listener
-	go func() {
-		defer listener.Close()
-		defer func() {
-			if rerr := recover(); rerr != nil {
-				log.Printf("UdpListener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
-			}
-		}()
-		for {
+	defer listener.Close()
+	defer func() {
+		if rerr := recover(); rerr != nil {
+			log.Printf("UdpListener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
+		}
+	}()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
 			var buffer = make([]byte, 2048)
 			n, srcAddr, rerr := t.listener.ReadFromUDP(buffer)
 			if rerr != nil {
 				log.Printf("UdpListener read err: %s, \ntrace:%s", err, string(debug.Stack()))
-				return
+				return fmt.Errorf("udp listener error %w", rerr)
 			}
 			connCtx := ctx
-			handler(connCtx, net.Connection{
+			go handler(connCtx, net.Connection{
 				Context: connCtx,
-				ReadWriter: &wrapper{
+				ReadWriteCloser: &wrapper{
 					localAddr:  t.listener.LocalAddr(),
 					remoteAddr: srcAddr,
 					reader:     bytes.NewReader(buffer[:n]),
@@ -60,12 +70,11 @@ func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 						return t.listener.WriteToUDP(b, srcAddr)
 					},
 				},
-				Address: srcAddr,
+				Source:  srcAddr,
 				Network: net.Network_UDP,
 			})
 		}
-	}()
-	return nil
+	}
 }
 
 var (
