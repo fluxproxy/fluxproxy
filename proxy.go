@@ -1,9 +1,15 @@
-package avoidy
+package vanity
 
 import (
-	"avoidy/net"
 	"context"
+	"vanity/net"
 )
+
+type Inbound interface {
+}
+
+type Outbound interface {
+}
 
 type Router interface {
 	Networks() []net.Network

@@ -1,1 +1,1 @@
-module avoidy
+module vanity

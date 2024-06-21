@@ -1,8 +1,8 @@
-package avoidy
+package vanity
 
 import (
-	"avoidy/net"
 	"context"
+	"vanity/net"
 )
 
 type ListenerOptions struct {

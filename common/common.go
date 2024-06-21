@@ -6,3 +6,9 @@ func Must(err error) {
 		panic(err)
 	}
 }
+
+func Assert(mustTrue bool, message string) {
+	if !mustTrue {
+		panic(message)
+	}
+}

@@ -1,8 +1,6 @@
 package listener
 
 import (
-	"avoidy"
-	"avoidy/net"
 	"bytes"
 	"context"
 	"fmt"
@@ -11,14 +9,16 @@ import (
 	ionet "net"
 	"runtime/debug"
 	"time"
+	"vanity"
+	"vanity/net"
 )
 
 var (
-	_ avoidy.Listener = (*UdpListener)(nil)
+	_ vanity.Listener = (*UdpListener)(nil)
 )
 
 type UdpListener struct {
-	options  avoidy.ListenerOptions
+	options  vanity.ListenerOptions
 	listener *ionet.UDPConn
 }
 
@@ -30,7 +30,7 @@ func (t *UdpListener) Network() net.Network {
 	return t.options.Network
 }
 
-func (t *UdpListener) Init(options avoidy.ListenerOptions) error {
+func (t *UdpListener) Init(options vanity.ListenerOptions) error {
 	t.options = options
 	return nil
 }
@@ -61,7 +61,11 @@ func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 			}
 			connCtx := ctx
 			go handler(connCtx, net.Connection{
-				Context: connCtx,
+				Context:     connCtx,
+				Source:      srcAddr,
+				Distinction: nil,
+				Network:     t.Network(),
+				Conn:        nil,
 				ReadWriteCloser: &wrapper{
 					localAddr:  t.listener.LocalAddr(),
 					remoteAddr: srcAddr,
@@ -70,8 +74,6 @@ func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 						return t.listener.WriteToUDP(b, srcAddr)
 					},
 				},
-				Source:  srcAddr,
-				Network: net.Network_UDP,
 			})
 		}
 	}

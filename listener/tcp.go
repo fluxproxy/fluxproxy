@@ -1,21 +1,21 @@
 package listener
 
 import (
-	"avoidy"
-	"avoidy/net"
 	"context"
 	"fmt"
 	"log"
 	ionet "net"
 	"runtime/debug"
+	"vanity"
+	"vanity/net"
 )
 
 var (
-	_ avoidy.Listener = (*TcpListener)(nil)
+	_ vanity.Listener = (*TcpListener)(nil)
 )
 
 type TcpListener struct {
-	options  avoidy.ListenerOptions
+	options  vanity.ListenerOptions
 	listener *ionet.Listener
 }
 
@@ -27,12 +27,12 @@ func (t *TcpListener) Network() net.Network {
 	return t.options.Network
 }
 
-func (t *TcpListener) Init(options avoidy.ListenerOptions) error {
+func (t *TcpListener) Init(options vanity.ListenerOptions) error {
 	t.options = options
 	return nil
 }
 
-func (t *TcpListener) Serve(ctx context.Context, handler func(ctx context.Context, conn net.Connection)) error {
+func (t *TcpListener) Serve(ctx context.Context, callback func(ctx context.Context, conn net.Connection)) error {
 	addr := fmt.Sprintf("%s:%d", t.options.Address, t.options.Port)
 	log.Printf("TcpListener listen: %s", addr)
 	listener, err := ionet.Listen("tcp", addr)
@@ -43,11 +43,6 @@ func (t *TcpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 	defer func() {
 		log.Printf("TcpListener terminaled: %s", addr)
 		listener.Close()
-	}()
-	defer func() {
-		if rerr := recover(); rerr != nil {
-			log.Printf("TcpListener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
-		}
 	}()
 	for {
 		select {
@@ -67,11 +62,13 @@ func (t *TcpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 				}()
 				defer conn.Close()
 				connCtx := ctx
-				handler(connCtx, net.Connection{
+				callback(connCtx, net.Connection{
 					Context:         connCtx,
-					ReadWriteCloser: conn,
+					Network:         t.Network(),
 					Source:          conn.RemoteAddr(),
-					Network:         net.Network_TCP,
+					Distinction:     nil,
+					Conn:            conn.(*ionet.TCPConn),
+					ReadWriteCloser: conn,
 				})
 			}()
 		}
