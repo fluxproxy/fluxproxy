@@ -62,8 +62,7 @@ func (t *Listener) Serve(ctx context.Context, handler func(ctx context.Context, 
 				logrus.Info("udp listener read err: %s", err)
 				return fmt.Errorf("udp listener error %w", rerr)
 			}
-			connCtx := ctx
-			go handler(connCtx, net.Connection{
+			go handler(ctx, net.Connection{
 				Address: net.IPAddress(srcAddr.IP),
 				TCPConn: nil,
 				ReadWriteCloser: &wrapper{

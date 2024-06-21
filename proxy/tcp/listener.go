@@ -78,12 +78,16 @@ func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context,
 					}
 				}()
 				defer conn.Close()
-				connCtx := ctx
-				callback(connCtx, net.Connection{
-					Address:         net.IPAddress((conn.RemoteAddr().(*ionet.TCPAddr)).IP),
-					TCPConn:         conn.(*ionet.TCPConn),
-					ReadWriteCloser: conn,
-				})
+				localTCPConn := conn.(*ionet.TCPConn)
+				if err := net.SetTcpOptions(localTCPConn, t.defaults); err != nil {
+					logrus.Errorf("tcp listener handler set local option: %s, trace: %s", err, string(debug.Stack()))
+				} else {
+					callback(ctx, net.Connection{
+						Address:         net.IPAddress((conn.RemoteAddr().(*ionet.TCPAddr)).IP),
+						TCPConn:         localTCPConn,
+						ReadWriteCloser: conn,
+					})
+				}
 			}()
 		}
 	}

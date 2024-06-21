@@ -7,7 +7,7 @@ import (
 
 type TcpOptions struct {
 	NoDelay      bool          `json:"no_delay"`
-	KeepAlive    uint          `json:"keep_alive"`
+	KeepAlive    time.Duration `json:"keep_alive"`
 	Linger       int           `json:"linger"`
 	ReadTimeout  time.Duration `json:"read_timeout"`
 	WriteTimeout time.Duration `json:"write_timeout"`
@@ -25,7 +25,7 @@ func SetTcpOptions(conn *net.TCPConn, opts TcpOptions) error {
 		if err := conn.SetKeepAlive(true); err != nil {
 			return err
 		}
-		if err := conn.SetKeepAlivePeriod(time.Duration(opts.KeepAlive) * time.Second); err != nil {
+		if err := conn.SetKeepAlivePeriod(opts.KeepAlive); err != nil {
 			return err
 		}
 	}
@@ -58,6 +58,26 @@ func ResetDeadline(conn *net.TCPConn, opts TcpOptions) error {
 			return err
 		}
 	}
+	// Write timeout
+	if opts.WriteTimeout > 0 {
+		if err := conn.SetWriteDeadline(time.Now().Add(opts.WriteTimeout)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ResetReadDeadline(conn *net.TCPConn, opts TcpOptions) error {
+	// Read timeout
+	if opts.ReadTimeout > 0 {
+		if err := conn.SetReadDeadline(time.Now().Add(opts.ReadTimeout)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ResetWriteDeadline(conn *net.TCPConn, opts TcpOptions) error {
 	// Write timeout
 	if opts.WriteTimeout > 0 {
 		if err := conn.SetWriteDeadline(time.Now().Add(opts.WriteTimeout)); err != nil {

@@ -46,7 +46,7 @@ func IDFromContext(ctx context.Context) common.ID {
 	if id, ok := ctx.Value(ctxKeyID).(common.ID); ok {
 		return id
 	}
-	return 0
+	panic("ID is not in context.")
 }
 
 // Connection
@@ -59,7 +59,7 @@ func ConnectionFromContext(ctx context.Context) *net.Connection {
 	if id, ok := ctx.Value(ctxKeyConnection).(*net.Connection); ok {
 		return id
 	}
-	return nil
+	panic("Connection is not in context.")
 }
 
 // Link
@@ -72,5 +72,5 @@ func ConnectionFromLink(ctx context.Context) *net.Link {
 	if id, ok := ctx.Value(ctxKeyLink).(*net.Link); ok {
 		return id
 	}
-	return nil
+	panic("Link is not in context.")
 }
