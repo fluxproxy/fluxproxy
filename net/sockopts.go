@@ -13,6 +13,7 @@ type TcpOptions struct {
 	WriteTimeout time.Duration `json:"write_timeout"`
 	ReadBuffer   int           `json:"read_buffer"`
 	WriteBuffer  int           `json:"write_buffer"`
+	AwaitTimeout time.Duration `json:"await_timeout"`
 }
 
 func SetTcpOptions(conn *net.TCPConn, opts TcpOptions) error {

@@ -2,6 +2,7 @@ package tcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
@@ -30,6 +31,7 @@ func NewForwarder() *Forwarder {
 			WriteBuffer:  1024,
 			NoDelay:      true,
 			KeepAlive:    time.Second * 10,
+			AwaitTimeout: time.Millisecond * 50,
 		},
 	}
 }
@@ -48,6 +50,7 @@ func (d *Forwarder) DailServe(ctx context.Context, target *net.Link) (err error)
 	}
 	defer func() {
 		logrus.Infof("tcp-forwarder dail-serve terminated, address: %s, %s ", target.Connection.Address, target.Destination)
+		_ = remoteTCPConn.SetDeadline(time.Now().Add(-time.Second))
 		_ = remoteTCPConn.Close()
 	}()
 	if err := net.SetTcpOptions(remoteTCPConn, d.defaults); err != nil {
@@ -61,22 +64,51 @@ func (d *Forwarder) DailServe(ctx context.Context, target *net.Link) (err error)
 				return fmt.Errorf("set local read-timeout: %w", err)
 			}
 			if _, err := io.Copy(remoteTCPConn, localTCPConn); err != nil {
-				return fmt.Errorf("send to remote: %w", err)
+				return checkConnError("local-conn", err)
+			} else {
+				return nil
 			}
-			return nil
 		})
 	}
 	receive := func() error {
 		defer logrus.Warn("tcp-forwarder receive-loop terminated, destination: ", target.Destination)
 		return common.LoopTask(remoteCtx, func() error {
 			if err := net.ResetReadDeadline(remoteTCPConn, d.defaults); err != nil {
-				return fmt.Errorf("set remote read-timeout: %w", err)
+				return fmt.Errorf("set remote conn read-timeout: %w", err)
 			}
 			if _, err := io.Copy(localTCPConn, remoteTCPConn); err != nil {
-				return fmt.Errorf("receive from remote: %w", err)
+				return checkConnError("remote-conn", err)
+			} else {
+				return nil
 			}
-			return nil
 		})
 	}
 	return common.RunTasks(remoteCtx, send, receive)
+}
+
+func checkConnError(tag string, err error) error {
+	cause := common.ErrorCause(err)
+	if cause == io.EOF {
+		return fmt.Errorf("%s end", tag)
+	}
+	if errors.Is(cause, ionet.ErrClosed) {
+		return fmt.Errorf("%s closed", tag)
+	}
+	if net.IsTimeoutErr(cause) {
+		return nil
+	} else {
+		return fmt.Errorf("%s receive: %w", tag, err)
+	}
+}
+
+func incr(v time.Duration, def, max time.Duration) time.Duration {
+	if v == 0 {
+		v = def
+	} else {
+		v *= 2
+	}
+	if v > max {
+		v = max
+	}
+	return v
 }

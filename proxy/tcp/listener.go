@@ -6,6 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	ionet "net"
 	"runtime/debug"
+	"time"
 	"vanity/net"
 	"vanity/proxy"
 )
@@ -77,8 +78,11 @@ func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context,
 						logrus.Errorf("tcp listener handler err: %s, trace: %s", err, string(debug.Stack()))
 					}
 				}()
-				defer conn.Close()
 				localTCPConn := conn.(*ionet.TCPConn)
+				defer func() {
+					_ = localTCPConn.SetDeadline(time.Now().Add(-time.Second))
+					_ = localTCPConn.Close()
+				}()
 				if err := net.SetTcpOptions(localTCPConn, t.defaults); err != nil {
 					logrus.Errorf("tcp listener handler set local option: %s, trace: %s", err, string(debug.Stack()))
 				} else {
