@@ -1,4 +1,4 @@
-package listener
+package udp
 
 import (
 	"bytes"
@@ -9,35 +9,38 @@ import (
 	ionet "net"
 	"runtime/debug"
 	"time"
-	"vanity"
 	"vanity/net"
+	"vanity/proxy"
 )
 
 var (
-	_ vanity.Listener = (*UdpListener)(nil)
+	_ proxy.Listener = (*Listener)(nil)
 )
 
-type UdpListener struct {
-	options  vanity.ListenerOptions
+type Listener struct {
+	options  proxy.ListenerOptions
 	listener *ionet.UDPConn
 }
 
-func (t *UdpListener) Tag() string {
-	return "udp"
+func NewListener() *Listener {
+	return &Listener{}
 }
 
-func (t *UdpListener) Network() net.Network {
-	return t.options.Network
+func (t *Listener) Network() net.Network {
+	return net.Network_UDP
 }
 
-func (t *UdpListener) Init(options vanity.ListenerOptions) error {
+func (t *Listener) Init(options proxy.ListenerOptions) error {
+	if options.Network != net.Network_UDP {
+		return fmt.Errorf("udp listener only support tcp network")
+	}
 	t.options = options
 	return nil
 }
 
-func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Context, conn net.Link)) error {
+func (t *Listener) Serve(ctx context.Context, handler func(ctx context.Context, conn net.Connection)) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
-	log.Printf("UdpListener listen: %s", addr)
+	log.Printf("udp listener listen: %s", addr)
 	listener, err := ionet.ListenUDP("udp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
@@ -45,7 +48,7 @@ func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 	defer listener.Close()
 	defer func() {
 		if rerr := recover(); rerr != nil {
-			log.Printf("UdpListener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
+			log.Printf("udp listener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
 		}
 	}()
 	for {
@@ -56,16 +59,13 @@ func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 			var buffer = make([]byte, 2048)
 			n, srcAddr, rerr := t.listener.ReadFromUDP(buffer)
 			if rerr != nil {
-				log.Printf("UdpListener read err: %s, \ntrace:%s", err, string(debug.Stack()))
+				log.Printf("udp listener read err: %s, \ntrace:%s", err, string(debug.Stack()))
 				return fmt.Errorf("udp listener error %w", rerr)
 			}
 			connCtx := ctx
-			go handler(connCtx, net.Link{
-				Context:     connCtx,
-				Source:      net.IPAddress(srcAddr.IP),
-				Destination: net.DestinationFromAddr(t.listener.LocalAddr()),
-				Network:     t.Network(),
-				Conn:        nil,
+			go handler(connCtx, net.Connection{
+				Address: net.IPAddress(srcAddr.IP),
+				TCPConn: nil,
 				ReadWriteCloser: &wrapper{
 					localAddr:  t.listener.LocalAddr(),
 					remoteAddr: srcAddr,
@@ -121,11 +121,3 @@ func (c *wrapper) SetReadDeadline(t time.Time) error {
 func (c *wrapper) SetWriteDeadline(t time.Time) error {
 	return nil
 }
-
-//// convert func to io.Writer
-
-//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-//})
-//func (c *udpconn) WriteTo(b []byte) (n int, err error) {
-//	return c.writer.Write(b)
-//}

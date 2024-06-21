@@ -23,7 +23,15 @@ func NewInstance() *Instance {
 }
 
 func (i *Instance) Start() error {
-	// 初始化
+	i.servers = append(i.servers, NewServer("test"))
+	for _, server := range i.servers {
+		if err := server.Init(); err != nil {
+			return fmt.Errorf("server init error. %w", err)
+		}
+	}
+	if len(i.servers) == 0 {
+		return fmt.Errorf("servers is required")
+	}
 	return nil
 }
 
@@ -51,8 +59,4 @@ func (i *Instance) Serve() error {
 	case <-i.ctx.Done():
 		return nil
 	}
-}
-
-func (i *Instance) AddListener(listener Listener) {
-	i.servers = append(i.servers, NewServer(listener))
 }

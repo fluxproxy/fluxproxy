@@ -1,6 +1,21 @@
 package common
 
-import "context"
+import (
+	"context"
+)
+
+func LoopTask(ctx context.Context, f func() error) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		default:
+			if err := f(); err != nil {
+				return err
+			}
+		}
+	}
+}
 
 // RunTasks executes a list of tasks in parallel, returns the first error encountered or nil if all tasks pass.
 func RunTasks(ctx context.Context, tasks ...func() error) error {
@@ -33,6 +48,5 @@ func RunTasks(ctx context.Context, tasks ...func() error) error {
 		case <-s.Wait():
 		}
 	}
-
 	return nil
 }

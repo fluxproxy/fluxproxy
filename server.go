@@ -2,55 +2,66 @@ package vanity
 
 import (
 	"context"
+	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
 	"vanity/common"
 	"vanity/net"
 	"vanity/proxy"
+	"vanity/proxy/tcp"
 )
 
 type Server struct {
-	listener Listener
-	inbound  Inbound
-	outbound Outbound
-	router   Router
+	tag       string
+	listener  proxy.Listener
+	forwarder proxy.Forwarder
+	router    proxy.Router
 }
 
-func NewServer(listener Listener) *Server {
+func NewServer(tag string) *Server {
+	assert.MustNotEmpty(tag, "server tag is required")
 	return &Server{
-		listener: listener,
-		inbound:  new(proxy.RawInbound),
-		outbound: new(proxy.DirectOutbound),
+		tag: tag,
 	}
 }
 
-func (d *Server) Serve(servContext context.Context) error {
-	return d.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
+func (s *Server) Init() error {
+	s.listener = tcp.NewListener()
+	s.forwarder = tcp.NewForwarder()
+	s.router = proxy.NewStaticRouter()
+	assert.MustNotNil(s.listener, "server %s listener is required", s.tag)
+	assert.MustNotNil(s.forwarder, "server %s forwarder is required", s.tag)
+	assert.MustNotNil(s.router, "server %s router is required", s.tag)
+	return s.listener.Init(proxy.ListenerOptions{
+		Network: net.Network_TCP,
+		Address: "0.0.0.0",
+		Port:    9999,
+	})
+}
+
+func (s *Server) Serve(servContext context.Context) error {
+	return s.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
 		connID := common.NewID()
 		ctx = contextWithID(ctx, connID)
 		defer conn.Close()
 		fields := logrus.Fields{
-			"listener": d.listener.Tag(),
-			"network":  d.listener.Network(),
-			"source":   conn.Address,
-			"id":       connID,
+			"server":  s.tag,
+			"network": s.listener.Network(),
+			"source":  conn.Address,
+			"id":      connID,
 		}
 		ctx = contextWithConnection(ctx, &conn)
-		if err := d.inbound.Process(ctx, &conn); err != nil {
-			logrus.WithFields(fields).Errorf("inbound error: %s", err)
-			return
-		}
-		link, err := d.router.Router(ctx, &conn)
+		link, err := s.router.Router(ctx, &conn)
 		if err != nil {
 			logrus.WithFields(fields).Errorf("router error: %s", err)
 			return
 		}
 		ctx = contextWithLink(ctx, &link)
-		if err := d.outbound.DailServe(ctx, &link); err != nil {
-			logrus.WithFields(fields).WithField("destination", link.Destination).Errorf("outbound error: %s", err)
+		if err := s.forwarder.DailServe(ctx, &link); err != nil {
+			logrus.WithFields(fields).WithField("destination", link.Destination).Errorf("forwarder error: %s", err)
 			return
 		}
 		if link.KeepAlive {
-			logrus.WithFields(fields).WithField("destination", link.Destination).Info("outbound terminaled")
+			logrus.WithFields(fields).WithField("destination", link.Destination).Info("forwarder stop")
 		}
 	})
 }

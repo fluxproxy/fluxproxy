@@ -12,7 +12,7 @@ type Connection struct {
 }
 
 type Link struct {
-	Socket      Connection
+	Connection  *Connection
 	KeepAlive   bool
 	Destination Destination // 目标地址
 }
