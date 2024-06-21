@@ -17,10 +17,20 @@ var (
 type Listener struct {
 	options  proxy.ListenerOptions
 	listener *ionet.Listener
+	defaults net.TcpOptions
 }
 
 func NewListener() *Listener {
-	return &Listener{}
+	return &Listener{
+		defaults: net.TcpOptions{
+			ReadTimeout:  10,
+			WriteTimeout: 10,
+			ReadBuffer:   1024,
+			WriteBuffer:  1024,
+			NoDelay:      true,
+			KeepAlive:    10,
+		},
+	}
 }
 
 func (t *Listener) Tag() string {
@@ -68,15 +78,10 @@ func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context,
 					}
 				}()
 				defer conn.Close()
-				tcpConn := conn.(*ionet.TCPConn)
-				if err := net.SetTcpConnOpts(tcpConn, nil); err != nil {
-					logrus.Error("tcp listener set options error:", err)
-					return
-				}
 				connCtx := ctx
 				callback(connCtx, net.Connection{
 					Address:         net.IPAddress((conn.RemoteAddr().(*ionet.TCPAddr)).IP),
-					TCPConn:         tcpConn,
+					TCPConn:         conn.(*ionet.TCPConn),
 					ReadWriteCloser: conn,
 				})
 			}()
