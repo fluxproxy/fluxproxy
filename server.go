@@ -42,7 +42,6 @@ func (s *Server) Serve(servContext context.Context) error {
 	return s.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
 		connID := common.NewID()
 		ctx = contextWithID(ctx, connID)
-		defer conn.Close()
 		fields := logrus.Fields{
 			"server":  s.tag,
 			"network": s.listener.Network(),

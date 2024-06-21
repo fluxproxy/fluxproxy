@@ -5,6 +5,10 @@ import (
 	"time"
 )
 
+var (
+	ZeroDuration = time.Unix(0, 0)
+)
+
 type TcpOptions struct {
 	NoDelay      bool          `json:"no_delay"`
 	KeepAlive    time.Duration `json:"keep_alive"`
@@ -14,6 +18,17 @@ type TcpOptions struct {
 	ReadBuffer   int           `json:"read_buffer"`
 	WriteBuffer  int           `json:"write_buffer"`
 	AwaitTimeout time.Duration `json:"await_timeout"`
+}
+
+func DefaultTcpOptions() TcpOptions {
+	return TcpOptions{
+		ReadTimeout:  0,
+		WriteTimeout: 0,
+		ReadBuffer:   1024,
+		WriteBuffer:  1024,
+		NoDelay:      true,
+		KeepAlive:    time.Second * 10,
+	}
 }
 
 func SetTcpOptions(conn *net.TCPConn, opts TcpOptions) error {
@@ -49,7 +64,7 @@ func SetTcpOptions(conn *net.TCPConn, opts TcpOptions) error {
 		}
 	}
 	// Deadline defaults
-	return conn.SetDeadline(time.Now().Add(time.Duration(3) * time.Second))
+	return conn.SetDeadline(time.Time{})
 }
 
 func ResetDeadline(conn *net.TCPConn, opts TcpOptions) error {
@@ -86,4 +101,9 @@ func ResetWriteDeadline(conn *net.TCPConn, opts TcpOptions) error {
 		}
 	}
 	return nil
+}
+
+func Close(conn net.Conn) {
+	_ = conn.SetDeadline(time.Now().Add(-time.Second))
+	_ = conn.Close()
 }

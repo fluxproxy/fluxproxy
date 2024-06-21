@@ -4,13 +4,15 @@ import (
 	"context"
 )
 
-func LoopTask(ctx context.Context, f func() error) error {
+type TaskFunc func() error
+
+func LoopTask(ctx context.Context, task TaskFunc) error {
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
 		default:
-			if err := f(); err != nil {
+			if err := task(); err != nil {
 				return err
 			}
 		}
@@ -18,20 +20,19 @@ func LoopTask(ctx context.Context, f func() error) error {
 }
 
 // RunTasks executes a list of tasks in parallel, returns the first error encountered or nil if all tasks pass.
-func RunTasks(ctx context.Context, tasks ...func() error) error {
+func RunTasks(ctx context.Context, tasks ...TaskFunc) error {
 	n := len(tasks)
 	s := NewSemaphore(n)
 	done := make(chan error, 1)
 
 	for _, task := range tasks {
 		<-s.Wait()
-		go func(f func() error) {
-			err := f()
+		go func(taskFunc func() error) {
+			err := taskFunc()
 			if err == nil {
 				s.Signal()
 				return
 			}
-
 			select {
 			case done <- err:
 			default:
