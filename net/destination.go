@@ -110,7 +110,7 @@ func (d Destination) String() string {
 	case Network_UNIX:
 		prefix = "unix:"
 	}
-	return prefix + d.NetAddr()
+	return prefix + "//" + d.NetAddr()
 }
 
 // IsValid returns true if this Destination is valid.

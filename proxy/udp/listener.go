@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"io"
-	"log"
 	ionet "net"
 	"runtime/debug"
 	"time"
@@ -40,7 +40,7 @@ func (t *Listener) Init(options proxy.ListenerOptions) error {
 
 func (t *Listener) Serve(ctx context.Context, handler func(ctx context.Context, conn net.Connection)) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
-	log.Printf("udp listener listen: %s", addr)
+	logrus.Info("udp listener serve: %s", addr)
 	listener, err := ionet.ListenUDP("udp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
@@ -48,7 +48,7 @@ func (t *Listener) Serve(ctx context.Context, handler func(ctx context.Context, 
 	defer listener.Close()
 	defer func() {
 		if rerr := recover(); rerr != nil {
-			log.Printf("udp listener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
+			logrus.Errorf("udp listener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
 		}
 	}()
 	for {
@@ -59,7 +59,7 @@ func (t *Listener) Serve(ctx context.Context, handler func(ctx context.Context, 
 			var buffer = make([]byte, 2048)
 			n, srcAddr, rerr := t.listener.ReadFromUDP(buffer)
 			if rerr != nil {
-				log.Printf("udp listener read err: %s, \ntrace:%s", err, string(debug.Stack()))
+				logrus.Info("udp listener read err: %s", err)
 				return fmt.Errorf("udp listener error %w", rerr)
 			}
 			connCtx := ctx

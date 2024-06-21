@@ -3,10 +3,9 @@ package tcp
 import (
 	"context"
 	"fmt"
-	"log"
+	"github.com/sirupsen/logrus"
 	ionet "net"
 	"runtime/debug"
-	"time"
 	"vanity/net"
 	"vanity/proxy"
 )
@@ -42,14 +41,14 @@ func (t *Listener) Init(options proxy.ListenerOptions) error {
 
 func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context, conn net.Connection)) error {
 	addr := fmt.Sprintf("%s:%d", t.options.Address, t.options.Port)
-	log.Printf("tcp listener listen: %s", addr)
+	logrus.Info("tcp listener serve, address: ", addr)
 	listener, err := ionet.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen tcp address %s %w", addr, err)
 	}
 	t.listener = &listener
 	defer func() {
-		log.Printf("tcp listener terminaled: %s", addr)
+		logrus.Info("tcp listener terminated, address: ", addr)
 		listener.Close()
 	}()
 	for {
@@ -57,25 +56,23 @@ func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context,
 		case <-ctx.Done():
 			return nil
 		default:
-			conn, aerr := listener.Accept()
-			if aerr != nil {
-				log.Printf("tcp listener accept err: %s, \ntrace:%s", aerr, string(debug.Stack()))
-				return fmt.Errorf("tcp listener error: %w", aerr)
+			conn, err := listener.Accept()
+			if err != nil {
+				logrus.Error("tcp listener accept error:", err)
+				return fmt.Errorf("tcp listener error: %w", err)
 			}
 			go func() {
 				defer func() {
-					if cerr := recover(); cerr != nil {
-						log.Printf("tcp listener handler err: %s, \ntrace:%s", cerr, string(debug.Stack()))
+					if err := recover(); err != nil {
+						logrus.Errorf("tcp listener handler err: %s, trace: %s", err, string(debug.Stack()))
 					}
 				}()
 				defer conn.Close()
 				tcpConn := conn.(*ionet.TCPConn)
-				_ = tcpConn.SetReadDeadline(time.Now().Add(time.Second * 10))
-				_ = tcpConn.SetWriteDeadline(time.Now().Add(time.Second * 10))
-				_ = tcpConn.SetKeepAlive(true)
-				_ = tcpConn.SetNoDelay(true)
-				_ = tcpConn.SetReadBuffer(1024)
-				_ = tcpConn.SetWriteBuffer(1024)
+				if err := net.SetTcpConnOpts(tcpConn, nil); err != nil {
+					logrus.Error("tcp listener set options error:", err)
+					return
+				}
 				connCtx := ctx
 				callback(connCtx, net.Connection{
 					Address:         net.IPAddress((conn.RemoteAddr().(*ionet.TCPAddr)).IP),
