@@ -2,11 +2,9 @@ package tcp
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
-	"io"
 	ionet "net"
 	"time"
 	"vanity/common"
@@ -31,15 +29,12 @@ func NewForwarder() *Forwarder {
 			WriteBuffer:  1024,
 			NoDelay:      true,
 			KeepAlive:    time.Second * 10,
-			AwaitTimeout: time.Millisecond * 50,
 		},
 	}
 }
 
-func (d *Forwarder) DailServe(ctx context.Context, target *net.Link) (err error) {
+func (d *Forwarder) DailServe(inctx context.Context, target *net.Link) error {
 	assert.MustTrue(target.Destination.Network == net.Network_TCP, "unsupported network: %s", target.Destination.Network)
-	remoteCtx, remoteCancel := context.WithCancel(ctx)
-	defer remoteCancel()
 	logrus.Info("tcp-forwarder dail: ", target.Destination)
 	remoteTCPConn, err := ionet.DialTCP("tcp", nil, &ionet.TCPAddr{
 		IP:   target.Destination.Address.IP(),
@@ -55,41 +50,18 @@ func (d *Forwarder) DailServe(ctx context.Context, target *net.Link) (err error)
 	if err := net.SetTcpOptions(remoteTCPConn, d.defaults); err != nil {
 		return fmt.Errorf("tcp-forwarder set remote options: %w", err)
 	}
-	localTCPConn := target.Connection.TCPConn
-	send := func() error {
-		defer logrus.Warn("tcp-forwarder send-loop terminated, destination: ", target.Destination)
-		_ = localTCPConn.SetDeadline(time.Time{})
-		defer remoteCancel()
-		if _, err := io.Copy(remoteTCPConn, localTCPConn); err == nil {
-			return nil // A successful copy end
-		} else {
-			return checkConnError("local-conn", err)
-		}
+	ctx, cancel := context.WithCancel(inctx)
+	taskErrors := make(chan error, 2)
+	send := func(_ context.Context) {
+		defer logrus.Info("tcp-forwarder send-loop terminated, destination: ", target.Destination)
+		common.Copy(target.Connection.TCPConn, remoteTCPConn, taskErrors)
 	}
-	receive := func() error {
-		defer logrus.Warn("tcp-forwarder receive-loop terminated, destination: ", target.Destination)
-		_ = remoteTCPConn.SetDeadline(time.Time{})
-		defer remoteCancel()
-		if _, err := io.Copy(localTCPConn, remoteTCPConn); err == nil {
-			return nil // A successful copy end
-		} else {
-			return checkConnError("remote-conn", err)
-		}
+	receive := func(_ context.Context) {
+		defer logrus.Info("tcp-forwarder receive-loop terminated, destination: ", target.Destination)
+		common.Copy(remoteTCPConn, target.Connection.TCPConn, taskErrors)
 	}
-	return common.RunTasks(remoteCtx, send, receive)
-}
-
-func checkConnError(tag string, err error) error {
-	cause := common.ErrorCause(err)
-	if cause == io.EOF {
-		return fmt.Errorf("%s end", tag)
-	}
-	if errors.Is(cause, ionet.ErrClosed) {
-		return fmt.Errorf("%s closed", tag)
-	}
-	if net.IsTimeoutErr(cause) {
-		return nil
-	} else {
-		return fmt.Errorf("%s receive: %w", tag, err)
-	}
+	go send(ctx)
+	go receive(ctx)
+	defer cancel()
+	return <-taskErrors
 }
