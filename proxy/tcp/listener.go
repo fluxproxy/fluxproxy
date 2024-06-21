@@ -52,7 +52,7 @@ func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context,
 	t.listener = &listener
 	defer func() {
 		logrus.Info("tcp-listener terminated, address: ", addr)
-		listener.Close()
+		_ = listener.Close()
 	}()
 	for {
 		select {
@@ -64,27 +64,26 @@ func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context,
 				logrus.Error("tcp-listener accept error:", err)
 				return fmt.Errorf("tcp-listener error: %w", err)
 			}
-			go func() {
+			go func(tcpConn *ionet.TCPConn) {
 				defer func() {
 					if err := recover(); err != nil {
 						logrus.Errorf("tcp-listener handler err: %s, trace: %s", err, string(debug.Stack()))
 					}
 				}()
-				localTCPConn := conn.(*ionet.TCPConn)
 				defer func() {
-					logrus.Infof("tcp-listener connection terminated, address: %s", localTCPConn.RemoteAddr())
-					net.Close(localTCPConn)
+					logrus.Infof("tcp-listener connection terminated, address: %s", tcpConn.RemoteAddr())
+					net.Close(tcpConn)
 				}()
-				if err := net.SetTcpOptions(localTCPConn, t.defaults); err != nil {
+				if err := net.SetTcpOptions(tcpConn, t.defaults); err != nil {
 					logrus.Errorf("tcp-listener handler set local option: %s, trace: %s", err, string(debug.Stack()))
 				} else {
 					callback(ctx, net.Connection{
 						Address:         net.IPAddress((conn.RemoteAddr().(*ionet.TCPAddr)).IP),
-						TCPConn:         localTCPConn,
+						TCPConn:         tcpConn,
 						ReadWriteCloser: conn,
 					})
 				}
-			}()
+			}(conn.(*ionet.TCPConn))
 		}
 	}
 }

@@ -32,24 +32,22 @@ func (t *Listener) Network() net.Network {
 
 func (t *Listener) Init(options proxy.ListenerOptions) error {
 	if options.Network != net.Network_UDP {
-		return fmt.Errorf("udp listener only support tcp network")
+		return fmt.Errorf("udp-listener only support tcp network")
 	}
 	t.options = options
 	return nil
 }
 
-func (t *Listener) Serve(ctx context.Context, handler func(ctx context.Context, conn net.Connection)) error {
+func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context, conn net.Connection)) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
-	logrus.Info("udp listener serve: %s", addr)
+	logrus.Info("udp-listener serve: %s", addr)
 	listener, err := ionet.ListenUDP("udp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
 	}
-	defer listener.Close()
 	defer func() {
-		if rerr := recover(); rerr != nil {
-			logrus.Errorf("udp listener crashed err: %s, \ntrace:%s", rerr, string(debug.Stack()))
-		}
+		logrus.Info("udp-listener terminated, address: ", addr)
+		_ = listener.Close()
 	}()
 	for {
 		select {
@@ -59,21 +57,28 @@ func (t *Listener) Serve(ctx context.Context, handler func(ctx context.Context, 
 			var buffer = make([]byte, 2048)
 			n, srcAddr, rerr := t.listener.ReadFromUDP(buffer)
 			if rerr != nil {
-				logrus.Info("udp listener read err: %s", err)
-				return fmt.Errorf("udp listener error %w", rerr)
+				logrus.Info("udp-listener read err: %s", err)
+				return fmt.Errorf("udp-listener error %w", rerr)
 			}
-			go handler(ctx, net.Connection{
-				Address: net.IPAddress(srcAddr.IP),
-				TCPConn: nil,
-				ReadWriteCloser: &wrapper{
-					localAddr:  t.listener.LocalAddr(),
-					remoteAddr: srcAddr,
-					reader:     bytes.NewReader(buffer[:n]),
-					writer: func(b []byte) (n int, err error) {
-						return t.listener.WriteToUDP(b, srcAddr)
+			go func() {
+				defer func() {
+					if err := recover(); err != nil {
+						logrus.Errorf("udp-listener handler err: %s, trace: %s", err, string(debug.Stack()))
+					}
+				}()
+				callback(ctx, net.Connection{
+					Address: net.IPAddress(srcAddr.IP),
+					TCPConn: nil,
+					ReadWriteCloser: &wrapper{
+						localAddr:  t.listener.LocalAddr(),
+						remoteAddr: srcAddr,
+						reader:     bytes.NewReader(buffer[:n]),
+						writer: func(b []byte) (n int, err error) {
+							return t.listener.WriteToUDP(b, srcAddr)
+						},
 					},
-				},
-			})
+				})
+			}()
 		}
 	}
 }
