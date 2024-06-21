@@ -35,7 +35,7 @@ func (t *UdpListener) Init(options vanity.ListenerOptions) error {
 	return nil
 }
 
-func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Context, conn net.Connection)) error {
+func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Context, conn net.Link)) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
 	log.Printf("UdpListener listen: %s", addr)
 	listener, err := ionet.ListenUDP("udp", addr)
@@ -60,10 +60,10 @@ func (t *UdpListener) Serve(ctx context.Context, handler func(ctx context.Contex
 				return fmt.Errorf("udp listener error %w", rerr)
 			}
 			connCtx := ctx
-			go handler(connCtx, net.Connection{
+			go handler(connCtx, net.Link{
 				Context:     connCtx,
-				Source:      srcAddr,
-				Distinction: nil,
+				Source:      net.IPAddress(srcAddr.IP),
+				Destination: net.DestinationFromAddr(t.listener.LocalAddr()),
 				Network:     t.Network(),
 				Conn:        nil,
 				ReadWriteCloser: &wrapper{

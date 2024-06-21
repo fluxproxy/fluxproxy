@@ -15,5 +15,5 @@ type Listener interface {
 	Tag() string
 	Network() net.Network
 	Init(options ListenerOptions) error
-	Serve(ctx context.Context, handler func(ctx context.Context, conn net.Connection)) error
+	Serve(ctx context.Context, handler func(ctx context.Context, link net.Connection)) error
 }

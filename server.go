@@ -2,84 +2,55 @@ package vanity
 
 import (
 	"context"
-	"fmt"
-	"sync"
+	"github.com/sirupsen/logrus"
 	"vanity/common"
 	"vanity/net"
+	"vanity/proxy"
 )
 
 type Server struct {
-	serverCtx       context.Context
-	serverCtxCancel context.CancelFunc
-	listeners       []Listener
-	dispatchers     []*Dispatcher
-	routers         []Router
-	await           sync.WaitGroup
+	listener Listener
+	inbound  Inbound
+	outbound Outbound
+	router   Router
 }
 
-func NewServer() *Server {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewServer(listener Listener) *Server {
 	return &Server{
-		serverCtx:       ctx,
-		serverCtxCancel: cancel,
-		await:           sync.WaitGroup{},
+		listener: listener,
+		inbound:  new(proxy.RawInbound),
+		outbound: new(proxy.DirectOutbound),
 	}
 }
 
-func (s *Server) Start() error {
-	// 初始化
-	return nil
-}
-
-func (s *Server) Stop() error {
-	s.serverCtxCancel()
-	s.await.Wait()
-	return nil
-}
-
-func (s *Server) Serve() error {
-	if len(s.listeners) == 0 {
-		return fmt.Errorf("server no any listeners")
-	}
-	errors := make(chan error, len(s.listeners))
-	for _, listener := range s.listeners {
-		s.await.Add(1)
-		newDispatcher := NewDispatcher(listener, s.findRouters(listener.Network()))
-		if len(newDispatcher.routers) == 0 {
-			return fmt.Errorf("%s listener no any routers", listener.Tag())
+func (d *Server) Serve(servContext context.Context) error {
+	return d.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
+		connID := common.NewID()
+		ctx = contextWithID(ctx, connID)
+		defer conn.Close()
+		fields := logrus.Fields{
+			"listener": d.listener.Tag(),
+			"network":  d.listener.Network(),
+			"source":   conn.Address,
+			"id":       connID,
 		}
-		s.dispatchers = append(s.dispatchers, newDispatcher)
-		go func(listener Listener, dispatcher *Dispatcher) {
-			defer s.await.Done()
-			ctx := toContext(s.serverCtx, s)
-			errors <- listener.Serve(ctx, dispatcher.Process)
-		}(listener, newDispatcher)
-	}
-	select {
-	case err := <-errors:
-		return err
-	case <-s.serverCtx.Done():
-		return nil
-	}
-}
-
-func (s *Server) AddListener(listener Listener) {
-	s.listeners = append(s.listeners, listener)
-}
-
-func (s *Server) AddRouter(router Router) {
-	s.routers = append(s.routers, router)
-}
-
-func (s *Server) findRouters(network net.Network) []Router {
-	common.Assert(network != net.Network_Unknown, "network must not be unknown")
-	routers := make([]Router, len(s.routers))
-	for _, router := range s.routers {
-		for _, n := range router.Networks() {
-			if n != net.Network_Unknown && n == network {
-				routers = append(routers, router)
-			}
+		ctx = contextWithConnection(ctx, &conn)
+		if err := d.inbound.Process(ctx, &conn); err != nil {
+			logrus.WithFields(fields).Errorf("inbound error: %s", err)
+			return
 		}
-	}
-	return routers
+		link, err := d.router.Router(ctx, &conn)
+		if err != nil {
+			logrus.WithFields(fields).Errorf("router error: %s", err)
+			return
+		}
+		ctx = contextWithLink(ctx, &link)
+		if err := d.outbound.DailServe(ctx, &link); err != nil {
+			logrus.WithFields(fields).WithField("destination", link.Destination).Errorf("outbound error: %s", err)
+			return
+		}
+		if link.KeepAlive {
+			logrus.WithFields(fields).WithField("destination", link.Destination).Info("outbound terminaled")
+		}
+	})
 }

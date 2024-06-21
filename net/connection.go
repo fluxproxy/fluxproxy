@@ -1,16 +1,18 @@
 package net
 
 import (
-	"context"
 	"io"
 	"net"
 )
 
 type Connection struct {
-	Context     context.Context
-	Source      net.Addr // 来源地址
-	Distinction net.Addr // 目标地址
-	Network     Network
-	Conn        *net.TCPConn
+	Address Address // 来源地址
+	TCPConn *net.TCPConn
 	io.ReadWriteCloser
+}
+
+type Link struct {
+	Socket      Connection
+	KeepAlive   bool
+	Destination Destination // 目标地址
 }

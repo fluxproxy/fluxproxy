@@ -32,7 +32,7 @@ func (t *TcpListener) Init(options vanity.ListenerOptions) error {
 	return nil
 }
 
-func (t *TcpListener) Serve(ctx context.Context, callback func(ctx context.Context, conn net.Connection)) error {
+func (t *TcpListener) Serve(ctx context.Context, callback func(ctx context.Context, conn net.Link)) error {
 	addr := fmt.Sprintf("%s:%d", t.options.Address, t.options.Port)
 	log.Printf("TcpListener listen: %s", addr)
 	listener, err := ionet.Listen("tcp", addr)
@@ -62,11 +62,11 @@ func (t *TcpListener) Serve(ctx context.Context, callback func(ctx context.Conte
 				}()
 				defer conn.Close()
 				connCtx := ctx
-				callback(connCtx, net.Connection{
+				callback(connCtx, net.Link{
 					Context:         connCtx,
 					Network:         t.Network(),
-					Source:          conn.RemoteAddr(),
-					Distinction:     nil,
+					Source:          net.IPAddress((conn.RemoteAddr().(*ionet.IPAddr)).IP),
+					Destination:     net.DestinationFromAddr(conn.LocalAddr()),
 					Conn:            conn.(*ionet.TCPConn),
 					ReadWriteCloser: conn,
 				})
