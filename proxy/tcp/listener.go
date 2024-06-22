@@ -1,9 +1,9 @@
 package tcp
 
 import (
+	"vanity/internal"
 	"vanity/net"
 	"vanity/proxy"
-	"vanity/proxy/internal"
 )
 
 var (
@@ -14,7 +14,7 @@ type Listener struct {
 	*internal.TcpListener
 }
 
-func NewListener() *Listener {
+func NewTcpListener() *Listener {
 	return &Listener{
 		TcpListener: internal.NewTcpListener("tcp-listener", net.DefaultTcpOptions()),
 	}

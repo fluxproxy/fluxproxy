@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"github.com/riobard/go-shadowsocks2/socks"
 	"github.com/sirupsen/logrus"
+	"vanity/internal"
 	"vanity/net"
 	"vanity/proxy"
-	"vanity/proxy/internal"
 )
 
 var (
@@ -19,13 +19,13 @@ type Listener struct {
 	*internal.TcpListener
 }
 
-func NewListener() *Listener {
+func NewSocks5Listener() *Listener {
 	return &Listener{
-		TcpListener: internal.NewTcpListener("socks-listener", net.DefaultTcpOptions()),
+		TcpListener: internal.NewTcpListener("socks5-listener", net.DefaultTcpOptions()),
 	}
 }
 
-func (t *Listener) Type() proxy.ProxyType {
+func (t *Listener) ProxyType() proxy.ProxyType {
 	return proxy.ProxyType_SOCKS5
 }
 

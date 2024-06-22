@@ -3,9 +3,9 @@ package tcp
 import (
 	"context"
 	"time"
+	"vanity/internal"
 	"vanity/net"
 	"vanity/proxy"
-	"vanity/proxy/internal"
 )
 
 var (
@@ -16,7 +16,7 @@ type Connector struct {
 	opts net.TcpOptions
 }
 
-func NewConnector() *Connector {
+func NewTcpConnector() *Connector {
 	return &Connector{
 		opts: net.TcpOptions{
 			ReadTimeout:  time.Second * 30,

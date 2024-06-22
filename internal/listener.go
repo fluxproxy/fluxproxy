@@ -27,7 +27,7 @@ func NewTcpListener(tag string, options net.TcpOptions) *TcpListener {
 	}
 }
 
-func (t *TcpListener) Type() proxy.ProxyType {
+func (t *TcpListener) ProxyType() proxy.ProxyType {
 	return proxy.ProxyType_RAWTCP
 }
 

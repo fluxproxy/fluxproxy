@@ -14,7 +14,7 @@ import (
 type Server struct {
 	tag        string
 	listener   proxy.Listener
-	router     proxy.Dispatcher
+	router     proxy.Router
 	connectors map[net.Network]proxy.Connector
 }
 
@@ -26,10 +26,10 @@ func NewServer(tag string) *Server {
 }
 
 func (s *Server) Init() error {
-	s.listener = tcp.NewListener()
+	s.listener = tcp.NewTcpListener()
 	s.connectors = map[net.Network]proxy.Connector{
-		net.Network_TCP: tcp.NewConnector(),
-		net.Network_UDP: udp.NewConnector(),
+		net.Network_TCP: tcp.NewTcpConnector(),
+		net.Network_UDP: udp.NewUdpConnector(),
 	}
 	s.router = proxy.NewStaticDispatcher()
 	assert.MustNotNil(s.listener, "server %s listener is required", s.tag)
@@ -45,7 +45,10 @@ func (s *Server) Init() error {
 func (s *Server) Serve(servContext context.Context) error {
 	return s.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
 		connID := common.NewID()
-		ctx = proxy.ContextWithID(ctx, connID)
+		ctx = proxy.ContextWithProxyType(
+			proxy.ContextWithID(ctx, connID),
+			s.listener.ProxyType(),
+		)
 		fields := logrus.Fields{
 			"server":  s.tag,
 			"network": s.listener.Network(),
@@ -54,7 +57,7 @@ func (s *Server) Serve(servContext context.Context) error {
 		}
 		ctx = proxy.ContextWithConnection(ctx, &conn)
 		// Route
-		routed, err := s.router.Dispatch(ctx, &conn)
+		routed, err := s.router.Route(ctx, &conn)
 		if err != nil {
 			logrus.WithFields(fields).Errorf("router error: %s", err)
 			return

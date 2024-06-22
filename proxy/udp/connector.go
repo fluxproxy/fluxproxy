@@ -14,7 +14,7 @@ var (
 type Connector struct {
 }
 
-func NewConnector() *Connector {
+func NewUdpConnector() *Connector {
 	return &Connector{}
 }
 

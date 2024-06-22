@@ -21,11 +21,11 @@ type Listener struct {
 	listener *ionet.UDPConn
 }
 
-func NewListener() *Listener {
+func NewUdpListener() *Listener {
 	return &Listener{}
 }
 
-func (t *Listener) Type() proxy.ProxyType {
+func (t *Listener) ProxyType() proxy.ProxyType {
 	return proxy.ProxyType_RAWUDP
 }
 
