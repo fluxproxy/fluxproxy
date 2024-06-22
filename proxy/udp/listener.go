@@ -32,7 +32,7 @@ func (t *Listener) Network() net.Network {
 
 func (t *Listener) Init(options proxy.ListenerOptions) error {
 	if options.Network != net.Network_UDP {
-		return fmt.Errorf("udp-listener only support tcp network")
+		return fmt.Errorf("udp-listener only support udp network")
 	}
 	t.options = options
 	return nil
