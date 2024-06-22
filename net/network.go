@@ -11,21 +11,6 @@ const (
 	Network_UNIX    Network = 3
 )
 
-var (
-	Network_name = map[int32]string{
-		0: "Unknown",
-		1: "TCP",
-		2: "UDP",
-		3: "UNIX",
-	}
-	Network_value = map[string]int32{
-		"Unknown": 0,
-		"TCP":     1,
-		"UDP":     2,
-		"UNIX":    3,
-	}
-)
-
 func (n Network) String() string {
 	return n.SystemString()
 }

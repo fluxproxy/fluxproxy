@@ -11,6 +11,7 @@ const (
 	ctxKeyID
 	ctxKeyConnection
 	ctxKeyLink
+	ctxKeyDestination
 )
 
 //// Semaphore
@@ -60,17 +61,4 @@ func ConnectionFromContext(ctx context.Context) *net.Connection {
 		return id
 	}
 	panic("Connection is not in context.")
-}
-
-// Link
-
-func contextWithLink(ctx context.Context, v *net.Link) context.Context {
-	return context.WithValue(ctx, ctxKeyLink, v)
-}
-
-func ConnectionFromLink(ctx context.Context) *net.Link {
-	if id, ok := ctx.Value(ctxKeyLink).(*net.Link); ok {
-		return id
-	}
-	panic("Link is not in context.")
 }

@@ -5,22 +5,34 @@ import (
 	"vanity/net"
 )
 
+type ProxyType uint8
+
+const (
+	ProxyType_RAWTCP ProxyType = iota
+	ProxyType_RAWUDP
+	ProxyType_SOCKS5
+	ProxyType_HTTPS
+)
+
 type ListenerOptions struct {
 	Network net.Network `json:"network"`
 	Address string      `json:"address"`
 	Port    int         `json:"port"`
 }
 
+type ListenerHandler func(ctx context.Context, conn net.Connection)
+
 type Listener interface {
 	Network() net.Network
+	Type() ProxyType
 	Init(options ListenerOptions) error
-	Serve(ctx context.Context, handler func(ctx context.Context, link net.Connection)) error
+	Serve(ctx context.Context, handler ListenerHandler) error
 }
 
 type Forwarder interface {
-	DailServe(ctx context.Context, target *net.Link) (err error)
+	DailServe(ctx context.Context, target *net.Connection) (err error)
 }
 
 type Router interface {
-	Router(ctx context.Context, conn *net.Connection) (target net.Link, err error)
+	Router(ctx context.Context, income *net.Connection) (target net.Connection, err error)
 }

@@ -14,7 +14,7 @@ var (
 type Forwarder struct {
 }
 
-func (d *Forwarder) DailServe(ctx context.Context, target *net.Link) (err error) {
+func (d *Forwarder) DailServe(ctx context.Context, target *net.Connection) (err error) {
 	assert.MustTrue(target.Destination.Network == net.Network_UDP, "unsupported network: %s", target.Destination.Network)
 	return nil
 }

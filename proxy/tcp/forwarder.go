@@ -33,7 +33,7 @@ func NewForwarder() *Forwarder {
 	}
 }
 
-func (d *Forwarder) DailServe(inctx context.Context, target *net.Link) error {
+func (d *Forwarder) DailServe(inctx context.Context, target *net.Connection) error {
 	assert.MustTrue(target.Destination.Network == net.Network_TCP, "unsupported network: %s", target.Destination.Network)
 	logrus.Info("tcp-forwarder dail: ", target.Destination)
 	remoteTCPConn, err := ionet.DialTCP("tcp", nil, &ionet.TCPAddr{
@@ -44,7 +44,7 @@ func (d *Forwarder) DailServe(inctx context.Context, target *net.Link) error {
 		return fmt.Errorf("tcp-forwarder dail: %w", err)
 	}
 	defer func() {
-		logrus.Infof("tcp-forwarder dail-serve terminated, address: %s, %s ", target.Connection.Address, target.Destination)
+		logrus.Infof("tcp-forwarder dail-serve terminated, address: %s, %s ", target.Address, target.Destination)
 		net.Close(remoteTCPConn)
 	}()
 	if err := net.SetTcpOptions(remoteTCPConn, d.defaults); err != nil {
@@ -54,11 +54,11 @@ func (d *Forwarder) DailServe(inctx context.Context, target *net.Link) error {
 	taskErrors := make(chan error, 2)
 	send := func(_ context.Context) {
 		defer logrus.Info("tcp-forwarder send-loop terminated, destination: ", target.Destination)
-		common.Copy(target.Connection.TCPConn, remoteTCPConn, taskErrors)
+		common.Copy(target.TCPConn, remoteTCPConn, taskErrors)
 	}
 	receive := func(_ context.Context) {
 		defer logrus.Info("tcp-forwarder receive-loop terminated, destination: ", target.Destination)
-		common.Copy(remoteTCPConn, target.Connection.TCPConn, taskErrors)
+		common.Copy(remoteTCPConn, target.TCPConn, taskErrors)
 	}
 	go send(ctx)
 	go receive(ctx)

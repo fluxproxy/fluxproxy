@@ -12,6 +12,10 @@ type Destination struct {
 	Network Network
 }
 
+var (
+	DestinationNotset = Destination{Network: Network_Unknown}
+)
+
 // DestinationFromAddr generates a Destination from a net address.
 func DestinationFromAddr(addr net.Addr) Destination {
 	switch addr := addr.(type) {
@@ -45,7 +49,7 @@ func ParseDestination(dest string) (Destination, error) {
 		return d, nil
 	}
 
-	hstr, pstr, err := SplitHostPort(dest)
+	hstr, pstr, err := net.SplitHostPort(dest)
 	if err != nil {
 		return d, err
 	}

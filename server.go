@@ -49,18 +49,20 @@ func (s *Server) Serve(servContext context.Context) error {
 			"id":      connID,
 		}
 		ctx = contextWithConnection(ctx, &conn)
-		link, err := s.router.Router(ctx, &conn)
+		// Route
+		target, err := s.router.Router(ctx, &conn)
 		if err != nil {
 			logrus.WithFields(fields).Errorf("router error: %s", err)
 			return
 		}
-		ctx = contextWithLink(ctx, &link)
-		if err := s.forwarder.DailServe(ctx, &link); err != nil {
-			logrus.WithFields(fields).WithField("destination", link.Destination).Errorf("forwarder error: %s", err)
+		// Forward
+		if err := s.forwarder.DailServe(ctx, &target); err != nil {
+			logrus.WithFields(fields).WithField("destination", target.Destination).Errorf("forwarder error: %s", err)
 			return
 		}
-		if link.KeepAlive {
-			logrus.WithFields(fields).WithField("destination", link.Destination).Info("forwarder stop")
+		// Metrics
+		if target.LongLive {
+			logrus.WithFields(fields).WithField("destination", target.Destination).Info("forwarder stop")
 		}
 	})
 }

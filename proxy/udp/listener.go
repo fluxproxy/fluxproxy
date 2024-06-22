@@ -26,6 +26,10 @@ func NewListener() *Listener {
 	return &Listener{}
 }
 
+func (t *Listener) Type() proxy.ProxyType {
+	return proxy.ProxyType_RAWUDP
+}
+
 func (t *Listener) Network() net.Network {
 	return net.Network_UDP
 }
@@ -38,7 +42,7 @@ func (t *Listener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context, conn net.Connection)) error {
+func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Info("udp-listener serve: %s", addr)
 	listener, err := ionet.ListenUDP("udp", addr)
@@ -66,9 +70,11 @@ func (t *Listener) Serve(ctx context.Context, callback func(ctx context.Context,
 						logrus.Errorf("udp-listener handler err: %s, trace: %s", err, string(debug.Stack()))
 					}
 				}()
-				callback(ctx, net.Connection{
-					Address: net.IPAddress(srcAddr.IP),
-					TCPConn: nil,
+				handler(ctx, net.Connection{
+					Address:     net.IPAddress(srcAddr.IP),
+					TCPConn:     nil,
+					LongLive:    false,
+					Destination: net.DestinationNotset,
 					ReadWriteCloser: &wrapper{
 						localAddr:  t.listener.LocalAddr(),
 						remoteAddr: srcAddr,
