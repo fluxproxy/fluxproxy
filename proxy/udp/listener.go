@@ -73,7 +73,6 @@ func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) err
 				handler(ctx, net.Connection{
 					Address:     net.IPAddress(srcAddr.IP),
 					TCPConn:     nil,
-					LongLive:    false,
 					Destination: net.DestinationNotset,
 					ReadWriteCloser: &wrapper{
 						localAddr:  t.listener.LocalAddr(),

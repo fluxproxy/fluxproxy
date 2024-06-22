@@ -18,9 +18,8 @@ func NewStaticRouter() *StaticRouter {
 	return &StaticRouter{}
 }
 
-func (d *StaticRouter) Router(ctx context.Context, conn *net.Connection) (target net.Link, err error) {
-	return net.Link{
-		Connection:  conn,
-		Destination: net.TCPDestination(net.LocalHostIP, net.Port(1234)),
-	}, nil
+func (d *StaticRouter) Router(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
+	dest := net.TCPDestination(net.LocalHostIP, net.Port(1234))
+	return income.WithDestination(dest), nil
+	//return *income, nil
 }

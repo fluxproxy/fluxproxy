@@ -1,4 +1,4 @@
-package common
+package internal
 
 import (
 	"runtime/debug"
@@ -85,7 +85,6 @@ func (t *TcpListener) Serve(ctx context.Context, handler proxy.ListenerHandler) 
 					handler(ctx, net.Connection{
 						Address:         net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 						TCPConn:         tcpConn,
-						LongLive:        true,
 						Destination:     net.DestinationNotset,
 						ReadWriteCloser: conn,
 					})

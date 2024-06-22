@@ -8,7 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"vanity/net"
 	"vanity/proxy"
-	"vanity/proxy/common"
+	"vanity/proxy/internal"
 )
 
 var (
@@ -16,12 +16,12 @@ var (
 )
 
 type Listener struct {
-	*common.TcpListener
+	*internal.TcpListener
 }
 
 func NewListener() *Listener {
 	return &Listener{
-		TcpListener: common.NewTcpListener("socks-listener", net.DefaultTcpOptions()),
+		TcpListener: internal.NewTcpListener("socks-listener", net.DefaultTcpOptions()),
 	}
 }
 

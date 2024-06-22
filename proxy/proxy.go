@@ -29,7 +29,7 @@ type Listener interface {
 	Serve(ctx context.Context, handler ListenerHandler) error
 }
 
-type Forwarder interface {
+type Connector interface {
 	DailServe(ctx context.Context, target *net.Connection) (err error)
 }
 

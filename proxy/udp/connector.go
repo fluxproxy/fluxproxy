@@ -8,13 +8,17 @@ import (
 )
 
 var (
-	_ proxy.Forwarder = (*Forwarder)(nil)
+	_ proxy.Connector = (*Connector)(nil)
 )
 
-type Forwarder struct {
+type Connector struct {
 }
 
-func (d *Forwarder) DailServe(ctx context.Context, target *net.Connection) (err error) {
+func NewConnector() *Connector {
+	return &Connector{}
+}
+
+func (d *Connector) DailServe(ctx context.Context, target *net.Connection) (err error) {
 	assert.MustTrue(target.Destination.Network == net.Network_UDP, "unsupported network: %s", target.Destination.Network)
 	return nil
 }

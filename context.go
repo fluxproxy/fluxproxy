@@ -10,8 +10,6 @@ const (
 	ctxKeyInstance uint32 = iota
 	ctxKeyID
 	ctxKeyConnection
-	ctxKeyLink
-	ctxKeyDestination
 )
 
 //// Semaphore
