@@ -33,6 +33,6 @@ type Connector interface {
 	DailServe(ctx context.Context, target *net.Connection) (err error)
 }
 
-type Router interface {
-	Router(ctx context.Context, income *net.Connection) (target net.Connection, err error)
+type Dispatcher interface {
+	Dispatch(ctx context.Context, income *net.Connection) (target net.Connection, err error)
 }

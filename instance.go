@@ -7,18 +7,18 @@ import (
 )
 
 type Instance struct {
-	ctx             context.Context
-	serverCtxCancel context.CancelFunc
-	servers         []*Server
-	await           sync.WaitGroup
+	instCtx       context.Context
+	instCtxCancel context.CancelFunc
+	servers       []*Server
+	await         sync.WaitGroup
 }
 
 func NewInstance() *Instance {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Instance{
-		ctx:             ctx,
-		serverCtxCancel: cancel,
-		await:           sync.WaitGroup{},
+		instCtx:       ctx,
+		instCtxCancel: cancel,
+		await:         sync.WaitGroup{},
 	}
 }
 
@@ -36,7 +36,7 @@ func (i *Instance) Start() error {
 }
 
 func (i *Instance) Stop() error {
-	i.serverCtxCancel()
+	i.instCtxCancel()
 	i.await.Wait()
 	return nil
 }
@@ -51,12 +51,12 @@ func (i *Instance) Serve() error {
 		go func(server *Server, ctx context.Context) {
 			defer i.await.Done()
 			errors <- server.Serve(ctx)
-		}(server, contextWith(i.ctx, i))
+		}(server, i.instCtx)
 	}
 	select {
 	case err := <-errors:
 		return err
-	case <-i.ctx.Done():
+	case <-i.instCtx.Done():
 		return nil
 	}
 }
