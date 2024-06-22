@@ -2,8 +2,8 @@ package proxy
 
 import (
 	"context"
+	"fluxway/net"
 	"github.com/bytepowered/assert-go"
-	"vanity/net"
 )
 
 ////

@@ -3,13 +3,13 @@ package udp
 import (
 	"bytes"
 	"context"
+	"fluxway/net"
+	"fluxway/proxy"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"io"
 	ionet "net"
 	"runtime/debug"
-	"vanity/net"
-	"vanity/proxy"
 )
 
 var (

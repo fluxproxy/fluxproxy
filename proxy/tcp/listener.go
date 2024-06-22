@@ -1,9 +1,9 @@
 package tcp
 
 import (
-	"vanity/internal"
-	"vanity/net"
-	"vanity/proxy"
+	"fluxway/internal"
+	"fluxway/net"
+	"fluxway/proxy"
 )
 
 var (

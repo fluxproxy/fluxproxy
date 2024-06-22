@@ -1,4 +1,4 @@
-package vanity
+package fluxway
 
 import (
 	"context"

@@ -2,9 +2,9 @@ package udp
 
 import (
 	"context"
+	"fluxway/net"
+	"fluxway/proxy"
 	"github.com/bytepowered/assert-go"
-	"vanity/net"
-	"vanity/proxy"
 )
 
 var (

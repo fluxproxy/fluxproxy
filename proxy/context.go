@@ -2,8 +2,8 @@ package proxy
 
 import (
 	"context"
-	"vanity/common"
-	"vanity/net"
+	"fluxway/common"
+	"fluxway/net"
 )
 
 const (

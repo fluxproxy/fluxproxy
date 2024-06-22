@@ -3,12 +3,12 @@ package socks5
 import "C"
 import (
 	"context"
+	"fluxway/internal"
+	"fluxway/net"
+	"fluxway/proxy"
 	"fmt"
 	"github.com/riobard/go-shadowsocks2/socks"
 	"github.com/sirupsen/logrus"
-	"vanity/internal"
-	"vanity/net"
-	"vanity/proxy"
 )
 
 var (

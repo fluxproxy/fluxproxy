@@ -2,12 +2,12 @@ package internal
 
 import (
 	"context"
+	"fluxway/common"
+	"fluxway/net"
 	"fmt"
 	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
-	"vanity/common"
-	"vanity/net"
 )
 
 func TcpConnect(inctx context.Context, opts net.TcpOptions, target *net.Connection) error {

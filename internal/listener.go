@@ -1,16 +1,16 @@
 package internal
 
 import (
+	"fluxway/proxy"
 	"runtime/debug"
-	"vanity/proxy"
 )
 
 import (
 	"context"
+	"fluxway/net"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
-	"vanity/net"
 )
 
 type TcpListener struct {

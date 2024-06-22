@@ -2,7 +2,7 @@ package proxy
 
 import (
 	"context"
-	"vanity/net"
+	"fluxway/net"
 )
 
 type ProxyType uint8

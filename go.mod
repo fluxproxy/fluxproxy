@@ -1,4 +1,4 @@
-module vanity
+module fluxway
 
 go 1.22.3
 

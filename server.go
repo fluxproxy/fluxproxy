@@ -1,14 +1,14 @@
-package vanity
+package fluxway
 
 import (
 	"context"
+	"fluxway/common"
+	"fluxway/net"
+	"fluxway/proxy"
+	"fluxway/proxy/tcp"
+	"fluxway/proxy/udp"
 	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
-	"vanity/common"
-	"vanity/net"
-	"vanity/proxy"
-	"vanity/proxy/tcp"
-	"vanity/proxy/udp"
 )
 
 type Server struct {

@@ -2,10 +2,10 @@ package tcp
 
 import (
 	"context"
+	"fluxway/internal"
+	"fluxway/net"
+	"fluxway/proxy"
 	"time"
-	"vanity/internal"
-	"vanity/net"
-	"vanity/proxy"
 )
 
 var (
