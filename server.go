@@ -59,7 +59,7 @@ func (s *Server) Serve(servContext context.Context) error {
 			logrus.WithFields(fields).Errorf("router error: %s", err)
 			return
 		}
-		assert.MustNotNil(routed.ReadWriteCloser, "routed.read write conn is nil")
+		assert.MustNotNil(routed.ReadWriter, "routed.read-writer is nil")
 		assert.MustTrue(routed.Destination.IsValid(), "routed.dest is invalid")
 		if s.listener.Network() == net.Network_TCP {
 			assert.MustNotNil(routed.TCPConn, "routed.TCPConn is nil")

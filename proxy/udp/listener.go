@@ -8,7 +8,6 @@ import (
 	"io"
 	ionet "net"
 	"runtime/debug"
-	"time"
 	"vanity/net"
 	"vanity/proxy"
 )
@@ -71,13 +70,12 @@ func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) err
 					}
 				}()
 				handler(ctx, net.Connection{
+					Network:     t.Network(),
 					Address:     net.IPAddress(srcAddr.IP),
 					TCPConn:     nil,
 					Destination: net.DestinationNotset,
-					ReadWriteCloser: &wrapper{
-						localAddr:  t.listener.LocalAddr(),
-						remoteAddr: srcAddr,
-						reader:     bytes.NewReader(buffer[:n]),
+					ReadWriter: &wrapper{
+						reader: bytes.NewReader(buffer[:n]),
 						writer: func(b []byte) (n int, err error) {
 							return t.listener.WriteToUDP(b, srcAddr)
 						},
@@ -89,14 +87,12 @@ func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) err
 }
 
 var (
-	_ ionet.Conn = (*wrapper)(nil)
+	_ io.ReadWriter = (*wrapper)(nil)
 )
 
 type wrapper struct {
-	localAddr  ionet.Addr
-	remoteAddr ionet.Addr
-	reader     io.Reader
-	writer     func(b []byte) (n int, err error)
+	reader io.Reader
+	writer func(b []byte) (n int, err error)
 }
 
 func (c *wrapper) Read(b []byte) (n int, err error) {
@@ -108,25 +104,5 @@ func (c *wrapper) Write(b []byte) (n int, err error) {
 }
 
 func (c *wrapper) Close() error {
-	return nil
-}
-
-func (c *wrapper) LocalAddr() ionet.Addr {
-	return c.localAddr
-}
-
-func (c *wrapper) RemoteAddr() ionet.Addr {
-	return c.remoteAddr
-}
-
-func (c *wrapper) SetDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *wrapper) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *wrapper) SetWriteDeadline(t time.Time) error {
 	return nil
 }

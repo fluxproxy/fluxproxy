@@ -83,10 +83,11 @@ func (t *TcpListener) Serve(ctx context.Context, handler proxy.ListenerHandler) 
 					logrus.Errorf("%s handler set local option: %s, trace: %s", t.Tag(), err, string(debug.Stack()))
 				} else {
 					handler(ctx, net.Connection{
-						Address:         net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-						TCPConn:         tcpConn,
-						Destination:     net.DestinationNotset,
-						ReadWriteCloser: conn,
+						Network:     t.Network(),
+						Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+						TCPConn:     tcpConn,
+						Destination: net.DestinationNotset,
+						ReadWriter:  conn,
 					})
 				}
 			}(conn.(*stdnet.TCPConn))

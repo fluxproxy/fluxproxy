@@ -37,11 +37,11 @@ func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) err
 			logrus.Errorf("socks-listener destination error: %s", err)
 		} else {
 			handler(ctx, net.Connection{
-				Address:         conn.Address,
-				TCPConn:         conn.TCPConn,
-				LongLive:        conn.LongLive,
-				Destination:     dest,
-				ReadWriteCloser: conn.ReadWriteCloser,
+				Network:     t.Network(),
+				Address:     conn.Address,
+				TCPConn:     conn.TCPConn,
+				Destination: dest,
+				ReadWriter:  conn.ReadWriter,
 			})
 		}
 	})
