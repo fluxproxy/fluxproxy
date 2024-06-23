@@ -4,13 +4,28 @@ import (
 	"context"
 	"fluxway/common"
 	"fluxway/net"
+	"github.com/knadh/koanf"
 )
 
 const (
-	ctxKeyID uint32 = iota
+	ctxKeyConfig uint32 = iota
+	ctxKeyID
 	ctxKeyConnection
 	ctxKeyProxyType
 )
+
+// ID
+
+func ContextWithConfig(ctx context.Context, v *koanf.Koanf) context.Context {
+	return context.WithValue(ctx, ctxKeyID, v)
+}
+
+func ConfigFromContext(ctx context.Context) *koanf.Koanf {
+	if v, ok := ctx.Value(ctxKeyID).(*koanf.Koanf); ok {
+		return v
+	}
+	panic("Koanf is not in context.")
+}
 
 // ID
 

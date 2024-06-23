@@ -3,12 +3,18 @@ package main
 import (
 	"fluxway"
 	"fluxway/common"
+	"fluxway/proxy"
 	"fmt"
+	"github.com/knadh/koanf"
 	"github.com/urfave/cli/v2"
 )
 
 func runCommand(ctx *cli.Context) error {
-	inst := fluxway.NewInstance(ctx.Context)
+	var k = koanf.NewWithConf(koanf.Conf{
+		Delim:       ".",
+		StrictMerge: true,
+	})
+	inst := fluxway.NewInstance(proxy.ContextWithConfig(ctx.Context, k))
 	if err := inst.Start(); err != nil {
 		return fmt.Errorf("instance start: %w", err)
 	}
