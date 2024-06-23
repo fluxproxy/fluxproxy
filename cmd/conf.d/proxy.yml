@@ -1,0 +1,26 @@
+# 网络配置
+server:
+  # 服务器模式
+  mode: "proxy"
+  # 允许局域网其它地址连接
+  allow-lan: true
+  # 绑定地址，默认： 0.0.0.0
+  bind: "0.0.0.0"
+  # Http代理端口
+  http-port: 1080
+  # Socks代理端口
+  socks-port: 1081
+
+# Http 代理配置
+http:
+  cert-file: ""
+
+# Socks5 代理配置
+socks:
+  allow-no-auth: true
+
+# 代理规则
+rules:
+
+
+
