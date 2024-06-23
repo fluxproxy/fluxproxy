@@ -13,7 +13,7 @@ import (
 )
 
 func runCommand(ctx *cli.Context) error {
-	confpath := "conf.yml"
+	confpath := "forward.yml"
 	if ctx.NArg() > 0 {
 		confpath = ctx.Args().Get(0)
 	}

@@ -3,22 +3,23 @@ server:
   # 服务器模式
   mode: "forward"
   # 允许局域网其它地址连接，默认为 true
-  allow-lan: true
+  allow_lan: true
   # 绑定地址，默认： 0.0.0.0
   bind: "0.0.0.0"
 
 # 端口转发器
 forward:
-  - tag: "test-tcp-forward"
+  - description: "test-tcp-forward"
     network: tcp
     port: 9999
     destination:
       address: "127.0.0.1"
       port: 1234
 
-  - tag: "test-udp-forward"
+  - description: "test-udp-forward"
     network: udp
     port: 8888
+    disabled: true
     destination:
       address: "127.0.0.1"
       port: 1234

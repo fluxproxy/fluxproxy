@@ -5,58 +5,65 @@ import (
 	"fluxway/common"
 	"fluxway/net"
 	"fluxway/proxy"
-	"fluxway/proxy/tcp"
-	"fluxway/proxy/udp"
+	"fmt"
 	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
 )
 
-type Server struct {
-	tag        string
-	listener   proxy.Listener
-	router     proxy.Router
-	connectors map[net.Network]proxy.Connector
+type ServerOptions struct {
+	Mode     string `yaml:"mode"`
+	AllowLan bool   `yaml:"allow_lan"`
+	Bind     string `yaml:"bind"`
 }
 
-func NewServer(tag string) *Server {
-	assert.MustNotEmpty(tag, "server tag is required")
-	return &Server{
-		tag: tag,
+type GenericServer struct {
+	opts     ServerOptions
+	listener proxy.Listener
+	router   proxy.Router
+	selector proxy.ConnectorSelector
+}
+
+func NewGenericServer(opts ServerOptions) *GenericServer {
+	assert.MustNotEmpty(opts.Mode, "server mode is required")
+	return &GenericServer{
+		opts: opts,
 	}
 }
 
-func (s *Server) Init() error {
-	s.listener = tcp.NewTcpListener()
-	s.connectors = map[net.Network]proxy.Connector{
-		net.Network_TCP: tcp.NewTcpConnector(),
-		net.Network_UDP: udp.NewUdpConnector(),
-	}
-	s.router = proxy.NewStaticRouter()
-	assert.MustNotNil(s.listener, "server %s listener is required", s.tag)
-	assert.MustNotNil(s.router, "server %s router is required", s.tag)
-	assert.MustTrue(len(s.connectors) != 0, "server %s forwarder is required", s.tag)
-	return s.listener.Init(proxy.ListenerOptions{
-		Network: net.Network_TCP,
-		Address: "0.0.0.0",
-		Port:    9999,
-	})
+func (s *GenericServer) Options() ServerOptions {
+	return s.opts
 }
 
-func (s *Server) Serve(servContext context.Context) error {
-	return s.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
-		assert.MustTrue(ctx != servContext, "server context must be new")
+func (s *GenericServer) SetListener(listener proxy.Listener) {
+	s.listener = listener
+}
+
+func (s *GenericServer) SetRouter(router proxy.Router) {
+	s.router = router
+}
+
+func (s *GenericServer) SetConnectorSelector(f proxy.ConnectorSelector) {
+	s.selector = f
+}
+
+func (s *GenericServer) Serve(servContext context.Context) error {
+	assert.MustNotNil(s.listener, "server listener is nil")
+	assert.MustNotNil(s.router, "server router is nil")
+	assert.MustNotNil(s.selector, "server connector-selector is nil")
+	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) {
+		assert.MustTrue(connCtx != servContext, "server context must be a new context")
 		connID := common.NewID()
-		ctx = proxy.ContextWithID(ctx, connID)
-		ctx = proxy.ContextWithProxyType(ctx, s.listener.ProxyType())
-		ctx = proxy.ContextWithConnection(ctx, &conn)
+		connCtx = proxy.ContextWithID(connCtx, connID)
+		connCtx = proxy.ContextWithProxyType(connCtx, s.listener.ProxyType())
+		connCtx = proxy.ContextWithConnection(connCtx, &conn)
 		logFields := logrus.Fields{
-			"server":  s.tag,
+			"server":  s.opts.Mode,
 			"network": s.listener.Network(),
 			"source":  conn.Address,
 			"id":      connID,
 		}
 		// Route
-		routed, err := s.router.Route(ctx, &conn)
+		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {
 			logrus.WithFields(logFields).Errorf("router error: %s", err)
 			return
@@ -70,13 +77,25 @@ func (s *Server) Serve(servContext context.Context) error {
 		}
 		logFields["destination"] = routed.Destination
 		// Connect
-		connector, ok := s.connectors[routed.Destination.Network]
+		connector, ok := s.selector(&routed)
 		if !ok {
 			logrus.WithFields(logFields).Errorf("unsupported network-type: %s", routed.Destination.Network)
 			return
 		}
-		if err := connector.DailServe(ctx, &routed); err != nil {
+		if err := connector.DailServe(connCtx, &routed); err != nil {
 			logrus.WithFields(logFields).Errorf("connector error: %s", err)
 		}
 	})
+}
+
+func ParseDestinationWith(network net.Network, addr common.AddressOptions) (net.Destination, error) {
+	port, err := net.PortFromInt(uint32(addr.Port))
+	if err != nil {
+		return net.DestinationNotset, fmt.Errorf("invalid destination port: %d, error: %w", addr.Port, err)
+	}
+	return net.Destination{
+		Network: network,
+		Address: net.ParseAddress(addr.Address),
+		Port:    port,
+	}, nil
 }

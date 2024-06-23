@@ -9,20 +9,20 @@ import (
 ////
 
 var (
-	_ Router = (*StaticRouter)(nil)
+	_ Router = (*AutoRouter)(nil)
 )
 
-type StaticRouter struct {
+type AutoRouter struct {
 	target net.Destination
 }
 
-func NewStaticRouter() *StaticRouter {
-	return &StaticRouter{
+func NewAutoRouter() *AutoRouter {
+	return &AutoRouter{
 		target: net.TCPDestination(net.LocalHostIP, net.Port(1234)),
 	}
 }
 
-func (d *StaticRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
+func (d *AutoRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
 	proxyType := ProxyTypeFromContext(ctx)
 	switch proxyType {
 	case ProxyType_SOCKS5, ProxyType_HTTPS:
@@ -32,4 +32,20 @@ func (d *StaticRouter) Route(ctx context.Context, income *net.Connection) (targe
 		assert.MustFalse(income.Destination.IsValid(), "proxy-type: tcp/udp/others, income destination must invalid")
 		return income.WithDestination(d.target), nil
 	}
+}
+
+//// Static target router
+
+type StaticRouter struct {
+	target net.Destination
+}
+
+func NewStaticRouter(target net.Destination) *StaticRouter {
+	return &StaticRouter{
+		target: target,
+	}
+}
+
+func (d *StaticRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
+	return income.WithDestination(d.target), nil
 }

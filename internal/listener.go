@@ -47,7 +47,7 @@ func (t *TcpListener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (t *TcpListener) Serve(ctx context.Context, handler proxy.ListenerHandler) error {
+func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := fmt.Sprintf("%s:%d", t.options.Address, t.options.Port)
 	logrus.Infof("%s serve, address: %s", t.Tag(), addr)
 	listener, err := stdnet.Listen("tcp", addr)
@@ -61,7 +61,7 @@ func (t *TcpListener) Serve(ctx context.Context, handler proxy.ListenerHandler) 
 	}()
 	for {
 		select {
-		case <-ctx.Done():
+		case <-serveCtx.Done():
 			return nil
 		default:
 			conn, err := listener.Accept()
@@ -82,7 +82,9 @@ func (t *TcpListener) Serve(ctx context.Context, handler proxy.ListenerHandler) 
 				if err := net.SetTcpOptions(tcpConn, t.defaults); err != nil {
 					logrus.Errorf("%s handler set local option: %s, trace: %s", t.Tag(), err, string(debug.Stack()))
 				} else {
-					handler(ctx, net.Connection{
+					connCtx, connCancel := context.WithCancel(serveCtx)
+					defer connCancel()
+					handler(connCtx, net.Connection{
 						Network:     t.Network(),
 						Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 						TCPConn:     tcpConn,

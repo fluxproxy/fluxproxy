@@ -39,6 +39,8 @@ type Listener interface {
 	Serve(ctx context.Context, handler ListenerHandler) error
 }
 
+type ConnectorSelector func(*net.Connection) (Connector, bool)
+
 // Connector 远程地址连接器
 type Connector interface {
 	// DailServe 以阻塞状态建立远程地址连接，进行双向数据读写。

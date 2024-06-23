@@ -29,14 +29,14 @@ func (t *Listener) ProxyType() proxy.ProxyType {
 	return proxy.ProxyType_SOCKS5
 }
 
-func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) error {
-	return t.TcpListener.Serve(ctx, func(ctx context.Context, conn net.Connection) {
+func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
+	return t.TcpListener.Serve(serveCtx, func(connCtx context.Context, conn net.Connection) {
 		if target, err := socks.Handshake(conn); err != nil {
 			logrus.Errorf("socks-listener handshake error: %s", err)
 		} else if dest, err := parseSocksAddr(target); err != nil {
 			logrus.Errorf("socks-listener destination error: %s", err)
 		} else {
-			handler(ctx, net.Connection{
+			handler(connCtx, net.Connection{
 				Network:     t.Network(),
 				Address:     conn.Address,
 				TCPConn:     conn.TCPConn,
