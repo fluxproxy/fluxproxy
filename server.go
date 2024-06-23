@@ -44,7 +44,7 @@ func (s *Server) Init() error {
 
 func (s *Server) Serve(servContext context.Context) error {
 	return s.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
-		assert.MustTrue(ctxatu != servContext, "server context must be new")
+		assert.MustTrue(ctx != servContext, "server context must be new")
 		connID := common.NewID()
 		ctx = proxy.ContextWithID(ctx, connID)
 		ctx = proxy.ContextWithProxyType(ctx, s.listener.ProxyType())
