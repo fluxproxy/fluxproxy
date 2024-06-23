@@ -31,10 +31,10 @@ func (s *Server) Init() error {
 		net.Network_TCP: tcp.NewTcpConnector(),
 		net.Network_UDP: udp.NewUdpConnector(),
 	}
-	s.router = proxy.NewStaticDispatcher()
+	s.router = proxy.NewStaticRouter()
 	assert.MustNotNil(s.listener, "server %s listener is required", s.tag)
 	assert.MustNotNil(s.router, "server %s router is required", s.tag)
-	assert.MustNotNil(len(s.connectors) != 0, "server %s forwarder is required", s.tag)
+	assert.MustTrue(len(s.connectors) != 0, "server %s forwarder is required", s.tag)
 	return s.listener.Init(proxy.ListenerOptions{
 		Network: net.Network_TCP,
 		Address: "0.0.0.0",
@@ -45,21 +45,19 @@ func (s *Server) Init() error {
 func (s *Server) Serve(servContext context.Context) error {
 	return s.listener.Serve(servContext, func(ctx context.Context, conn net.Connection) {
 		connID := common.NewID()
-		ctx = proxy.ContextWithProxyType(
-			proxy.ContextWithID(ctx, connID),
-			s.listener.ProxyType(),
-		)
-		fields := logrus.Fields{
+		ctx = proxy.ContextWithID(ctx, connID)
+		ctx = proxy.ContextWithProxyType(ctx, s.listener.ProxyType())
+		ctx = proxy.ContextWithConnection(ctx, &conn)
+		logFields := logrus.Fields{
 			"server":  s.tag,
 			"network": s.listener.Network(),
 			"source":  conn.Address,
 			"id":      connID,
 		}
-		ctx = proxy.ContextWithConnection(ctx, &conn)
 		// Route
 		routed, err := s.router.Route(ctx, &conn)
 		if err != nil {
-			logrus.WithFields(fields).Errorf("router error: %s", err)
+			logrus.WithFields(logFields).Errorf("router error: %s", err)
 			return
 		}
 		assert.MustNotNil(routed.ReadWriter, "routed.read-writer is nil")
@@ -69,15 +67,15 @@ func (s *Server) Serve(servContext context.Context) error {
 		} else {
 			assert.MustNil(routed.TCPConn, "routed.TCPConn is not nil")
 		}
-		fields["destination"] = routed.Destination
+		logFields["destination"] = routed.Destination
 		// Connect
 		connector, ok := s.connectors[routed.Destination.Network]
 		if !ok {
-			logrus.WithFields(fields).Errorf("unsupported network type error, %s: %s", routed.Destination.Network, err)
+			logrus.WithFields(logFields).Errorf("unsupported network-type: %s", routed.Destination.Network)
+			return
 		}
 		if err := connector.DailServe(ctx, &routed); err != nil {
-			logrus.WithFields(fields).Errorf("connector error: %s", err)
-			return
+			logrus.WithFields(logFields).Errorf("connector error: %s", err)
 		}
 	})
 }

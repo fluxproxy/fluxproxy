@@ -9,20 +9,20 @@ import (
 ////
 
 var (
-	_ Router = (*StaticDispatcher)(nil)
+	_ Router = (*StaticRouter)(nil)
 )
 
-type StaticDispatcher struct {
+type StaticRouter struct {
 	target net.Destination
 }
 
-func NewStaticDispatcher() *StaticDispatcher {
-	return &StaticDispatcher{
+func NewStaticRouter() *StaticRouter {
+	return &StaticRouter{
 		target: net.TCPDestination(net.LocalHostIP, net.Port(1234)),
 	}
 }
 
-func (d *StaticDispatcher) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
+func (d *StaticRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
 	proxyType := ProxyTypeFromContext(ctx)
 	switch proxyType {
 	case ProxyType_SOCKS5, ProxyType_HTTPS:
