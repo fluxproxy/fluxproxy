@@ -3,6 +3,7 @@ package fluxway
 import (
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"sync"
 )
 
@@ -13,8 +14,11 @@ type Instance struct {
 	await         sync.WaitGroup
 }
 
-func NewInstance() *Instance {
-	ctx, cancel := context.WithCancel(context.Background())
+func NewInstance(runCtx context.Context) *Instance {
+	if runCtx == nil {
+		runCtx = context.Background()
+	}
+	ctx, cancel := context.WithCancel(runCtx)
 	return &Instance{
 		instCtx:       ctx,
 		instCtxCancel: cancel,
@@ -23,6 +27,7 @@ func NewInstance() *Instance {
 }
 
 func (i *Instance) Start() error {
+	logrus.Infof("instance start")
 	i.servers = append(i.servers, NewServer("test"))
 	for _, server := range i.servers {
 		if err := server.Init(); err != nil {
@@ -38,10 +43,12 @@ func (i *Instance) Start() error {
 func (i *Instance) Stop() error {
 	i.instCtxCancel()
 	i.await.Wait()
+	logrus.Infof("instance stop")
 	return nil
 }
 
 func (i *Instance) Serve() error {
+	logrus.Infof("instance serve")
 	if len(i.servers) == 0 {
 		return fmt.Errorf("servers is required")
 	}

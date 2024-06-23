@@ -32,5 +32,4 @@ func (d *StaticRouter) Route(ctx context.Context, income *net.Connection) (targe
 		assert.MustFalse(income.Destination.IsValid(), "proxy-type: tcp/udp/others, income destination must invalid")
 		return income.WithDestination(d.target), nil
 	}
-
 }
