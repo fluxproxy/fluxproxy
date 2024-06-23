@@ -39,6 +39,16 @@ type Listener interface {
 	Serve(ctx context.Context, handler ListenerHandler) error
 }
 
+// Server 代理服务端
+type Server interface {
+	// Init 初始化服务端
+	Init(context.Context) error
+
+	// Serve 以阻塞状态运行服务端
+	Serve(context.Context) error
+}
+
+// ConnectorSelector 根据连接选择连接至目标地址的Connector
 type ConnectorSelector func(*net.Connection) (Connector, bool)
 
 // Connector 远程地址连接器

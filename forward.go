@@ -5,6 +5,7 @@ import (
 	"fluxway/common"
 	"fluxway/net"
 	"fluxway/proxy"
+	"fluxway/proxy/route"
 	"fluxway/proxy/tcp"
 	"fluxway/proxy/udp"
 	"fmt"
@@ -50,11 +51,11 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	switch network {
 	case net.Network_UDP:
 		listener = udp.NewUdpListener()
-		router = proxy.NewStaticRouter(dest)
+		router = route.NewStaticRouter(dest)
 		connector = udp.NewUdpConnector()
 	case net.Network_TCP:
 		listener = tcp.NewTcpListener()
-		router = proxy.NewStaticRouter(dest)
+		router = route.NewStaticRouter(dest)
 		connector = tcp.NewTcpConnector()
 	default:
 		return fmt.Errorf("forward server unsupport network type: %s", s.options.Network)
