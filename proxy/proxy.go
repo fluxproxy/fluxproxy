@@ -42,7 +42,7 @@ type Listener interface {
 // Connector 远程地址连接器
 type Connector interface {
 	// DailServe 以阻塞状态建立远程地址连接，进行双向数据读写。
-	DailServe(ctx context.Context, target *net.Connection) (err error)
+	DailServe(ctx context.Context, link *net.Connection) (err error)
 }
 
 // Router 代理路由器

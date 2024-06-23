@@ -5,6 +5,7 @@ import (
 	"fluxway/internal"
 	"fluxway/net"
 	"fluxway/proxy"
+	"github.com/sirupsen/logrus"
 	"time"
 )
 
@@ -29,6 +30,7 @@ func NewTcpConnector() *Connector {
 	}
 }
 
-func (d *Connector) DailServe(inctx context.Context, target *net.Connection) error {
-	return internal.TcpConnect(inctx, d.opts, target)
+func (d *Connector) DailServe(inctx context.Context, link *net.Connection) error {
+	logrus.Infof("tcp-connector: connect %s to %s", link.Address, link.Destination)
+	return internal.TcpConnect(inctx, d.opts, link)
 }
