@@ -1,0 +1,10 @@
+listeners:
+  - tag: tcp-listener
+    network: tcp
+    address: 120.0.0.1
+    port: 9999
+
+  - tag: udp-listener
+    network: udp
+    address: 120.0.0.1
+    port: 8888
