@@ -65,19 +65,20 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) {
 		assert.MustTrue(connCtx != servContext, "server context must be a new context")
 		connID, _ := uuid.GenerateUUID()
+		logger := logrus.WithFields(logrus.Fields{
+			"mode":    s.opts.Mode,
+			"network": s.listener.Network(),
+			"address": conn.Address,
+			"id":      connID,
+		})
 		connCtx = proxy.ContextWithID(connCtx, connID)
 		connCtx = proxy.ContextWithProxyType(connCtx, s.listener.ProxyType())
 		connCtx = proxy.ContextWithConnection(connCtx, &conn)
-		logFields := logrus.Fields{
-			"server":  s.opts.Mode,
-			"network": s.listener.Network(),
-			"source":  conn.Address,
-			"id":      connID,
-		}
+		connCtx = proxy.ContextWithLogger(connCtx, logger)
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {
-			logrus.WithFields(logFields).Errorf("router error: %s", err)
+			logger.Errorf("router error: %s", err)
 			return
 		}
 		assert.MustNotNil(routed.ReadWriter, "routed.read-writer is nil")
@@ -87,15 +88,14 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		} else {
 			assert.MustNil(routed.TCPConn, "routed.TCPConn is not nil")
 		}
-		logFields["destination"] = routed.Destination
 		// Connect
 		connector, ok := s.selector(&routed)
 		if !ok {
-			logrus.WithFields(logFields).Errorf("unsupported network-type: %s", routed.Destination.Network)
+			logger.Errorf("unsupported network-type: %s", routed.Destination.Network)
 			return
 		}
 		if err := connector.DailServe(connCtx, &routed); err != nil {
-			logrus.WithFields(logFields).Errorf("connector error: %s", err)
+			logger.Errorf("connector error: %s", err)
 		}
 	})
 }

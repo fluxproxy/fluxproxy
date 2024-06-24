@@ -30,7 +30,6 @@ func NewInstance(runCtx context.Context) *Instance {
 }
 
 func (i *Instance) Start() error {
-	logrus.Infof("instance start")
 	//// 解析配置
 	k := proxy.ConfigFromContext(i.instCtx)
 	var serverOpts ServerOptions
@@ -92,7 +91,6 @@ func (i *Instance) buildProxyServer(serverOpts ServerOptions) error {
 func (i *Instance) Stop() error {
 	i.instCtxCancel()
 	i.await.Wait()
-	logrus.Infof("instance stop")
 	return nil
 }
 

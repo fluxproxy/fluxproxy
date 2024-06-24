@@ -4,10 +4,12 @@ import (
 	"context"
 	"fluxway/net"
 	"github.com/knadh/koanf"
+	"github.com/sirupsen/logrus"
 )
 
 const (
-	ctxKeyConfig uint32 = iota
+	ctxKeyLogger uint32 = iota
+	ctxKeyConfig
 	ctxKeyID
 	ctxKeyConnection
 	ctxKeyProxyType
@@ -15,12 +17,25 @@ const (
 
 // ID
 
+func ContextWithLogger(ctx context.Context, v *logrus.Entry) context.Context {
+	return context.WithValue(ctx, ctxKeyLogger, v)
+}
+
+func LoggerFromContext(ctx context.Context) *logrus.Entry {
+	if v, ok := ctx.Value(ctxKeyLogger).(*logrus.Entry); ok {
+		return v
+	}
+	panic("ctxKeyLogger is not in context.")
+}
+
+// Config
+
 func ContextWithConfig(ctx context.Context, v *koanf.Koanf) context.Context {
-	return context.WithValue(ctx, ctxKeyID, v)
+	return context.WithValue(ctx, ctxKeyConfig, v)
 }
 
 func ConfigFromContext(ctx context.Context) *koanf.Koanf {
-	if v, ok := ctx.Value(ctxKeyID).(*koanf.Koanf); ok {
+	if v, ok := ctx.Value(ctxKeyConfig).(*koanf.Koanf); ok {
 		return v
 	}
 	panic("Koanf is not in context.")
