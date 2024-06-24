@@ -88,12 +88,12 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 			logger.Errorf("router error: %s", err)
 			return
 		}
-		assert.MustNotNil(routed.ReadWriter, "routed.read-writer is nil")
-		assert.MustTrue(routed.Destination.IsValid(), "routed.dest is invalid")
+		assert.MustNotNil(routed.ReadWriter, "routed.readWriter is nil")
+		assert.MustTrue(routed.Destination.IsValid(), "routed.Destination is invalid")
 		if s.listener.Network() == net.Network_TCP {
-			assert.MustNotNil(routed.TCPConn, "routed.TCPConn is nil")
+			assert.MustNotNil(routed.TCPConn, "routed.TCPConn is required")
 		} else {
-			assert.MustNil(routed.TCPConn, "routed.TCPConn is not nil")
+			assert.MustNil(routed.TCPConn, "routed.TCPConn must be nil")
 		}
 		// Connect
 		connector, ok := s.selector(&routed)
@@ -102,7 +102,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 			return
 		}
 		if err := connector.DailServe(connCtx, &routed); err != nil {
-			logger.Errorf("connector error: %s", err)
+			logger.Errorf("connector dail error: %s", err)
 		}
 	})
 }

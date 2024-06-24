@@ -12,16 +12,6 @@ const (
 )
 
 func (n Network) String() string {
-	return n.SystemString()
-}
-
-func (n Network) Enum() *Network {
-	p := new(Network)
-	*p = n
-	return p
-}
-
-func (n Network) SystemString() string {
 	switch n {
 	case Network_TCP:
 		return "tcp"
