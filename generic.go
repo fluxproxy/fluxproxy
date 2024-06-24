@@ -7,6 +7,7 @@ import (
 	"fluxway/proxy"
 	"fmt"
 	"github.com/bytepowered/assert-go"
+	"github.com/hashicorp/go-uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -47,6 +48,12 @@ func (s *GenericServer) SetRouter(router proxy.Router) {
 	s.router = router
 }
 
+func (s *GenericServer) SetConnector(c proxy.Connector) {
+	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
+		return c, true
+	})
+}
+
 func (s *GenericServer) SetConnectorSelector(f proxy.ConnectorSelector) {
 	s.selector = f
 }
@@ -57,7 +64,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
 	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) {
 		assert.MustTrue(connCtx != servContext, "server context must be a new context")
-		connID := common.NewID()
+		connID, _ := uuid.GenerateUUID()
 		connCtx = proxy.ContextWithID(connCtx, connID)
 		connCtx = proxy.ContextWithProxyType(connCtx, s.listener.ProxyType())
 		connCtx = proxy.ContextWithConnection(connCtx, &conn)
@@ -93,7 +100,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	})
 }
 
-func ParseDestinationWith(network net.Network, addr common.AddressOptions) (net.Destination, error) {
+func ParseDestinationWith(network net.Network, addr common.CAddress) (net.Destination, error) {
 	port, err := net.PortFromInt(uint32(addr.Port))
 	if err != nil {
 		return net.DestinationNotset, fmt.Errorf("invalid destination port: %d, error: %w", addr.Port, err)

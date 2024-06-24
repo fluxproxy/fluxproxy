@@ -40,9 +40,6 @@ func (t *TcpListener) Network() net.Network {
 }
 
 func (t *TcpListener) Init(options proxy.ListenerOptions) error {
-	if options.Network != net.Network_TCP {
-		return fmt.Errorf("%s only support tcp network, was: %s", t.Tag(), options.Network)
-	}
 	t.options = options
 	return nil
 }

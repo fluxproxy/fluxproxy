@@ -9,6 +9,7 @@ server:
 
 # 端口转发器
 forward:
+  # 转发规则列表
   rules:
     - description: "test-tcp-forward"
       network: tcp

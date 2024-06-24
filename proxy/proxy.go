@@ -16,9 +16,8 @@ const (
 
 // ListenerOptions 监听器的网络参数
 type ListenerOptions struct {
-	Network net.Network `json:"network"`
-	Address string      `json:"address"`
-	Port    int         `json:"port"`
+	Address string `json:"address"`
+	Port    int    `json:"port"`
 }
 
 // ListenerHandler 监听器的回调处理函数

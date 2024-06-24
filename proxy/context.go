@@ -2,7 +2,6 @@ package proxy
 
 import (
 	"context"
-	"fluxway/common"
 	"fluxway/net"
 	"github.com/knadh/koanf"
 )
@@ -29,12 +28,12 @@ func ConfigFromContext(ctx context.Context) *koanf.Koanf {
 
 // ID
 
-func ContextWithID(ctx context.Context, id common.ID) context.Context {
-	return context.WithValue(ctx, ctxKeyID, id)
+func ContextWithID(ctx context.Context, v string) context.Context {
+	return context.WithValue(ctx, ctxKeyID, v)
 }
 
-func IDFromContext(ctx context.Context) common.ID {
-	if v, ok := ctx.Value(ctxKeyID).(common.ID); ok {
+func IDFromContext(ctx context.Context) string {
+	if v, ok := ctx.Value(ctxKeyID).(string); ok {
 		return v
 	}
 	panic("ID is not in context.")

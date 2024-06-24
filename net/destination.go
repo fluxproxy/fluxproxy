@@ -1,98 +1,15 @@
 package net
 
-import (
-	"net"
-	"strings"
+var (
+	DestinationNotset = Destination{Network: Network_Unknown}
 )
 
-// Destination represents a network destination including address and protocol (tcp / udp).
 type Destination struct {
 	Address Address
 	Port    Port
 	Network Network
 }
 
-var (
-	DestinationNotset = Destination{Network: Network_Unknown}
-)
-
-// DestinationFromAddr generates a Destination from a net address.
-func DestinationFromAddr(addr net.Addr) Destination {
-	switch addr := addr.(type) {
-	case *net.TCPAddr:
-		return TCPDestination(IPAddress(addr.IP), Port(addr.Port))
-	case *net.UDPAddr:
-		return UDPDestination(IPAddress(addr.IP), Port(addr.Port))
-	case *net.UnixAddr:
-		return UnixDestination(DomainAddress(addr.Name))
-	default:
-		panic("Net: Unknown address type.")
-	}
-}
-
-// ParseDestination converts a destination from its string presentation.
-func ParseDestination(dest string) (Destination, error) {
-	d := Destination{
-		Address: AnyIP,
-		Port:    Port(0),
-	}
-
-	switch {
-	case strings.HasPrefix(dest, "tcp:"):
-		d.Network = Network_TCP
-		dest = dest[4:]
-	case strings.HasPrefix(dest, "udp:"):
-		d.Network = Network_UDP
-		dest = dest[4:]
-	case strings.HasPrefix(dest, "unix:"):
-		d = UnixDestination(DomainAddress(dest[5:]))
-		return d, nil
-	}
-
-	hstr, pstr, err := net.SplitHostPort(dest)
-	if err != nil {
-		return d, err
-	}
-	if len(hstr) > 0 {
-		d.Address = ParseAddress(hstr)
-	}
-	if len(pstr) > 0 {
-		port, err := PortFromString(pstr)
-		if err != nil {
-			return d, err
-		}
-		d.Port = port
-	}
-	return d, nil
-}
-
-// TCPDestination creates a TCP destination with given address
-func TCPDestination(address Address, port Port) Destination {
-	return Destination{
-		Network: Network_TCP,
-		Address: address,
-		Port:    port,
-	}
-}
-
-// UDPDestination creates a UDP destination with given address
-func UDPDestination(address Address, port Port) Destination {
-	return Destination{
-		Network: Network_UDP,
-		Address: address,
-		Port:    port,
-	}
-}
-
-// UnixDestination creates a Unix destination with given address
-func UnixDestination(address Address) Destination {
-	return Destination{
-		Network: Network_UNIX,
-		Address: address,
-	}
-}
-
-// NetAddr returns the network address in this Destination in string form.
 func (d Destination) NetAddr() string {
 	addr := ""
 	if d.Network == Network_TCP || d.Network == Network_UDP {
@@ -103,7 +20,6 @@ func (d Destination) NetAddr() string {
 	return addr
 }
 
-// String returns the strings form of this Destination.
 func (d Destination) String() string {
 	prefix := "unknown:"
 	switch d.Network {
@@ -117,7 +33,6 @@ func (d Destination) String() string {
 	return prefix + "//" + d.NetAddr()
 }
 
-// IsValid returns true if this Destination is valid.
 func (d Destination) IsValid() bool {
 	return d.Network != Network_Unknown
 }

@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"fluxway/common"
 	"fluxway/net"
 	"fmt"
 	"github.com/bytepowered/assert-go"
@@ -32,11 +31,11 @@ func TcpConnect(srcConnCtx context.Context, opts net.TcpOptions, link *net.Conne
 	taskErrors := make(chan error, 2)
 	send := func(_ context.Context, from, to net.Conn) {
 		defer logrus.Info("tcp-connector send-loop terminated, destination: ", link.Destination)
-		common.Copy(from, to, taskErrors)
+		net.Copied(from, to, taskErrors)
 	}
 	receive := func(_ context.Context, from, to net.Conn) {
 		defer logrus.Info("tcp-connector receive-loop terminated, destination: ", link.Destination)
-		common.Copy(from, to, taskErrors)
+		net.Copied(from, to, taskErrors)
 	}
 	go send(destCtx, srcTcpConn, destTCPConn)
 	go receive(destCtx, destTCPConn, srcTcpConn)

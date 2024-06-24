@@ -22,11 +22,11 @@ type ForwardRootOptions struct {
 }
 
 type ForwardOptions struct {
-	Description string                `yaml:"description"`
-	Network     string                `yaml:"network"`
-	Port        int                   `yaml:"port"`
-	Disabled    bool                  `yaml:"disabled"`
-	Destination common.AddressOptions `yaml:"destination"`
+	Description string          `yaml:"description"`
+	Network     string          `yaml:"network"`
+	Port        int             `yaml:"port"`
+	Disabled    bool            `yaml:"disabled"`
+	Destination common.CAddress `yaml:"destination"`
 }
 
 type ForwardServer struct {
@@ -35,6 +35,9 @@ type ForwardServer struct {
 }
 
 func NewForwardServer(serverOpts ServerOptions, forwardOpts ForwardOptions) *ForwardServer {
+	if len(forwardOpts.Description) == 0 {
+		forwardOpts.Description = fmt.Sprintf("forward-%d-to-%d", forwardOpts.Port, forwardOpts.Destination.Port)
+	}
 	return &ForwardServer{
 		options:       forwardOpts,
 		GenericServer: NewGenericServer(serverOpts),
@@ -64,15 +67,12 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	default:
 		return fmt.Errorf("forward server unsupport network type: %s", s.options.Network)
 	}
-	s.GenericServer.SetListener(listener)
-	s.GenericServer.SetRouter(router)
-	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
-		return connector, true
-	})
+	s.SetListener(listener)
+	s.SetRouter(router)
+	s.SetConnector(connector)
 	// 初始化
 	assert.MustTrue(network == listener.Network(), "listener network error, was: %s", listener.Network())
 	return listener.Init(proxy.ListenerOptions{
-		Network: network,
 		Address: s.GenericServer.Options().Bind,
 		Port:    s.options.Port,
 	})

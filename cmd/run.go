@@ -2,7 +2,7 @@ package main
 
 import (
 	"fluxway"
-	"fluxway/common"
+	"fluxway/helper"
 	"fluxway/proxy"
 	"fmt"
 	"github.com/knadh/koanf"
@@ -32,7 +32,7 @@ func runCommand(ctx *cli.Context) error {
 		return fmt.Errorf("instance start: %w", err)
 	}
 	defer func() {
-		common.LogIf(inst.Stop(), "instance stop: %w")
+		helper.LogIf(inst.Stop(), "instance stop: %w")
 	}()
-	return common.ErrIf(inst.Serve(), "instance serve")
+	return helper.ErrIf(inst.Serve(), "instance serve")
 }

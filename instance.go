@@ -2,7 +2,7 @@ package fluxway
 
 import (
 	"context"
-	"fluxway/common"
+	"fluxway/helper"
 	"fluxway/proxy"
 	"fmt"
 	"github.com/bytepowered/assert-go"
@@ -37,12 +37,12 @@ func (i *Instance) Start() error {
 	if err := k.Unmarshal("server", &serverOpts); err != nil {
 		return fmt.Errorf("unmarshal server options: %w", err)
 	}
-	if common.StringContains(serverOpts.Mode, "forward", "mixin") {
+	if helper.ContainsAnyString(serverOpts.Mode, "forward", "mixin") {
 		if err := i.buildForwardServer(serverOpts); err != nil {
 			return err
 		}
 	}
-	if common.StringContains(serverOpts.Mode, "proxy", "mixin") {
+	if helper.ContainsAnyString(serverOpts.Mode, "proxy", "mixin") {
 		if err := i.buildProxyServer(serverOpts); err != nil {
 			return err
 		}

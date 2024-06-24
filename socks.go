@@ -2,7 +2,6 @@ package fluxway
 
 import (
 	"context"
-	"fluxway/net"
 	"fluxway/proxy"
 	"fluxway/proxy/route"
 	"fluxway/proxy/socks"
@@ -31,15 +30,13 @@ func NewSocksProxyServer(serverOpts ServerOptions, socksProxyOptions SocksProxyO
 
 func (s *SocksProxyServer) Init(ctx context.Context) error {
 	listener := socks.NewSocksListener()
+	router := route.NewProxyRouter()
 	connector := tcp.NewTcpConnector()
-	s.GenericServer.SetListener(listener)
-	s.GenericServer.SetRouter(route.NewProxyRouter())
-	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
-		return connector, true
-	})
+	s.SetListener(listener)
+	s.SetRouter(router)
+	s.SetConnector(connector)
 	serverOpts := s.GenericServer.Options()
 	return listener.Init(proxy.ListenerOptions{
-		Network: listener.Network(),
 		Address: serverOpts.Bind,
 		Port:    serverOpts.HttpPort,
 	})
