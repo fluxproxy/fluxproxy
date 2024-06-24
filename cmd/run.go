@@ -12,23 +12,36 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func runCommand(ctx *cli.Context) error {
-	confpath := "forward.yml"
+// Configuration
+var k = koanf.NewWithConf(koanf.Conf{
+	Delim:       ".",
+	StrictMerge: true,
+})
+
+func runAsAutoServer(ctx *cli.Context) error {
+	return runCommandAs(ctx, "")
+}
+
+func runAsForwardServer(ctx *cli.Context) error {
+	return runCommandAs(ctx, "forward")
+}
+
+func runAsProxyServer(ctx *cli.Context) error {
+	return runCommandAs(ctx, "proxy")
+}
+
+func runCommandAs(ctx *cli.Context, serverMode string) error {
+	confpath := "config.yml"
 	if ctx.NArg() > 0 {
 		confpath = ctx.Args().Get(0)
 	}
-	// Configuration
-	var k = koanf.NewWithConf(koanf.Conf{
-		Delim:       ".",
-		StrictMerge: true,
-	})
 	logrus.Infof("load config file: %s", confpath)
 	if err := k.Load(file.Provider(confpath), yaml.Parser()); err != nil {
 		return fmt.Errorf("load config file %s: %w", confpath, err)
 	}
 	// Instance
 	inst := fluxway.NewInstance(proxy.ContextWithConfig(ctx.Context, k))
-	if err := inst.Start(); err != nil {
+	if err := inst.Start(serverMode); err != nil {
 		return fmt.Errorf("instance start: %w", err)
 	}
 	defer func() {

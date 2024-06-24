@@ -29,19 +29,27 @@ func NewInstance(runCtx context.Context) *Instance {
 	}
 }
 
-func (i *Instance) Start() error {
-	//// 解析配置
+func (i *Instance) Start(startAsMode string) error {
+	// 解析配置
 	k := proxy.ConfigFromContext(i.instCtx)
 	var serverOpts ServerOptions
 	if err := k.Unmarshal("server", &serverOpts); err != nil {
 		return fmt.Errorf("unmarshal server options: %w", err)
 	}
-	if helper.ContainsAnyString(serverOpts.Mode, "forward", "mixin") {
+	// 指定运行模式
+	if startAsMode != "" {
+		serverOpts.Mode = startAsMode
+		logrus.Warnf("force as server mode: %s", startAsMode)
+	}
+	// 检测运行模式
+	AssertServerModeValid(serverOpts.Mode)
+	// 启动服务端
+	if helper.ContainsAnyString(serverOpts.Mode, ServerModeForward, ServerModeMixin) {
 		if err := i.buildForwardServer(serverOpts); err != nil {
 			return err
 		}
 	}
-	if helper.ContainsAnyString(serverOpts.Mode, "proxy", "mixin") {
+	if helper.ContainsAnyString(serverOpts.Mode, ServerModeProxy, ServerModeMixin) {
 		if err := i.buildProxyServer(serverOpts); err != nil {
 			return err
 		}

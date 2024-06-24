@@ -9,6 +9,13 @@ import (
 	"github.com/bytepowered/assert-go"
 	"github.com/hashicorp/go-uuid"
 	"github.com/sirupsen/logrus"
+	"strings"
+)
+
+const (
+	ServerModeMixin   string = "mixin"
+	ServerModeProxy   string = "proxy"
+	ServerModeForward string = "forward"
 )
 
 type ServerOptions struct {
@@ -110,4 +117,15 @@ func ParseDestinationWith(network net.Network, addr common.CAddress) (net.Destin
 		Address: net.ParseAddress(addr.Address),
 		Port:    port,
 	}, nil
+}
+
+func AssertServerModeValid(mode string) {
+	valid := false
+	switch strings.ToLower(mode) {
+	case ServerModeForward, ServerModeMixin, ServerModeProxy:
+		valid = true
+	default:
+		valid = false
+	}
+	assert.MustTrue(valid, "server mode is invalid: %s", mode)
 }

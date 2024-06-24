@@ -26,10 +26,19 @@ func main() {
 		Version: "v2014.1.0",
 		Commands: []*cli.Command{
 			{
-				Name:    "run",
-				Aliases: []string{"r"},
-				Usage:   "Run fluxway as a proxy server",
-				Action:  runCommand,
+				Name:   "run",
+				Usage:  "Run as a proxy server, mode by config",
+				Action: runAsAutoServer,
+			},
+			{
+				Name:   "forward",
+				Usage:  "Run as a forward server, mode forward",
+				Action: runAsForwardServer,
+			},
+			{
+				Name:   "proxy",
+				Usage:  "Run as a proxy server, mode proxy",
+				Action: runAsProxyServer,
 			},
 		},
 	}
