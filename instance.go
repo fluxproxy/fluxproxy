@@ -59,24 +59,33 @@ func (i *Instance) Start() error {
 
 func (i *Instance) buildForwardServer(serverOpts ServerOptions) error {
 	k := proxy.ConfigFromContext(i.instCtx)
-	type RootForwarderOptions []ForwardOptions
-	var opts RootForwarderOptions
-	if err := k.Unmarshal("forward", &opts); err != nil {
+	var forwardOpts ForwardRootOptions
+	if err := k.Unmarshal("forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
-	assert.MustTrue(len(opts) > 0, "forward options is required")
-	for _, opt := range opts {
-		if opt.Disabled {
-			logrus.Warnf("forward server is disabled: %s", opt.Description)
+	assert.MustTrue(len(forwardOpts.Rules) > 0, "forward options is required")
+	for _, rule := range forwardOpts.Rules {
+		if rule.Disabled {
+			logrus.Warnf("forward server is disabled: %s", rule.Description)
 			continue
 		}
-		i.servers = append(i.servers, NewForwardServer(serverOpts, opt))
+		i.servers = append(i.servers, NewForwardServer(serverOpts, rule))
 	}
 	return nil
 }
 
 func (i *Instance) buildProxyServer(serverOpts ServerOptions) error {
-	//k := proxy.ConfigFromContext(i.instCtx)
+	k := proxy.ConfigFromContext(i.instCtx)
+	// Socks proxy
+	var socksOpts SocksProxyOptions
+	if err := k.Unmarshal("socks", &socksOpts); err != nil {
+		return fmt.Errorf("unmarshal socks options: %w", err)
+	}
+	if socksOpts.Disabled {
+		logrus.Warnf("socks server is disabled")
+		return nil
+	}
+	i.servers = append(i.servers, NewSocksProxyServer(serverOpts, socksOpts))
 	return nil
 }
 

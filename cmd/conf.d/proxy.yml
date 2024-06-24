@@ -13,8 +13,10 @@ server:
 
 # Http 代理配置
 http:
+  disabled: true
   cert-file: ""
 
 # Socks5 代理配置
 socks:
+  disabled: false
   allow_no_auth: true

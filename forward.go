@@ -17,6 +17,10 @@ var (
 	_ proxy.Server = (*ForwardServer)(nil)
 )
 
+type ForwardRootOptions struct {
+	Rules []ForwardOptions `yaml:"rules"`
+}
+
 type ForwardOptions struct {
 	Description string                `yaml:"description"`
 	Network     string                `yaml:"network"`

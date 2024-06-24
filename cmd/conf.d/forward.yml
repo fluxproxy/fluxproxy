@@ -9,18 +9,18 @@ server:
 
 # 端口转发器
 forward:
-  - description: "test-tcp-forward"
-    network: tcp
-    port: 9999
-    destination:
-      address: "127.0.0.1"
-      port: 1234
+  rules:
+    - description: "test-tcp-forward"
+      network: tcp
+      port: 9999
+      destination:
+        address: "127.0.0.1"
+        port: 1234
 
-  - description: "test-udp-forward"
-    network: udp
-    port: 8888
-    disabled: true
-    destination:
-      address: "127.0.0.1"
-      port: 1234
-
+    - description: "test-udp-forward"
+      network: udp
+      port: 8888
+      disabled: true
+      destination:
+        address: "127.0.0.1"
+        port: 1234

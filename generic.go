@@ -11,9 +11,14 @@ import (
 )
 
 type ServerOptions struct {
+	// Generic
 	Mode     string `yaml:"mode"`
 	AllowLan bool   `yaml:"allow_lan"`
 	Bind     string `yaml:"bind"`
+	// Http proxy server only
+	HttpPort int `yaml:"http_port"`
+	// Socks proxy server only
+	SocksPort int `yaml:"socks_port"`
 }
 
 type GenericServer struct {

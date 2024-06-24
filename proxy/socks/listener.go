@@ -1,4 +1,4 @@
-package socks5
+package socks
 
 import "C"
 import (
@@ -19,9 +19,9 @@ type Listener struct {
 	*internal.TcpListener
 }
 
-func NewSocks5Listener() *Listener {
+func NewSocksListener() *Listener {
 	return &Listener{
-		TcpListener: internal.NewTcpListener("socks5-listener", net.DefaultTcpOptions()),
+		TcpListener: internal.NewTcpListener("socks-listener", net.DefaultTcpOptions()),
 	}
 }
 
