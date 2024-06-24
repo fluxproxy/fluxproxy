@@ -31,9 +31,9 @@ func (t *Listener) ProxyType() proxy.ProxyType {
 
 func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	return t.TcpListener.Serve(serveCtx, func(connCtx context.Context, conn net.Connection) {
-		if target, err := socks.Handshake(conn); err != nil {
+		if dest, err := socks.Handshake(conn); err != nil {
 			logrus.Errorf("socks-listener handshake error: %s", err)
-		} else if dest, err := parseSocksAddr(target); err != nil {
+		} else if dest, err := parseSocksAddr(dest); err != nil {
 			logrus.Errorf("socks-listener destination error: %s", err)
 		} else {
 			handler(connCtx, net.Connection{

@@ -3,6 +3,7 @@ package proxy
 import (
 	"context"
 	"fluxway/net"
+	"fmt"
 	"github.com/knadh/koanf"
 	"github.com/sirupsen/logrus"
 )
@@ -78,4 +79,12 @@ func ProxyTypeFromContext(ctx context.Context) ProxyType {
 		return v
 	}
 	panic("ProxyType is not in context.")
+}
+
+func UnmarshalConfig(ctx context.Context, path string, out any) error {
+	k := ConfigFromContext(ctx)
+	if err := k.UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
+		return fmt.Errorf("unmarshal %s options: %w", path, err)
+	}
+	return nil
 }

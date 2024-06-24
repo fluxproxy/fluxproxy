@@ -18,6 +18,10 @@ var k = koanf.NewWithConf(koanf.Conf{
 	StrictMerge: true,
 })
 
+var uc = koanf.UnmarshalConf{
+	Tag: "yaml",
+}
+
 func runAsAutoServer(ctx *cli.Context) error {
 	return runCommandAs(ctx, "")
 }

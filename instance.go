@@ -31,10 +31,9 @@ func NewInstance(runCtx context.Context) *Instance {
 
 func (i *Instance) Start(startAsMode string) error {
 	// 解析配置
-	k := proxy.ConfigFromContext(i.instCtx)
 	var serverOpts ServerOptions
-	if err := k.Unmarshal("server", &serverOpts); err != nil {
-		return fmt.Errorf("unmarshal server options: %w", err)
+	if err := proxy.UnmarshalConfig(i.instCtx, "server", &serverOpts); err != nil {
+		return err
 	}
 	// 指定运行模式
 	if startAsMode != "" {
@@ -65,9 +64,8 @@ func (i *Instance) Start(startAsMode string) error {
 }
 
 func (i *Instance) buildForwardServer(serverOpts ServerOptions) error {
-	k := proxy.ConfigFromContext(i.instCtx)
 	var forwardOpts ForwardRootOptions
-	if err := k.Unmarshal("forward", &forwardOpts); err != nil {
+	if err := proxy.UnmarshalConfig(i.instCtx, "forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
 	assert.MustTrue(len(forwardOpts.Rules) > 0, "forward options is required")
@@ -82,17 +80,16 @@ func (i *Instance) buildForwardServer(serverOpts ServerOptions) error {
 }
 
 func (i *Instance) buildProxyServer(serverOpts ServerOptions) error {
-	k := proxy.ConfigFromContext(i.instCtx)
 	// Socks proxy
-	var socksOpts SocksProxyOptions
-	if err := k.Unmarshal("socks", &socksOpts); err != nil {
+	var socksOpts SocksOptions
+	if err := proxy.UnmarshalConfig(i.instCtx, "socks", &socksOpts); err != nil {
 		return fmt.Errorf("unmarshal socks options: %w", err)
 	}
 	if socksOpts.Disabled {
 		logrus.Warnf("socks server is disabled")
 		return nil
 	}
-	i.servers = append(i.servers, NewSocksProxyServer(serverOpts, socksOpts))
+	i.servers = append(i.servers, NewSocksServer(serverOpts, socksOpts))
 	return nil
 }
 
