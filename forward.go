@@ -45,7 +45,7 @@ func NewForwardServer(serverOpts ServerOptions, forwardOpts ForwardOptions) *For
 }
 
 func (s *ForwardServer) Init(ctx context.Context) error {
-	logrus.Infof("forward server init: %s", s.options.Description)
+	logrus.Infof("forward server init: %s:%s:%d, desc: %s", s.options.Network, s.Options().Bind, s.options.Port, s.options.Description)
 	// 构建服务组件
 	var listener proxy.Listener = nil
 	var router proxy.Router = nil
@@ -73,7 +73,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	// 初始化
 	assert.MustTrue(network == listener.Network(), "listener network error, was: %s", listener.Network())
 	return listener.Init(proxy.ListenerOptions{
-		Address: s.GenericServer.Options().Bind,
+		Address: s.Options().Bind,
 		Port:    s.options.Port,
 	})
 }

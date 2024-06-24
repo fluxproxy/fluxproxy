@@ -11,17 +11,17 @@ server:
 forward:
   # 转发规则列表
   rules:
-    - description: "test-tcp-forward"
+    - description: "forward-udp-9999-to-127.0.0.1-1234"
       network: tcp
       port: 9999
       destination:
         address: "127.0.0.1"
         port: 1234
 
-    - description: "test-udp-forward"
+    - description: "forward-udp-8888-to-127.0.0.1-1235"
       network: udp
       port: 8888
       disabled: true
       destination:
         address: "127.0.0.1"
-        port: 1234
+        port: 1235

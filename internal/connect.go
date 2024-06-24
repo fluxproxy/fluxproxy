@@ -13,7 +13,7 @@ func TcpConnect(srcConnCtx context.Context, opts net.TcpOptions, link *net.Conne
 	assert.MustTrue(link.Destination.Network == net.Network_TCP, "unsupported network: %s", link.Destination.Network)
 	logrus.Info("tcp-connector dail: ", link.Destination)
 	srcTcpConn := link.TCPConn
-	destTCPConn, err := stdnet.DialTCP("tcp", nil, &stdnet.TCPAddr{
+	dstTCPConn, err := stdnet.DialTCP("tcp", nil, &stdnet.TCPAddr{
 		IP:   link.Destination.Address.IP(),
 		Port: int(link.Destination.Port),
 	})
@@ -22,23 +22,19 @@ func TcpConnect(srcConnCtx context.Context, opts net.TcpOptions, link *net.Conne
 	}
 	defer func() {
 		logrus.Infof("tcp-connector dail-serve terminated, address: %s, %s ", link.Address, link.Destination)
-		net.Close(destTCPConn)
+		net.Close(dstTCPConn)
 	}()
-	if err := net.SetTcpOptions(destTCPConn, opts); err != nil {
+	if err := net.SetTcpOptions(dstTCPConn, opts); err != nil {
 		return fmt.Errorf("tcp-connector set remote options: %w", err)
 	}
-	destCtx, destCancel := context.WithCancel(srcConnCtx)
-	taskErrors := make(chan error, 2)
-	send := func(_ context.Context, from, to net.Conn) {
-		defer logrus.Info("tcp-connector send-loop terminated, destination: ", link.Destination)
-		net.Copied(from, to, taskErrors)
+	dstCtx, dstCancel := context.WithCancel(srcConnCtx)
+	defer dstCancel()
+	errors := make(chan error, 2)
+	copier := func(_ context.Context, name string, from, to net.Conn) {
+		defer logrus.Info("tcp-connector %s copier terminated, destination: ", name, link.Destination)
+		errors <- net.Copier(from, to)
 	}
-	receive := func(_ context.Context, from, to net.Conn) {
-		defer logrus.Info("tcp-connector receive-loop terminated, destination: ", link.Destination)
-		net.Copied(from, to, taskErrors)
-	}
-	go send(destCtx, srcTcpConn, destTCPConn)
-	go receive(destCtx, destTCPConn, srcTcpConn)
-	defer destCancel()
-	return <-taskErrors
+	go copier(dstCtx, "src-to-dest", srcTcpConn, dstTCPConn)
+	go copier(dstCtx, "dest-to-src", dstTCPConn, srcTcpConn)
+	return <-errors
 }
