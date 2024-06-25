@@ -7,21 +7,28 @@ import (
 	"fluxway/net"
 	"fluxway/proxy"
 	"fmt"
-	"github.com/riobard/go-shadowsocks2/socks"
 	"github.com/sirupsen/logrus"
+	"github.com/things-go/go-socks5"
+	"github.com/things-go/go-socks5/statute"
+	"io"
+	stdnet "net"
 )
 
 var (
 	_ proxy.Listener = (*Listener)(nil)
 )
 
+type socks5Handler func(context.Context, io.Writer, *socks5.Request) error
+
 type Listener struct {
 	*internal.TcpListener
+	socks *socks5.Server
 }
 
 func NewSocksListener() *Listener {
 	return &Listener{
 		TcpListener: internal.NewTcpListener("socks", net.DefaultTcpOptions()),
+		socks:       nil,
 	}
 }
 
@@ -30,64 +37,69 @@ func (t *Listener) ProxyType() proxy.ProxyType {
 }
 
 func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
+	t.socks = socks5.NewServer(
+		socks5.WithConnectHandle(t.newSocksHandler(statute.CommandConnect, handler)),
+		socks5.WithBindHandle(t.newSocksHandler(statute.CommandBind, handler)),
+		socks5.WithAssociateHandle(t.newSocksHandler(statute.CommandAssociate, handler)),
+		socks5.WithRewriter(nil), // ensure no rewrite
+	)
 	return t.TcpListener.Serve(serveCtx, func(connCtx context.Context, conn net.Connection) {
-		if dest, err := socks.Handshake(conn); err != nil {
+		if err := t.socks.ServeConn(conn.TCPConn); err != nil {
 			logrus.Errorf("socks: handshake: %s", err)
-		} else if dest, err := parseSocksAddr(dest); err != nil {
-			logrus.Errorf("socks: parse destination: %s", err)
-		} else {
-			handler(connCtx, net.Connection{
-				Network:     t.Network(),
-				Address:     conn.Address,
-				TCPConn:     conn.TCPConn,
-				Destination: dest,
-				ReadWriter:  conn.ReadWriter,
-			})
 		}
 	})
 }
 
-func parseSocksAddr(target socks.Addr) (net.Destination, error) {
-	switch target[0] {
-	case socks.AtypDomainName:
-		hAddr := string(target[2 : 2+target[1]])
-		hPort := (int(target[2+target[1]]) << 8) | int(target[2+target[1]+1])
-		if port, err := net.PortFromInt(uint32(hPort)); err != nil {
-			return net.DestinationNotset, fmt.Errorf("invalid socks domain port: %d", hPort)
-		} else {
-			return net.Destination{
-				Network: net.Network_TCP,
-				Address: net.DomainAddress(hAddr),
-				Port:    port,
-			}, nil
+func (t *Listener) newSocksHandler(cmd byte, handler proxy.ListenerHandler) socks5Handler {
+	return func(ctx context.Context, w io.Writer, r *socks5.Request) error {
+		connCtx, connCancel := context.WithCancel(ctx)
+		defer connCancel()
+		switch cmd {
+		case statute.CommandConnect:
+			return t.handleSocksConnect(connCtx, w, r, handler)
+		case statute.CommandAssociate:
+			return t.handleSocksAssociate(connCtx, w, r, handler)
+		case statute.CommandBind:
+			return t.handleSocksBind(connCtx, w, r, handler)
+		default:
+			return t.handleSocksNotSupported(connCtx, w, r)
 		}
-
-	case socks.AtypIPv4:
-		//v4ip := net.IP(target[1 : 1+net.IPv4len])
-		v4ip := net.IPAddress(target[1 : 1+net.IPv4len])
-		v4port := (int(target[1+net.IPv4len]) << 8) | int(target[1+net.IPv4len+1])
-		port, err := net.PortFromInt(uint32(v4port))
-		if err != nil {
-			return net.DestinationNotset, fmt.Errorf("invalid socks ipv4 port: %d", v4port)
-		}
-		return net.Destination{
-			Network: net.Network_TCP,
-			Address: v4ip,
-			Port:    port,
-		}, nil
-	case socks.AtypIPv6:
-		//v6ip := net.IP(target[1 : 1+net.IPv6len])
-		v6ip := net.IPAddress(target[1 : 1+net.IPv6len])
-		v6port := (int(target[1+net.IPv6len]) << 8) | int(target[1+net.IPv6len+1])
-		port, err := net.PortFromInt(uint32(v6port))
-		if err != nil {
-			return net.DestinationNotset, fmt.Errorf("invalid socks ipv6 port: %d", v6port)
-		}
-		return net.Destination{
-			Network: net.Network_TCP,
-			Address: v6ip,
-			Port:    port,
-		}, nil
 	}
-	return net.DestinationNotset, fmt.Errorf("unsupported socks destination: %s", target)
+}
+
+func (t *Listener) handleSocksConnect(ctx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {
+	var conn = w.(net.Conn)
+	var destAddr net.Address
+	if r.DestAddr.FQDN != "" {
+		destAddr = net.DomainAddress(r.DestAddr.FQDN)
+	} else {
+		destAddr = net.IPAddress(r.DestAddr.IP)
+	}
+	handler(ctx, net.Connection{
+		Network: t.Network(),
+		Address: net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+		TCPConn: conn.(*net.TCPConn),
+		Destination: net.Destination{
+			Network: net.Network_TCP,
+			Address: destAddr,
+			Port:    net.Port(r.DestAddr.Port),
+		},
+		ReadWriter: conn,
+	})
+	return nil
+}
+
+func (t *Listener) handleSocksAssociate(ctx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {
+	return t.handleSocksNotSupported(ctx, w, r)
+}
+
+func (t *Listener) handleSocksBind(ctx context.Context, w io.Writer, r *socks5.Request, _ proxy.ListenerHandler) error {
+	return t.handleSocksNotSupported(ctx, w, r)
+}
+
+func (t *Listener) handleSocksNotSupported(_ context.Context, w io.Writer, req *socks5.Request) error {
+	if err := socks5.SendReply(w, statute.RepCommandNotSupported, nil); err != nil {
+		return fmt.Errorf("failed to send reply, %v", err)
+	}
+	return fmt.Errorf("unsupported command[%v]", req.Command)
 }

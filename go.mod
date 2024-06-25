@@ -6,8 +6,8 @@ require (
 	github.com/bytepowered/assert-go v1.0.2
 	github.com/hashicorp/go-uuid v1.0.1
 	github.com/knadh/koanf v1.5.0
-	github.com/riobard/go-shadowsocks2 v0.2.3
 	github.com/sirupsen/logrus v1.9.3
+	github.com/things-go/go-socks5 v0.0.5
 	github.com/urfave/cli/v2 v2.27.2
 )
 
