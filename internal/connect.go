@@ -11,6 +11,7 @@ import (
 
 func TcpDailServe(srcConnCtx context.Context, opts net.TcpOptions, link *net.Connection) error {
 	assert.MustTrue(link.Destination.Network == net.Network_TCP, "unsupported network: %s", link.Destination.Network)
+	assert.MustTrue(link.Destination.Address.Family().IsIP(), "destination address must be ip address, was: %s", link.Destination.Address.String())
 	logger := proxy.LoggerFromContext(srcConnCtx)
 	logger.Info("tcp-dail: ", link.Destination)
 	srcConn := link.TCPConn

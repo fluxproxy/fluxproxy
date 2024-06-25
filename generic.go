@@ -33,6 +33,7 @@ type GenericServer struct {
 	opts     ServerOptions
 	listener proxy.Listener
 	router   proxy.Router
+	resolver proxy.Resolver
 	selector proxy.ConnectorSelector
 }
 
@@ -53,6 +54,10 @@ func (s *GenericServer) SetListener(listener proxy.Listener) {
 
 func (s *GenericServer) SetRouter(router proxy.Router) {
 	s.router = router
+}
+
+func (s *GenericServer) SetResolver(resolver proxy.Resolver) {
+	s.resolver = resolver
 }
 
 func (s *GenericServer) SetConnector(c proxy.Connector) {
@@ -95,14 +100,23 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		} else {
 			assert.MustNil(routed.TCPConn, "routed.TCPConn must be nil")
 		}
+		// Resolve
+		if routed.Destination.Address.Family().IsDomain() {
+			if ip, err := s.resolver.Resolve(connCtx, routed.Destination.Address.Domain()); err != nil {
+				logger.Errorf("server: resolve domain: %s", err)
+				return
+			} else {
+				routed.Destination.Address = net.IPAddress(ip)
+			}
+		}
 		// Connect
 		connector, ok := s.selector(&routed)
 		if !ok {
-			logger.Errorf("unsupported network-type: %s", routed.Destination.Network)
+			logger.Errorf("server: connector not found: %s", routed.Destination.Network)
 			return
 		}
 		if err := connector.DailServe(connCtx, &routed); err != nil {
-			logger.Errorf("connector dail error: %s", err)
+			logger.Errorf("server: connector dail: %s", err)
 		}
 	})
 }

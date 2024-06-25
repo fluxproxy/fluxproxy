@@ -3,6 +3,7 @@ package fluxway
 import (
 	"context"
 	"fluxway/common"
+	"fluxway/internal"
 	"fluxway/net"
 	"fluxway/proxy"
 	"fluxway/proxy/route"
@@ -69,6 +70,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	}
 	s.SetListener(listener)
 	s.SetRouter(router)
+	s.SetResolver(internal.NewDNSResolver())
 	s.SetConnector(connector)
 	// 初始化
 	assert.MustTrue(network == listener.Network(), "listener network error, was: %s", listener.Network())

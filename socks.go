@@ -2,6 +2,7 @@ package fluxway
 
 import (
 	"context"
+	"fluxway/internal"
 	"fluxway/proxy"
 	"fluxway/proxy/route"
 	"fluxway/proxy/socks"
@@ -35,6 +36,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	connector := tcp.NewTcpConnector()
 	s.SetListener(listener)
 	s.SetRouter(router)
+	s.SetResolver(internal.NewDNSResolver())
 	s.SetConnector(connector)
 	return listener.Init(proxy.ListenerOptions{
 		Address: serverOpts.Bind,
