@@ -89,6 +89,7 @@ func (t *Listener) handleSocksConnect(ctx context.Context, w io.Writer, r *socks
 		},
 		ReadWriter: conn,
 	})
+	// Forward error
 	if err != nil {
 		msg := err.Error()
 		resp := statute.RepHostUnreachable
@@ -116,7 +117,7 @@ func (t *Listener) handleSocksBind(ctx context.Context, w io.Writer, r *socks5.R
 
 func (t *Listener) handleSocksNotSupported(_ context.Context, w io.Writer, req *socks5.Request) error {
 	if err := socks5.SendReply(w, statute.RepCommandNotSupported, nil); err != nil {
-		return fmt.Errorf("failed to send reply, %v", err)
+		return fmt.Errorf("socks send reply: %w", err)
 	}
-	return fmt.Errorf("unsupported command[%v]", req.Command)
+	return fmt.Errorf("socks unsupported command[%v]", req.Command)
 }
