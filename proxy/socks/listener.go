@@ -7,11 +7,11 @@ import (
 	"fluxway/net"
 	"fluxway/proxy"
 	"fmt"
-	"github.com/sirupsen/logrus"
 	"github.com/things-go/go-socks5"
 	"github.com/things-go/go-socks5/statute"
 	"io"
 	stdnet "net"
+	"strings"
 )
 
 var (
@@ -43,10 +43,8 @@ func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 		socks5.WithAssociateHandle(t.newSocksHandler(statute.CommandAssociate, handler)),
 		socks5.WithRewriter(nil), // ensure no rewrite
 	)
-	return t.TcpListener.Serve(serveCtx, func(connCtx context.Context, conn net.Connection) {
-		if err := t.socks.ServeConn(conn.TCPConn); err != nil {
-			logrus.Errorf("socks: handshake: %s", err)
-		}
+	return t.TcpListener.Serve(serveCtx, func(connCtx context.Context, conn net.Connection) error {
+		return t.socks.ServeConn(conn.TCPConn)
 	})
 }
 
@@ -71,7 +69,7 @@ func (t *Listener) handleSocksConnect(ctx context.Context, w io.Writer, r *socks
 	var conn = w.(net.Conn)
 	// Send success
 	if err := socks5.SendReply(w, statute.RepSuccess, conn.LocalAddr()); err != nil {
-		return fmt.Errorf("failed to send reply, %v", err)
+		return fmt.Errorf("socks send reply: %w", err)
 	}
 	// Forward
 	var destAddr net.Address
@@ -80,7 +78,7 @@ func (t *Listener) handleSocksConnect(ctx context.Context, w io.Writer, r *socks
 	} else {
 		destAddr = net.IPAddress(r.DestAddr.IP)
 	}
-	handler(ctx, net.Connection{
+	err := handler(ctx, net.Connection{
 		Network: t.Network(),
 		Address: net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		TCPConn: conn.(*net.TCPConn),
@@ -91,7 +89,21 @@ func (t *Listener) handleSocksConnect(ctx context.Context, w io.Writer, r *socks
 		},
 		ReadWriter: conn,
 	})
-	return nil
+	if err != nil {
+		msg := err.Error()
+		resp := statute.RepHostUnreachable
+		if strings.Contains(msg, "refused") {
+			resp = statute.RepConnectionRefused
+		} else if strings.Contains(msg, "network is unreachable") {
+			resp = statute.RepNetworkUnreachable
+		}
+		if err := socks5.SendReply(w, resp, conn.LocalAddr()); err != nil {
+			return fmt.Errorf("socks send reply, %v", err)
+		}
+		return err
+	} else {
+		return nil
+	}
 }
 
 func (t *Listener) handleSocksAssociate(ctx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {

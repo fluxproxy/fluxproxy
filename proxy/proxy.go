@@ -21,7 +21,7 @@ type ListenerOptions struct {
 }
 
 // ListenerHandler 监听器的回调处理函数
-type ListenerHandler func(ctx context.Context, conn net.Connection)
+type ListenerHandler func(ctx context.Context, conn net.Connection) error
 
 // Listener 监听器，用于建立端口监听，实现网络代理协议的服务端。
 type Listener interface {

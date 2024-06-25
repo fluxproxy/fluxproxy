@@ -66,7 +66,7 @@ func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) err
 						logrus.Errorf("udp-listener handler err: %s, trace: %s", err, string(debug.Stack()))
 					}
 				}()
-				handler(ctx, net.Connection{
+				err := handler(ctx, net.Connection{
 					Network:     t.Network(),
 					Address:     net.IPAddress(srcAddr.IP),
 					TCPConn:     nil,
@@ -78,6 +78,9 @@ func (t *Listener) Serve(ctx context.Context, handler proxy.ListenerHandler) err
 						},
 					},
 				})
+				if err != nil {
+					logrus.Errorf("udp conn error: %s", err)
+				}
 			}()
 		}
 	}

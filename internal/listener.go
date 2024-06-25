@@ -78,13 +78,16 @@ func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 				} else {
 					connCtx, connCancel := context.WithCancel(serveCtx)
 					defer connCancel()
-					handler(connCtx, net.Connection{
+					err := handler(connCtx, net.Connection{
 						Network:     t.Network(),
 						Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 						TCPConn:     tcpConn,
 						Destination: net.DestinationNotset,
 						ReadWriter:  conn,
 					})
+					if err != nil {
+						logrus.Errorf("%s conn error: %s", t.Tag(), err)
+					}
 				}
 			}(conn.(*stdnet.TCPConn))
 		}

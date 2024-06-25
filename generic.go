@@ -74,7 +74,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.listener, "server listener is nil")
 	assert.MustNotNil(s.router, "server router is nil")
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
-	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) {
+	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) error {
 		assert.MustTrue(connCtx != servContext, "server context must be a new context")
 		connID, _ := uuid.GenerateUUID()
 		logger := logrus.WithFields(logrus.Fields{
@@ -90,8 +90,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {
-			logger.Errorf("router error: %s", err)
-			return
+			return fmt.Errorf("server route: %w", err)
 		}
 		assert.MustNotNil(routed.ReadWriter, "routed.readWriter is nil")
 		assert.MustTrue(routed.Destination.IsValid(), "routed.Destination is invalid")
@@ -103,21 +102,15 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		// Resolve
 		if routed.Destination.Address.Family().IsDomain() {
 			if ip, err := s.resolver.Resolve(connCtx, routed.Destination.Address.Domain()); err != nil {
-				logger.Errorf("server: resolve domain: %s", err)
-				return
+				return fmt.Errorf("server resolve: %w", err)
 			} else {
 				routed.Destination.Address = net.IPAddress(ip)
 			}
 		}
-		// Connect
+		// Connect and serve
 		connector, ok := s.selector(&routed)
-		if !ok {
-			logger.Errorf("server: connector not found: %s", routed.Destination.Network)
-			return
-		}
-		if err := connector.DailServe(connCtx, &routed); err != nil {
-			logger.Errorf("server: connector dail: %s", err)
-		}
+		assert.MustTrue(ok, "invalid connector: %s", routed.Destination.Network)
+		return connector.DailServe(connCtx, &routed)
 	})
 }
 
