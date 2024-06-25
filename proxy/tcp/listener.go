@@ -16,6 +16,6 @@ type Listener struct {
 
 func NewTcpListener() *Listener {
 	return &Listener{
-		TcpListener: internal.NewTcpListener("tcp-listener", net.DefaultTcpOptions()),
+		TcpListener: internal.NewTcpListener("tcp", net.DefaultTcpOptions()),
 	}
 }

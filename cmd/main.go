@@ -27,17 +27,17 @@ func main() {
 		Commands: []*cli.Command{
 			{
 				Name:   "run",
-				Usage:  "Run as a proxy server, mode by config",
-				Action: runAsAutoServer,
+				Usage:  "Run as a proxy server, full features",
+				Action: runAsFullServer,
 			},
 			{
 				Name:   "forward",
-				Usage:  "Run as a forward server, mode forward",
+				Usage:  "Run as a forward server, as server mode: forward",
 				Action: runAsForwardServer,
 			},
 			{
 				Name:   "proxy",
-				Usage:  "Run as a proxy server, mode proxy",
+				Usage:  "Run as a proxy server, as server mode: proxy",
 				Action: runAsProxyServer,
 			},
 		},

@@ -18,16 +18,16 @@ var k = koanf.NewWithConf(koanf.Conf{
 	StrictMerge: true,
 })
 
-func runAsAutoServer(ctx *cli.Context) error {
-	return runCommandAs(ctx, "")
+func runAsFullServer(ctx *cli.Context) error {
+	return runCommandAs(ctx, "" /*full by config*/)
 }
 
 func runAsForwardServer(ctx *cli.Context) error {
-	return runCommandAs(ctx, "forward")
+	return runCommandAs(ctx, fluxway.ServerModeForward)
 }
 
 func runAsProxyServer(ctx *cli.Context) error {
-	return runCommandAs(ctx, "proxy")
+	return runCommandAs(ctx, fluxway.ServerModeProxy)
 }
 
 func runCommandAs(ctx *cli.Context, serverMode string) error {

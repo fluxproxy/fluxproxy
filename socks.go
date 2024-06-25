@@ -6,7 +6,6 @@ import (
 	"fluxway/proxy/route"
 	"fluxway/proxy/socks"
 	"fluxway/proxy/tcp"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -31,7 +30,6 @@ func NewSocksServer(serverOpts ServerOptions, socksOptions SocksOptions) *SocksS
 
 func (s *SocksServer) Init(ctx context.Context) error {
 	serverOpts := s.Options()
-	logrus.Infof("socks server init: %s:%d", serverOpts.Bind, serverOpts.SocksPort)
 	listener := socks.NewSocksListener()
 	router := route.NewProxyRouter()
 	connector := tcp.NewTcpConnector()

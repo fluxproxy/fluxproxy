@@ -38,8 +38,8 @@ func (i *Instance) Start(startAsMode string) error {
 	// 指定运行模式
 	if startAsMode != "" {
 		serverOpts.Mode = startAsMode
-		logrus.Warnf("inst: run as server mode: %s", startAsMode)
 	}
+	logrus.Info("inst: run as server mode: ", startAsMode)
 	// 检测运行模式
 	AssertServerModeValid(serverOpts.Mode)
 	// 启动服务端
@@ -100,8 +100,6 @@ func (i *Instance) Stop() error {
 }
 
 func (i *Instance) Serve() error {
-	logrus.Info("inst: serve start")
-	defer logrus.Info("inst: serve stop")
 	if len(i.servers) == 0 {
 		return fmt.Errorf("servers is required")
 	}
