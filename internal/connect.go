@@ -13,30 +13,26 @@ func TcpDailServe(srcConnCtx context.Context, opts net.TcpOptions, link *net.Con
 	assert.MustTrue(link.Destination.Network == net.Network_TCP, "unsupported network: %s", link.Destination.Network)
 	logger := proxy.LoggerFromContext(srcConnCtx)
 	logger.Info("tcp-dail: ", link.Destination)
-	srcTcpConn := link.TCPConn
-	// 需要区分 TCPAddr / DomainAddr
-	dstTCPConn, err := stdnet.DialTCP("tcp", nil, &stdnet.TCPAddr{
-		IP:   link.Destination.Address.IP(),
-		Port: int(link.Destination.Port),
-	})
+	srcConn := link.TCPConn
+	dstConn, err := stdnet.Dial("tcp", link.Destination.NetAddr())
 	if err != nil {
 		return fmt.Errorf("tcp-dail: %w", err)
 	}
 	defer func() {
-		logger.Infof("tcp-dail: serve terminated, address: %s, destination: %s", link.Address, link.Destination)
-		net.Close(dstTCPConn)
+		logger.Debug("tcp-dail: dst conn closed")
+		net.Close(dstConn)
 	}()
-	if err := net.SetTcpOptions(dstTCPConn, opts); err != nil {
+	if err := net.SetTcpOptions(dstConn, opts); err != nil {
 		return fmt.Errorf("tcp-dail: set options: %w", err)
 	}
 	dstCtx, dstCancel := context.WithCancel(srcConnCtx)
 	defer dstCancel()
 	errors := make(chan error, 2)
 	copier := func(_ context.Context, name string, from, to net.Conn) {
-		defer logger.Info("tcp-dail: copier(%s) terminated, destination: ", name, link.Destination)
+		defer logger.Debugf("tcp-dail: %s copier completed", name)
 		errors <- net.Copier(from, to)
 	}
-	go copier(dstCtx, "src-to-dest", srcTcpConn, dstTCPConn)
-	go copier(dstCtx, "dest-to-src", dstTCPConn, srcTcpConn)
+	go copier(dstCtx, "src-to-dest", srcConn, dstConn)
+	go copier(dstCtx, "dest-to-src", dstConn, srcConn)
 	return <-errors
 }

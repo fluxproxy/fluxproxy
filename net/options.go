@@ -26,74 +26,40 @@ func DefaultTcpOptions() TcpOptions {
 	}
 }
 
-func SetTcpOptions(conn *net.TCPConn, opts TcpOptions) error {
-	// No delay
-	if err := conn.SetNoDelay(opts.NoDelay); err != nil {
-		return err
-	}
-	// Keep alive
-	if opts.KeepAlive > 0 {
-		if err := conn.SetKeepAlive(true); err != nil {
+func SetTcpOptions(conn net.Conn, opts TcpOptions) error {
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		// No delay
+		if err := tcpConn.SetNoDelay(opts.NoDelay); err != nil {
 			return err
 		}
-		if err := conn.SetKeepAlivePeriod(opts.KeepAlive); err != nil {
-			return err
+		// Keep alive
+		if opts.KeepAlive > 0 {
+			if err := tcpConn.SetKeepAlive(true); err != nil {
+				return err
+			}
+			if err := tcpConn.SetKeepAlivePeriod(opts.KeepAlive); err != nil {
+				return err
+			}
 		}
-	}
-	// Linger
-	if opts.Linger > 0 {
-		if err := conn.SetLinger(opts.Linger); err != nil {
-			return err
+		// Linger
+		if opts.Linger > 0 {
+			if err := tcpConn.SetLinger(opts.Linger); err != nil {
+				return err
+			}
 		}
-	}
-	// Read buffer
-	if opts.ReadBuffer > 0 {
-		if err := conn.SetReadBuffer(opts.ReadBuffer); err != nil {
-			return err
+		// Read buffer
+		if opts.ReadBuffer > 0 {
+			if err := tcpConn.SetReadBuffer(opts.ReadBuffer); err != nil {
+				return err
+			}
 		}
-	}
-	// Write buffer
-	if opts.WriteBuffer > 0 {
-		if err := conn.SetWriteBuffer(opts.WriteBuffer); err != nil {
-			return err
+		// Write buffer
+		if opts.WriteBuffer > 0 {
+			if err := tcpConn.SetWriteBuffer(opts.WriteBuffer); err != nil {
+				return err
+			}
 		}
 	}
 	// Deadline defaults
 	return conn.SetDeadline(time.Time{})
-}
-
-func ResetDeadline(conn *net.TCPConn, opts TcpOptions) error {
-	// Read timeout
-	if opts.ReadTimeout > 0 {
-		if err := conn.SetReadDeadline(time.Now().Add(opts.ReadTimeout)); err != nil {
-			return err
-		}
-	}
-	// Write timeout
-	if opts.WriteTimeout > 0 {
-		if err := conn.SetWriteDeadline(time.Now().Add(opts.WriteTimeout)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func ResetReadDeadline(conn *net.TCPConn, opts TcpOptions) error {
-	// Read timeout
-	if opts.ReadTimeout > 0 {
-		if err := conn.SetReadDeadline(time.Now().Add(opts.ReadTimeout)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func ResetWriteDeadline(conn *net.TCPConn, opts TcpOptions) error {
-	// Write timeout
-	if opts.WriteTimeout > 0 {
-		if err := conn.SetWriteDeadline(time.Now().Add(opts.WriteTimeout)); err != nil {
-			return err
-		}
-	}
-	return nil
 }

@@ -18,10 +18,6 @@ var k = koanf.NewWithConf(koanf.Conf{
 	StrictMerge: true,
 })
 
-var uc = koanf.UnmarshalConf{
-	Tag: "yaml",
-}
-
 func runAsAutoServer(ctx *cli.Context) error {
 	return runCommandAs(ctx, "")
 }
@@ -39,17 +35,17 @@ func runCommandAs(ctx *cli.Context, serverMode string) error {
 	if ctx.NArg() > 0 {
 		confpath = ctx.Args().Get(0)
 	}
-	logrus.Infof("load config file: %s", confpath)
+	logrus.Infof("main: load config file: %s", confpath)
 	if err := k.Load(file.Provider(confpath), yaml.Parser()); err != nil {
 		return fmt.Errorf("load config file %s: %w", confpath, err)
 	}
 	// Instance
 	inst := fluxway.NewInstance(proxy.ContextWithConfig(ctx.Context, k))
 	if err := inst.Start(serverMode); err != nil {
-		return fmt.Errorf("instance start: %w", err)
+		return fmt.Errorf("main: instance start: %w", err)
 	}
 	defer func() {
-		helper.LogIf(inst.Stop(), "instance stop: %w")
+		helper.LogIf(inst.Stop(), "main: instance stop: %w")
 	}()
-	return helper.ErrIf(inst.Serve(), "instance serve")
+	return helper.ErrIf(inst.Serve(), "main: instance serve")
 }

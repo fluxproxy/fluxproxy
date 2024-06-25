@@ -38,7 +38,7 @@ func (i *Instance) Start(startAsMode string) error {
 	// 指定运行模式
 	if startAsMode != "" {
 		serverOpts.Mode = startAsMode
-		logrus.Warnf("force as server mode: %s", startAsMode)
+		logrus.Warnf("inst: run as server mode: %s", startAsMode)
 	}
 	// 检测运行模式
 	AssertServerModeValid(serverOpts.Mode)
@@ -71,7 +71,7 @@ func (i *Instance) buildForwardServer(serverOpts ServerOptions) error {
 	assert.MustTrue(len(forwardOpts.Rules) > 0, "forward options is required")
 	for _, rule := range forwardOpts.Rules {
 		if rule.Disabled {
-			logrus.Warnf("forward server is disabled: %s", rule.Description)
+			logrus.Warnf("inst: forward server is disabled: %s", rule.Description)
 			continue
 		}
 		i.servers = append(i.servers, NewForwardServer(serverOpts, rule))
@@ -86,7 +86,7 @@ func (i *Instance) buildProxyServer(serverOpts ServerOptions) error {
 		return fmt.Errorf("unmarshal socks options: %w", err)
 	}
 	if socksOpts.Disabled {
-		logrus.Warnf("socks server is disabled")
+		logrus.Warnf("inst: socks server is disabled")
 		return nil
 	}
 	i.servers = append(i.servers, NewSocksServer(serverOpts, socksOpts))
@@ -100,7 +100,8 @@ func (i *Instance) Stop() error {
 }
 
 func (i *Instance) Serve() error {
-	logrus.Infof("instance serve")
+	logrus.Info("inst: serve start")
+	defer logrus.Info("inst: serve stop")
 	if len(i.servers) == 0 {
 		return fmt.Errorf("servers is required")
 	}

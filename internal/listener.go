@@ -46,14 +46,14 @@ func (t *TcpListener) Init(options proxy.ListenerOptions) error {
 
 func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := fmt.Sprintf("%s:%d", t.options.Address, t.options.Port)
-	logrus.Infof("%s serve, address: %s", t.Tag(), addr)
+	logrus.Infof("%s: serve start, address: %s", t.Tag(), addr)
 	listener, err := stdnet.Listen("tcp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen tcp address %s %w", addr, err)
 	}
 	t.listener = &listener
 	defer func() {
-		logrus.Infof("%s terminated, address: %s", t.Tag(), addr)
+		logrus.Infof("%s serve stop, address: %s", t.Tag(), addr)
 		_ = listener.Close()
 	}()
 	for {
@@ -63,21 +63,18 @@ func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 		default:
 			conn, err := listener.Accept()
 			if err != nil {
-				logrus.Errorf("%s accept error: %s", t.Tag(), err)
-				return fmt.Errorf("%s accept: %w", t.Tag(), err)
+				logrus.Errorf("%s serve accept: %s", t.Tag(), err)
+				return fmt.Errorf("%s serve accept: %w", t.Tag(), err)
 			}
 			go func(tcpConn *stdnet.TCPConn) {
 				defer func() {
 					if err := recover(); err != nil {
-						logrus.Errorf("%s handler err: %s, trace: %s", t.Tag(), err, string(debug.Stack()))
+						logrus.Errorf("%s handle conn: %s, trace: %s", t.Tag(), err, string(debug.Stack()))
 					}
 				}()
-				defer func() {
-					logrus.Infof("%s connection terminated, address: %s", t.Tag(), tcpConn.RemoteAddr())
-					net.Close(tcpConn)
-				}()
+				defer net.Close(tcpConn)
 				if err := net.SetTcpOptions(tcpConn, t.defaults); err != nil {
-					logrus.Errorf("%s handler set local option: %s, trace: %s", t.Tag(), err, string(debug.Stack()))
+					logrus.Errorf("%s set conn options: %s", t.Tag(), err)
 				} else {
 					connCtx, connCancel := context.WithCancel(serveCtx)
 					defer connCancel()

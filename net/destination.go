@@ -1,5 +1,8 @@
 package net
 
+import "C"
+import "net"
+
 var (
 	DestinationNotset = Destination{Network: Network_Unknown}
 )
@@ -13,7 +16,7 @@ type Destination struct {
 func (d Destination) NetAddr() string {
 	addr := ""
 	if d.Network == Network_TCP || d.Network == Network_UDP {
-		addr = d.Address.String() + ":" + d.Port.String()
+		addr = net.JoinHostPort(d.Address.String(), d.Port.String())
 	} else if d.Network == Network_UNIX {
 		addr = d.Address.String()
 	}
