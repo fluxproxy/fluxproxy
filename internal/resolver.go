@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fluxway/proxy"
+	"github.com/sirupsen/logrus"
 	"net"
 )
 
@@ -21,5 +22,6 @@ func (d DNSResolver) Resolve(_ context.Context, name string) (net.IP, error) {
 	if err != nil {
 		return nil, err
 	}
+	logrus.Infof("resolve: resolve %s to %s", name, addr.String())
 	return addr.IP, err
 }

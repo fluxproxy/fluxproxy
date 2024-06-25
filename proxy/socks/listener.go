@@ -69,6 +69,11 @@ func (t *Listener) newSocksHandler(cmd byte, handler proxy.ListenerHandler) sock
 
 func (t *Listener) handleSocksConnect(ctx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {
 	var conn = w.(net.Conn)
+	// Send success
+	if err := socks5.SendReply(w, statute.RepSuccess, conn.LocalAddr()); err != nil {
+		return fmt.Errorf("failed to send reply, %v", err)
+	}
+	// Forward
 	var destAddr net.Address
 	if r.DestAddr.FQDN != "" {
 		destAddr = net.DomainAddress(r.DestAddr.FQDN)
