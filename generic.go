@@ -2,13 +2,13 @@ package fluxway
 
 import (
 	"context"
+	"errors"
 	"fluxway/common"
 	"fluxway/net"
 	"fluxway/proxy"
 	"fmt"
 	"github.com/bytepowered/assert-go"
-	"github.com/hashicorp/go-uuid"
-	"github.com/sirupsen/logrus"
+	"io"
 	"strings"
 )
 
@@ -76,17 +76,8 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
 	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) error {
 		assert.MustTrue(connCtx != servContext, "server context must be a new context")
-		connID, _ := uuid.GenerateUUID()
-		logger := logrus.WithFields(logrus.Fields{
-			"mode":    s.opts.Mode,
-			"network": s.listener.Network(),
-			"address": conn.Address,
-			"id":      connID,
-		})
-		connCtx = proxy.ContextWithID(connCtx, connID)
 		connCtx = proxy.ContextWithProxyType(connCtx, s.listener.ProxyType())
 		connCtx = proxy.ContextWithConnection(connCtx, &conn)
-		connCtx = proxy.ContextWithLogger(connCtx, logger)
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {
@@ -110,7 +101,11 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		// Connect and serve
 		connector, ok := s.selector(&routed)
 		assert.MustTrue(ok, "invalid connector: %s", routed.Destination.Network)
-		return connector.DailServe(connCtx, &routed)
+		if err := connector.DailServe(connCtx, &routed); errors.Is(err, io.EOF) {
+			return nil
+		} else {
+			return err
+		}
 	})
 }
 

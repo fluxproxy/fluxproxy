@@ -63,3 +63,12 @@ func SetTcpOptions(conn net.Conn, opts TcpOptions) error {
 	// Deadline defaults
 	return conn.SetDeadline(time.Time{})
 }
+
+//// UDP
+
+type UdpOptions struct {
+}
+
+func DefaultUdpOptions() UdpOptions {
+	return UdpOptions{}
+}

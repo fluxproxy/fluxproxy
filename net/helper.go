@@ -1,20 +1,24 @@
 package net
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"time"
 )
 
+var ()
+
 func Copier(from, to net.Conn) error {
 	_ = from.SetReadDeadline(time.Time{})
 	_ = to.SetWriteDeadline(time.Time{})
-	defer to.SetReadDeadline(time.Now()) // unlock read on 'to'
-	if _, err := io.Copy(to, from); err == nil {
+	defer func() {
+		_ = to.SetReadDeadline(time.Now()) // unlock read on 'to'
+	}()
+	buffer := make([]byte, 1024)
+	if _, err := io.CopyBuffer(to, from, buffer); err == nil {
 		return nil // A successful copy end
 	} else {
-		return fmt.Errorf("remote-conn end")
+		return io.EOF
 	}
 }
 
