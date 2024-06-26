@@ -1,48 +1,33 @@
 package main
 
 import (
-	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
-	"os"
+	"github.com/cristalhq/acmd"
 )
 
-var (
-	Revision = "chuangshi.1"
-)
-
-// Cli: https://cli.urfave.org/v2/getting-started/
+// cli: https://github.com/cristalhq/acmd
 func main() {
-	cli.VersionFlag = &cli.BoolFlag{
-		Name:    "print-version",
-		Aliases: []string{"V"},
-		Usage:   "print only the version",
-	}
-	cli.VersionPrinter = func(cCtx *cli.Context) {
-		fmt.Printf("version=%s revision=%s\n", cCtx.App.Version, Revision)
-	}
-	app := &cli.App{
-		Name:    "Fluxway",
-		Version: "v2014.1.0",
-		Commands: []*cli.Command{
-			{
-				Name:   "run",
-				Usage:  "Run as a proxy server, full features",
-				Action: runAsFullServer,
-			},
-			{
-				Name:   "forward",
-				Usage:  "Run as a forward server, as server mode: forward",
-				Action: runAsForwardServer,
-			},
-			{
-				Name:   "proxy",
-				Usage:  "Run as a proxy server, as server mode: proxy",
-				Action: runAsProxyServer,
-			},
+	cmds := []acmd.Command{
+		{
+			Name:        "run",
+			Description: "Run as a proxy server, full features",
+			ExecFunc:    runAsFullServer,
+		},
+		{
+			Name:        "proxy",
+			Description: "Run as a proxy server, as server mode: proxy",
+			ExecFunc:    runAsProxyServer,
+		},
+		{
+			Name:        "forward",
+			Description: "Run as a forward server, as server mode: forward",
+			ExecFunc:    runAsForwardServer,
 		},
 	}
-	if err := app.Run(os.Args); err != nil {
-		logrus.Fatal(err)
+	r := acmd.RunnerOf(cmds, acmd.Config{
+		AppName: "fluxway",
+		Version: "2024.1",
+	})
+	if err := r.Run(); err != nil {
+		r.Exit(err)
 	}
 }
