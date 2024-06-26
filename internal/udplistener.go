@@ -45,7 +45,7 @@ func (t *UdpListener) Init(options proxy.ListenerOptions) error {
 
 func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
-	logrus.Info("udp-listener serve: %s", addr.String())
+	logrus.Infof("udp-listener serve: %s", addr.String())
 	listener, err := ionet.ListenUDP("udp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
