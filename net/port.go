@@ -14,7 +14,7 @@ func PortFromBytes(port []byte) Port {
 
 func PortFromInt(val uint32) (Port, error) {
 	if val > 65535 {
-		return Port(0), fmt.Errorf("invalid port range: %s", val)
+		return Port(0), fmt.Errorf("invalid port range: %d", val)
 	}
 	return Port(val), nil
 }
