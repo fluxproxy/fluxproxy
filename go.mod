@@ -22,4 +22,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/things-go/go-socks5 => github.com/bytepowered/go-socks5 v0.0.6
+replace github.com/things-go/go-socks5 => github.com/bytepowered/go-socks5 v0.0.7

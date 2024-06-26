@@ -41,7 +41,8 @@ func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 		socks5.WithConnectHandle(t.newSocksHandler(statute.CommandConnect, handler)),
 		socks5.WithBindHandle(t.newSocksHandler(statute.CommandBind, handler)),
 		socks5.WithAssociateHandle(t.newSocksHandler(statute.CommandAssociate, handler)),
-		socks5.WithRewriter(nil), // ensure no rewrite
+		socks5.WithRewriter(nil), // Ensure: no rewrite default
+		socks5.WithResolver(nil), // Ensure: no resolve default
 	)
 	return t.TcpListener.Serve(serveCtx, func(connCtx context.Context, conn net.Connection) error {
 		return t.socks.ServeConn(connCtx, conn.TCPConn)
