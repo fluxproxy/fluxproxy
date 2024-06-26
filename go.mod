@@ -1,11 +1,11 @@
 module fluxway
 
-go 1.22.3
+go 1.18
 
 require (
 	github.com/bytepowered/assert-go v1.0.2
 	github.com/cristalhq/acmd v0.12.0
-	github.com/hashicorp/go-uuid v1.0.1
+	github.com/hashicorp/go-uuid v1.0.3
 	github.com/knadh/koanf v1.5.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/things-go/go-socks5 v0.0.5
