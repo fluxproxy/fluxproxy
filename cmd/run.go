@@ -40,7 +40,7 @@ func runCommandAs(ctx context.Context, args []string, serverMode string) error {
 		return fmt.Errorf("load config file %s: %w", confpath, err)
 	}
 	// Instance
-	inst := fluxway.NewInstance(proxy.ContextWithConfiger(ctx, k))
+	inst := fluxway.NewInstance(context.WithValue(ctx, proxy.CtxKeyConfiger, k))
 	if err := inst.Start(serverMode); err != nil {
 		return fmt.Errorf("main: instance start: %w", err)
 	}

@@ -2,92 +2,52 @@ package proxy
 
 import (
 	"context"
-	"fmt"
-	"github.com/knadh/koanf"
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	// commons
-	ctxKeyID uint32 = iota
-	ctxKeyLogger
-	ctxKeyConfiger
-	ctxKeyConnection
-	ctxKeyProxyType
-	// hooks
-	ctxKeyHookDailPhased
+	CtxKeyID uint32 = iota
+	CtxKeyLogger
+	CtxKeyConfiger
+	CtxKeyProxyType
+	CtxKeyHookDialPhased
 )
 
-// ID
+// Logger
 
-func ContextWithLogger(ctx context.Context, v *logrus.Entry) context.Context {
-	return context.WithValue(ctx, ctxKeyLogger, v)
+func SetContextLogger(ctx context.Context, id string, logger *logrus.Entry) context.Context {
+	return context.WithValue(context.WithValue(ctx, CtxKeyID, id), CtxKeyLogger, logger)
 }
 
 func Logger(ctx context.Context) *logrus.Entry {
-	if v, ok := ctx.Value(ctxKeyLogger).(*logrus.Entry); ok {
+	if v, ok := ctx.Value(CtxKeyLogger).(*logrus.Entry); ok {
 		return v
 	}
 	panic("ctxKeyLogger is not in context.")
 }
 
-// Config
-
-func ContextWithConfiger(ctx context.Context, v *koanf.Koanf) context.Context {
-	return context.WithValue(ctx, ctxKeyConfiger, v)
-}
-
-func Configer(ctx context.Context) *koanf.Koanf {
-	if v, ok := ctx.Value(ctxKeyConfiger).(*koanf.Koanf); ok {
-		return v
-	}
-	panic("Configure 'Koanf' is not in context.")
-}
-
-// ID
-
-func ContextWithID(ctx context.Context, v string) context.Context {
-	return context.WithValue(ctx, ctxKeyID, v)
-}
-
-func ID(ctx context.Context) string {
-	if v, ok := ctx.Value(ctxKeyID).(string); ok {
-		return v
-	}
-	panic("ID is not in context.")
-}
-
-// ProxyType
-
-func ContextWithProxyType(ctx context.Context, v ProxyType) context.Context {
-	return context.WithValue(ctx, ctxKeyProxyType, v)
-}
-
 func RequiredProxyType(ctx context.Context) ProxyType {
-	if v, ok := ctx.Value(ctxKeyProxyType).(ProxyType); ok {
+	if v, ok := ctx.Value(CtxKeyProxyType).(ProxyType); ok {
 		return v
 	}
 	panic("ProxyType is not in context.")
 }
 
-// Utils
-
-func UnmarshalConfig(ctx context.Context, path string, out any) error {
-	k := Configer(ctx)
-	if err := k.UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
-		return fmt.Errorf("unmarshal %s options: %w", path, err)
+func RequiredID(ctx context.Context) string {
+	if v, ok := ctx.Value(CtxKeyID).(string); ok {
+		return v
 	}
-	return nil
+	panic("ID is not in context.")
 }
 
 // Hooks
 
-func ContextWithHookDialPhased(ctx context.Context, v HookFunc) context.Context {
-	return context.WithValue(ctx, ctxKeyHookDailPhased, v)
+func ContextWithHookFuncDialPhased(ctx context.Context, v HookFunc) context.Context {
+	return context.WithValue(ctx, CtxKeyHookDialPhased, v)
 }
 
-func LookupHookDialPhased(ctx context.Context) HookFunc {
-	if v, ok := ctx.Value(ctxKeyHookDailPhased).(HookFunc); ok {
+func HookFuncDialPhased(ctx context.Context) HookFunc {
+	if v, ok := ctx.Value(CtxKeyHookDialPhased).(HookFunc); ok {
 		return v
 	}
 	return nil

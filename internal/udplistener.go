@@ -77,13 +77,14 @@ func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 					Network:     t.Network(),
 					Address:     net.IPAddress(srcAddr.IP),
 					TCPConn:     nil,
-					Destination: net.DestinationNotset,
+					UserContext: context.Background(),
 					ReadWriter: &wrapper{
 						reader: bytes.NewReader(buffer[:n]),
 						writer: func(b []byte) (n int, err error) {
 							return t.listener.WriteToUDP(b, srcAddr)
 						},
 					},
+					Destination: net.DestinationNotset,
 				})
 				if err != nil {
 					proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, err)

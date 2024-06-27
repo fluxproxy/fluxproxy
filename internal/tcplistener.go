@@ -79,8 +79,9 @@ func (t *TcpListener) Serve(serveCtx context.Context, next proxy.ListenerHandler
 						Network:     t.Network(),
 						Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 						TCPConn:     tcpConn,
-						Destination: net.DestinationNotset,
 						ReadWriter:  conn,
+						UserContext: context.Background(),
+						Destination: net.DestinationNotset,
 					})
 					if err != nil {
 						proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, err)

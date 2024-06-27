@@ -107,7 +107,7 @@ func (l *Listener) handleConnectStream(w http.ResponseWriter, r *http.Request, n
 	defer helper.Close(hijConn)
 
 	// Phase hook
-	connCtx = proxy.ContextWithHookDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
+	connCtx = proxy.ContextWithHookFuncDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
 		if _, hiwErr := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
 			if !helper.IsConnectionClosed(hiwErr) {
 				proxy.Logger(connCtx).Errorf("http: write back ok response: %s", hiwErr)
@@ -141,7 +141,20 @@ func (l *Listener) handlePlainHttp(w http.ResponseWriter, r *http.Request, next 
 
 	if r.URL.Host == "" || !r.URL.IsAbs() {
 		// RFC 2068 (HTTP/1.1) requires URL to be absolute URL in HTTP proxy.
-		_ = newStatus400Response().Write(w)
+		response := &http.Response{
+			Status:        "Bad Request",
+			StatusCode:    400,
+			Proto:         "HTTP/1.1",
+			ProtoMajor:    1,
+			ProtoMinor:    1,
+			Header:        http.Header(make(map[string][]string)),
+			Body:          nil,
+			ContentLength: 0,
+			Close:         true,
+		}
+		response.Header.Set("Proxy-Connection", "close")
+		response.Header.Set("Connection", "close")
+		_ = response.Write(w)
 		return
 	}
 	// Forward host
@@ -162,7 +175,7 @@ func (l *Listener) handlePlainHttp(w http.ResponseWriter, r *http.Request, next 
 	hErr := next(connCtx, net.Connection{
 		Network:     l.Network(),
 		Address:     net.ParseAddress(r.RemoteAddr),
-		UserContext: setWithUserContext(connCtx, w, r),
+		UserContext: setWithUserContext(context.Background(), w, r),
 		TCPConn:     nil,
 		ReadWriter:  nil,
 		Destination: net.Destination{
@@ -192,23 +205,6 @@ func parseHostToAddress(urlHost string) (addr net.Address, port net.Port, err er
 		port = net.Port(80)
 	}
 	return addr, port, nil
-}
-
-func newStatus400Response() *http.Response {
-	response := &http.Response{
-		Status:        "Bad Request",
-		StatusCode:    400,
-		Proto:         "HTTP/1.1",
-		ProtoMajor:    1,
-		ProtoMinor:    1,
-		Header:        http.Header(make(map[string][]string)),
-		Body:          nil,
-		ContentLength: 0,
-		Close:         true,
-	}
-	response.Header.Set("Proxy-Connection", "close")
-	response.Header.Set("Connection", "close")
-	return response
 }
 
 func removeHopByHopHeaders(header http.Header) {

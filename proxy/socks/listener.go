@@ -78,9 +78,10 @@ func (t *Listener) handleSocksConnect(connCtx context.Context, w io.Writer, r *s
 		destAddr = net.IPAddress(r.DestAddr.IP)
 	}
 	err := next(connCtx, net.Connection{
-		Network: t.Network(),
-		Address: net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		TCPConn: conn.(*net.TCPConn),
+		Network:     t.Network(),
+		Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+		TCPConn:     conn.(*net.TCPConn),
+		UserContext: context.Background(),
 		Destination: net.Destination{
 			Network: net.Network_TCP,
 			Address: destAddr,

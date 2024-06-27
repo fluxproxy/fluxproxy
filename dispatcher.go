@@ -75,7 +75,8 @@ func (s *DispatchServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
 	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) error {
 		assert.MustTrue(connCtx != servContext, "server context must be new")
-		connCtx = proxy.ContextWithProxyType(connCtx, s.listener.ProxyType())
+		_ = proxy.RequiredID(connCtx)
+		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.listener.ProxyType())
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {

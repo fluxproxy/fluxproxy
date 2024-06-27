@@ -16,9 +16,7 @@ func SetupTcpContextLogger(ctx context.Context, conn *net.TCPConn) context.Conte
 		"address": remoteAddr.String(),
 		"connid":  id,
 	})
-	ctx = proxy.ContextWithID(ctx, id)
-	ctx = proxy.ContextWithLogger(ctx, logger)
-	return ctx
+	return proxy.SetContextLogger(ctx, id, logger)
 }
 
 func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Context {
@@ -28,7 +26,5 @@ func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Conte
 		"address": conn.String(),
 		"connid":  id,
 	})
-	ctx = proxy.ContextWithID(ctx, id)
-	ctx = proxy.ContextWithLogger(ctx, logger)
-	return ctx
+	return proxy.SetContextLogger(ctx, id, logger)
 }
