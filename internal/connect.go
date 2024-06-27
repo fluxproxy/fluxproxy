@@ -15,7 +15,7 @@ func TcpDailServe(srcConnCtx context.Context, opts net.TcpOptions, link *net.Con
 	logger := proxy.LoggerFromContext(srcConnCtx)
 	logger.Info("tcp-dail: ", link.Destination)
 	srcConn := link.TCPConn
-	dstConn, err := stdnet.Dial("tcp", link.Destination.NetAddr())
+	dstConn, err := stdnet.DialTCP("tcp", nil, &stdnet.TCPAddr{IP: link.Destination.Address.IP(), Port: int(link.Destination.Port)})
 	if err != nil {
 		return fmt.Errorf("tcp-dail: %w", err)
 	}
