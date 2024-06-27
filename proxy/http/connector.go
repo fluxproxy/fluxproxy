@@ -3,7 +3,6 @@ package http
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fluxway/helper"
 	"fluxway/net"
 	"fluxway/proxy"
@@ -28,18 +27,15 @@ func NewHrtpConnector() *HrtpConnector {
 	}
 }
 
-func (c *HrtpConnector) DialServe(inctx context.Context, link *net.Connection) error {
-	w := requiredResponseWriter(inctx)
-	r := requiredHttpRequest(inctx)
-	return c.httpRoundTrip(inctx, w, r)
+func (c *HrtpConnector) DialServe(connCtx context.Context, link *net.Connection) error {
+	w := requiredResponseWriter(link.UserContext)
+	r := requiredHttpRequest(link.UserContext)
+	return c.httpRoundTrip(connCtx, w, r)
 }
 
 func (c *HrtpConnector) httpRoundTrip(ctx context.Context, connWriter http.ResponseWriter, r *http.Request) error {
 	resp, err := c.roundTripper.RoundTrip(r)
 	if err != nil {
-		if !errors.Is(err, context.Canceled) && helper.IsConnectionClosed(err) {
-			proxy.Logger(ctx).Error("http: forward round trip: %s", err)
-		}
 		return err
 	} else {
 		defer helper.Close(resp.Body)

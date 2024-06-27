@@ -108,7 +108,7 @@ func (l *Listener) handleConnectStream(w http.ResponseWriter, r *http.Request, n
 
 	// Phase hook
 	connCtx = proxy.ContextWithHookDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
-		if _, hiwErr := conn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
+		if _, hiwErr := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
 			if !helper.IsConnectionClosed(hiwErr) {
 				proxy.Logger(connCtx).Errorf("http: write back ok response: %s", hiwErr)
 			}
@@ -156,16 +156,15 @@ func (l *Listener) handlePlainHttp(w http.ResponseWriter, r *http.Request, next 
 	}
 
 	connCtx := r.Context()
-	connCtx = contextWithResponseWriter(connCtx, w)
-	connCtx = contextWithHttpRequest(connCtx, r)
 
 	// Next
 	addr, port, _ := parseHostToAddress(r.URL.Host)
 	hErr := next(connCtx, net.Connection{
-		Network:    l.Network(),
-		Address:    net.ParseAddress(r.RemoteAddr),
-		TCPConn:    nil,
-		ReadWriter: nil,
+		Network:     l.Network(),
+		Address:     net.ParseAddress(r.RemoteAddr),
+		UserContext: setWithUserContext(connCtx, w, r),
+		TCPConn:     nil,
+		ReadWriter:  nil,
 		Destination: net.Destination{
 			Network: net.Network_HRTP,
 			Address: addr,

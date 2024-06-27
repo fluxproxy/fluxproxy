@@ -10,8 +10,10 @@ const (
 	ctxKeyHttpHttpRequest    = "http.response-request"
 )
 
-func contextWithResponseWriter(ctx context.Context, w http.ResponseWriter) context.Context {
-	return context.WithValue(ctx, ctxKeyHttpResponseWriter, w)
+func setWithUserContext(ctx context.Context, w http.ResponseWriter, r *http.Request) context.Context {
+	ctx = context.WithValue(ctx, ctxKeyHttpResponseWriter, w)
+	ctx = context.WithValue(ctx, ctxKeyHttpHttpRequest, r)
+	return ctx
 }
 
 func requiredResponseWriter(ctx context.Context) http.ResponseWriter {
@@ -20,10 +22,6 @@ func requiredResponseWriter(ctx context.Context) http.ResponseWriter {
 		return v
 	}
 	panic("ResponseWriter not in context")
-}
-
-func contextWithHttpRequest(ctx context.Context, r *http.Request) context.Context {
-	return context.WithValue(ctx, ctxKeyHttpHttpRequest, r)
 }
 
 func requiredHttpRequest(ctx context.Context) *http.Request {
