@@ -14,11 +14,11 @@ func Copier(from, to net.Conn) error {
 	defer func() {
 		_ = to.SetReadDeadline(time.Now()) // unlock read on 'to'
 	}()
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, 32*1024)
 	if _, err := io.CopyBuffer(to, from, buffer); err == nil {
 		return nil // A successful copy end
 	} else {
-		return io.EOF
+		return err
 	}
 }
 

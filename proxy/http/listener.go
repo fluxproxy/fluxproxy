@@ -43,7 +43,11 @@ func (l *Listener) Init(options proxy.ListenerOptions) error {
 
 func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
-	logrus.Infof("http: serve start, address: %s", addr)
+	if l.isHttps {
+		logrus.Infof("http: serve start, https, address: %s", addr)
+	} else {
+		logrus.Infof("http: serve start, address: %s", addr)
+	}
 	server := &http.Server{
 		Addr:    addr,
 		Handler: l.newServeHandler(handler),
@@ -68,8 +72,10 @@ func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		logger := proxy.RequiredLogger(r.Context())
-		logger.Infof("http: proxy: %s %s", r.Method, r.URL.String())
+		logger.Infof("http: %s %s", r.Method, r.RequestURI)
 		// Auth: nop
+		// https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Proxy-Authenticate
+		// https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Headers/Proxy-Authorization
 		r.Header.Del("Proxy-Connection")
 		r.Header.Del("Proxy-Authenticate")
 		r.Header.Del("Proxy-Authorization")
@@ -80,40 +86,42 @@ func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFu
 		// Hijacker
 		hijacker, ok := w.(http.Hijacker)
 		if !ok {
-			logger.Error("http not support hijack")
+			logger.Error("http: not support hijack")
 			return
 		}
-		conn, _, hijErr := hijacker.Hijack()
+		hijConn, _, hijErr := hijacker.Hijack()
 		if hijErr != nil {
-			logger.Error("http not support hijack")
+			logger.Error("http: not support hijack")
 			return
 		}
+		defer net.Close(hijConn)
 		connCtx, connCancel := context.WithCancel(r.Context())
 		defer connCancel()
 		// Phase hook
 		connCtx = proxy.ContextWithHookDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
-			if _, hiwErr := conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n")); hiwErr != nil {
+			if _, hiwErr := conn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
 				if !helper.IsConnectionClosed(hiwErr) {
-					logger.Errorf("http response write error: %s", hiwErr)
+					logger.Errorf("http: write back ok response: %s", hiwErr)
 				}
 				return hiwErr
 			}
 			return nil
 		})
 		addr, port, _ := parseHostToAddress(r.URL.Host)
-		hanErr := handler(connCtx, net.Connection{
+		hErr := handler(connCtx, net.Connection{
 			Network: net.Network_TCP,
-			Address: net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-			TCPConn: conn.(*net.TCPConn),
+			Address: net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+			TCPConn: hijConn.(*net.TCPConn),
 			Destination: net.Destination{
 				Network: net.Network_TCP,
 				Address: addr,
 				Port:    port,
 			},
-			ReadWriter: conn,
+			ReadWriter: hijConn,
 		})
-		if hanErr != nil {
-			logger.Errorf("http conn error: %s", hanErr)
+		if hErr != nil {
+			_, _ = hijConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
+			logger.Errorf("http: conn handle: %s", hErr)
 		}
 	}
 }

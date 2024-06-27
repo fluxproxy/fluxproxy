@@ -118,5 +118,5 @@ func (t *Listener) handleSocksNotSupported(_ context.Context, w io.Writer, req *
 	if err := socks5.SendReply(w, statute.RepCommandNotSupported, nil); err != nil {
 		return fmt.Errorf("socks send reply: %w", err)
 	}
-	return fmt.Errorf("socks unsupported command[%v]", req.Command)
+	return fmt.Errorf("socks unsupported command: %v", req.Command)
 }

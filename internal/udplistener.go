@@ -62,7 +62,6 @@ func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 			var buffer = make([]byte, 2048)
 			n, srcAddr, rerr := t.listener.ReadFromUDP(buffer)
 			if rerr != nil {
-				logrus.Errorf("%s serve read: %s", t.tag, err)
 				return fmt.Errorf("%s serve read: %w", t.tag, err)
 			}
 			go func() {

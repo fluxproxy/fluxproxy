@@ -25,9 +25,9 @@ func (d *ProxyRouter) Route(ctx context.Context, income *net.Connection) (target
 	proxyType := proxy.RequiredProxyType(ctx)
 	switch proxyType {
 	case proxy.ProxyType_SOCKS5, proxy.ProxyType_HTTPS:
-		assert.MustTrue(income.Destination.IsValid(), "proxy-type: socks/https, income destination must be valid")
+		assert.MustTrue(income.Destination.IsValid(), "destination must be valid")
 		return *income, nil
 	default:
-		return *income, fmt.Errorf("unsupported proxy-type: %d", proxyType)
+		return *income, fmt.Errorf("unsupported proxy type: %d", proxyType)
 	}
 }

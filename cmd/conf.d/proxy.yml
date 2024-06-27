@@ -16,6 +16,9 @@ server:
 # Http/https 代理服务配置
 http:
   disabled: false
+  # TLS for https
+  tls_cert_file: ""
+  tls_key_file: ""
 
 # Socks5 代理服务配置
 socks:

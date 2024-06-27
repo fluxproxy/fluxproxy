@@ -7,7 +7,7 @@ import (
 	"fluxway/proxy/http"
 	"fluxway/proxy/route"
 	"fluxway/proxy/tcp"
-	"github.com/bytepowered/assert-go"
+	"fmt"
 )
 
 var (
@@ -48,8 +48,12 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	var serverPort int
 	if s.isHttps {
 		serverPort = serverOpts.HttpsPort
-		assert.MustNotEmpty(s.options.TLSCertFile, "TLSCertFile is required in https server")
-		assert.MustNotEmpty(s.options.TLSKeyFile, "TLSKeyFile is required in https server")
+		if len(s.options.TLSCertFile) < 3 {
+			return fmt.Errorf("http.tls_cert_file is required in config")
+		}
+		if len(s.options.TLSKeyFile) < 3 {
+			return fmt.Errorf("http.tls_key_file is required in config")
+		}
 	} else {
 		serverPort = serverOpts.HttpPort
 	}

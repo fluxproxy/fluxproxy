@@ -3,7 +3,6 @@ package fluxway
 import (
 	"context"
 	"errors"
-	"fluxway/common"
 	"fluxway/net"
 	"fluxway/proxy"
 	"fmt"
@@ -76,7 +75,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.router, "server router is nil")
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
 	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) error {
-		assert.MustTrue(connCtx != servContext, "server context must be a new context")
+		assert.MustTrue(connCtx != servContext, "server context must be new")
 		connCtx = proxy.ContextWithProxyType(connCtx, s.listener.ProxyType())
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
@@ -99,7 +98,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		}
 		// Connect
 		connector, ok := s.selector(&routed)
-		assert.MustTrue(ok, "invalid connector: %s", routed.Destination.Network)
+		assert.MustTrue(ok, "invalid connector network: %s", routed.Destination.Network)
 		if err := connector.DialServe(connCtx, &routed); errors.Is(err, io.EOF) {
 			return nil
 		} else {
@@ -108,19 +107,7 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	})
 }
 
-func ParseDestinationWith(network net.Network, addr common.CAddress) (net.Destination, error) {
-	port, err := net.PortFromInt(uint32(addr.Port))
-	if err != nil {
-		return net.DestinationNotset, fmt.Errorf("invalid destination port: %d, error: %w", addr.Port, err)
-	}
-	return net.Destination{
-		Network: network,
-		Address: net.ParseAddress(addr.Address),
-		Port:    port,
-	}, nil
-}
-
-func AssertServerModeValid(mode string) {
+func assertServerModeValid(mode string) {
 	valid := false
 	switch strings.ToLower(mode) {
 	case ServerModeForward, ServerModeMixin, ServerModeProxy:
@@ -128,5 +115,5 @@ func AssertServerModeValid(mode string) {
 	default:
 		valid = false
 	}
-	assert.MustTrue(valid, "server mode is invalid: %s", mode)
+	assert.MustTrue(valid, "invalid server mode: %s", mode)
 }

@@ -52,7 +52,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	var router proxy.Router = nil
 	var connector proxy.Connector = nil
 	network := net.ParseNetwork(s.options.Network)
-	dest, err := ParseDestinationWith(network, s.options.Destination)
+	dest, err := parseDestinationWith(network, s.options.Destination)
 	if err != nil {
 		return fmt.Errorf("invalid destination: %v, error: %w", s.options.Destination, err)
 	}
@@ -66,16 +66,28 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 		router = route.NewStaticRouter(dest)
 		connector = tcp.NewTcpConnector()
 	default:
-		return fmt.Errorf("forward server unsupport network type: %s", s.options.Network)
+		return fmt.Errorf("forward unsupport network: %s", s.options.Network)
 	}
 	s.SetListener(listener)
 	s.SetRouter(router)
 	s.SetResolver(internal.NewDNSResolver())
 	s.SetConnector(connector)
 	// 初始化
-	assert.MustTrue(network == listener.Network(), "listener network error, was: %s", listener.Network())
+	assert.MustTrue(network == listener.Network(), "invalid network, was: %s", listener.Network())
 	return listener.Init(proxy.ListenerOptions{
 		Address: s.Options().Bind,
 		Port:    s.options.Port,
 	})
+}
+
+func parseDestinationWith(network net.Network, addr common.CAddress) (net.Destination, error) {
+	port, err := net.PortFromInt(uint32(addr.Port))
+	if err != nil {
+		return net.DestinationNotset, fmt.Errorf("invalid port: %d, error: %w", addr.Port, err)
+	}
+	return net.Destination{
+		Network: network,
+		Address: net.ParseAddress(addr.Address),
+		Port:    port,
+	}, nil
 }

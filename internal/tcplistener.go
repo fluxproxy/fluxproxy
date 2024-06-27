@@ -59,7 +59,6 @@ func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 		default:
 			conn, err := listener.Accept()
 			if err != nil {
-				logrus.Errorf("%s serve accept: %s", t.tag, err)
 				return fmt.Errorf("%s serve accept: %w", t.tag, err)
 			}
 			go func(tcpConn *stdnet.TCPConn) {

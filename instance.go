@@ -41,7 +41,7 @@ func (i *Instance) Start(startAsMode string) error {
 	}
 	logrus.Info("inst: run as server mode: ", startAsMode)
 	// 检测运行模式
-	AssertServerModeValid(serverOpts.Mode)
+	assertServerModeValid(serverOpts.Mode)
 	// 启动服务端
 	if helper.ContainsAnyString(serverOpts.Mode, ServerModeForward, ServerModeMixin) {
 		if err := i.buildForwardServer(serverOpts); err != nil {
