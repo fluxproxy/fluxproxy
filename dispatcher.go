@@ -2,12 +2,11 @@ package fluxway
 
 import (
 	"context"
-	"errors"
+	"fluxway/helper"
 	"fluxway/net"
 	"fluxway/proxy"
 	"fmt"
 	"github.com/bytepowered/assert-go"
-	"io"
 	"strings"
 )
 
@@ -29,7 +28,7 @@ type ServerOptions struct {
 	SocksPort int `yaml:"socks_port"`
 }
 
-type GenericServer struct {
+type DispatchServer struct {
 	opts     ServerOptions
 	listener proxy.Listener
 	router   proxy.Router
@@ -37,40 +36,40 @@ type GenericServer struct {
 	selector proxy.ConnectorSelector
 }
 
-func NewGenericServer(opts ServerOptions) *GenericServer {
+func NewGenericServer(opts ServerOptions) *DispatchServer {
 	assert.MustNotEmpty(opts.Mode, "server mode is required")
-	return &GenericServer{
+	return &DispatchServer{
 		opts: opts,
 	}
 }
 
-func (s *GenericServer) Options() ServerOptions {
+func (s *DispatchServer) Options() ServerOptions {
 	return s.opts
 }
 
-func (s *GenericServer) SetListener(listener proxy.Listener) {
+func (s *DispatchServer) SetListener(listener proxy.Listener) {
 	s.listener = listener
 }
 
-func (s *GenericServer) SetRouter(router proxy.Router) {
+func (s *DispatchServer) SetRouter(router proxy.Router) {
 	s.router = router
 }
 
-func (s *GenericServer) SetResolver(resolver proxy.Resolver) {
+func (s *DispatchServer) SetResolver(resolver proxy.Resolver) {
 	s.resolver = resolver
 }
 
-func (s *GenericServer) SetConnector(c proxy.Connector) {
+func (s *DispatchServer) SetConnector(c proxy.Connector) {
 	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
 		return c, true
 	})
 }
 
-func (s *GenericServer) SetConnectorSelector(f proxy.ConnectorSelector) {
+func (s *DispatchServer) SetConnectorSelector(f proxy.ConnectorSelector) {
 	s.selector = f
 }
 
-func (s *GenericServer) Serve(servContext context.Context) error {
+func (s *DispatchServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.listener, "server listener is nil")
 	assert.MustNotNil(s.router, "server router is nil")
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
@@ -82,24 +81,30 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		if err != nil {
 			return fmt.Errorf("server route: %w", err)
 		}
-		assert.MustNotNil(routed.ReadWriter, "routed.readWriter is nil")
+		destNetwork := routed.Destination.Network
+		destAddr := routed.Destination.Address
+		// ---- check route values
 		assert.MustTrue(routed.Destination.IsValid(), "routed.Destination is invalid")
-		if s.listener.Network() == net.Network_TCP {
+		if destNetwork == net.Network_TCP {
 			assert.MustNotNil(routed.TCPConn, "routed.TCPConn is required")
+			assert.MustNotNil(routed.ReadWriter, "routed.readWriter is nil")
 		} else {
 			assert.MustNil(routed.TCPConn, "routed.TCPConn must be nil")
 		}
-		if routed.Destination.Address.Family().IsDomain() {
-			if ip, err := s.resolver.Resolve(connCtx, routed.Destination.Address.Domain()); err != nil {
-				return fmt.Errorf("server resolve: %w", err)
-			} else {
-				routed.Destination.Address = net.IPAddress(ip)
+		// ---- resolve dest addr
+		if destNetwork == net.Network_TCP || destNetwork == net.Network_UDP {
+			if destAddr.Family().IsDomain() {
+				if ip, err := s.resolver.Resolve(connCtx, destAddr.Domain()); err != nil {
+					return fmt.Errorf("server resolve: %w", err)
+				} else {
+					routed.Destination.Address = net.IPAddress(ip)
+				}
 			}
 		}
 		// Connect
 		connector, ok := s.selector(&routed)
-		assert.MustTrue(ok, "invalid connector network: %s", routed.Destination.Network)
-		if err := connector.DialServe(connCtx, &routed); errors.Is(err, io.EOF) {
+		assert.MustTrue(ok, "connector not found, network: %s", destNetwork)
+		if err := connector.DialServe(connCtx, &routed); err != nil && helper.IsConnectionClosed(err) {
 			return nil
 		} else {
 			return err

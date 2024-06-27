@@ -9,6 +9,7 @@ const (
 	Network_TCP     Network = 1
 	Network_UDP     Network = 2
 	Network_UNIX    Network = 3
+	Network_HRTP    Network = 4 // Http round trip
 )
 
 func (n Network) String() string {
@@ -32,6 +33,8 @@ func ParseNetwork(net string) Network {
 		return Network_UDP
 	case "unix":
 		return Network_UNIX
+	case "hsrt":
+		return Network_HRTP
 	default:
 		return Network_Unknown
 	}

@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"fluxway/helper"
 	"fluxway/proxy"
 	"runtime/debug"
 )
@@ -40,7 +41,7 @@ func (t *TcpListener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
+func (t *TcpListener) Serve(serveCtx context.Context, next proxy.ListenerHandler) error {
 	addr := &stdnet.TCPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: serve start, address: %s", t.tag, addr)
 	listener, err := stdnet.ListenTCP("tcp", addr)
@@ -67,14 +68,14 @@ func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 						logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, err, string(debug.Stack()))
 					}
 				}()
-				defer net.Close(tcpConn)
+				defer helper.Close(tcpConn)
 				if err := net.SetTcpOptions(tcpConn, t.tcpOpts); err != nil {
 					logrus.Errorf("%s set conn options: %s", t.tag, err)
 				} else {
 					connCtx, connCancel := context.WithCancel(serveCtx)
 					defer connCancel()
 					connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
-					err := handler(connCtx, net.Connection{
+					err := next(connCtx, net.Connection{
 						Network:     t.Network(),
 						Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 						TCPConn:     tcpConn,

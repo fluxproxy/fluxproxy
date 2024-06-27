@@ -3,6 +3,7 @@ package fluxway
 import (
 	"context"
 	"fluxway/internal"
+	"fluxway/net"
 	"fluxway/proxy"
 	"fluxway/proxy/http"
 	"fluxway/proxy/route"
@@ -24,14 +25,14 @@ type HttpOptions struct {
 type HttpServer struct {
 	isHttps bool
 	options HttpOptions
-	*GenericServer
+	*DispatchServer
 }
 
 func NewHttpServer(serverOpts ServerOptions, httpOptions HttpOptions, isHttps bool) *HttpServer {
 	return &HttpServer{
-		isHttps:       isHttps,
-		options:       httpOptions,
-		GenericServer: NewGenericServer(serverOpts),
+		isHttps:        isHttps,
+		options:        httpOptions,
+		DispatchServer: NewGenericServer(serverOpts),
 	}
 }
 
@@ -39,11 +40,21 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	serverOpts := s.Options()
 	listener := http.NewHttpListener(s.isHttps)
 	router := route.NewProxyRouter()
-	connector := tcp.NewTcpConnector()
+	tcpConnector := tcp.NewTcpConnector()
+	hstrConnector := http.NewHrtpConnector()
 	s.SetListener(listener)
 	s.SetRouter(router)
 	s.SetResolver(internal.NewDNSResolver())
-	s.SetConnector(connector)
+	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
+		switch conn.Destination.Network {
+		case net.Network_TCP:
+			return tcpConnector, true
+		case net.Network_HRTP:
+			return hstrConnector, true
+		default:
+			return nil, false
+		}
+	})
 	// Listener init
 	var serverPort int
 	if s.isHttps {

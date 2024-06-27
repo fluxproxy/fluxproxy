@@ -64,20 +64,20 @@ func (t *Listener) newSocksHandler(cmd byte, handler proxy.ListenerHandler) sock
 	}
 }
 
-func (t *Listener) handleSocksConnect(connCtx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {
+func (t *Listener) handleSocksConnect(connCtx context.Context, w io.Writer, r *socks5.Request, next proxy.ListenerHandler) error {
 	var conn = w.(net.Conn)
 	// Send success
 	if err := socks5.SendReply(w, statute.RepSuccess, conn.LocalAddr()); err != nil {
 		return fmt.Errorf("socks send reply: %w", err)
 	}
-	// Forward
+	// Next
 	var destAddr net.Address
 	if r.DestAddr.FQDN != "" {
 		destAddr = net.DomainAddress(r.DestAddr.FQDN)
 	} else {
 		destAddr = net.IPAddress(r.DestAddr.IP)
 	}
-	err := handler(connCtx, net.Connection{
+	err := next(connCtx, net.Connection{
 		Network: t.Network(),
 		Address: net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		TCPConn: conn.(*net.TCPConn),
@@ -88,7 +88,7 @@ func (t *Listener) handleSocksConnect(connCtx context.Context, w io.Writer, r *s
 		},
 		ReadWriter: conn,
 	})
-	// Forward error
+	// Complete
 	if err != nil {
 		msg := err.Error()
 		resp := statute.RepHostUnreachable

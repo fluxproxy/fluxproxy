@@ -19,13 +19,13 @@ type SocksOptions struct {
 
 type SocksServer struct {
 	options SocksOptions
-	*GenericServer
+	*DispatchServer
 }
 
 func NewSocksServer(serverOpts ServerOptions, socksOptions SocksOptions) *SocksServer {
 	return &SocksServer{
-		options:       socksOptions,
-		GenericServer: NewGenericServer(serverOpts),
+		options:        socksOptions,
+		DispatchServer: NewGenericServer(serverOpts),
 	}
 }
 

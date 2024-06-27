@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fluxway/helper"
 	"fluxway/net"
 	"fluxway/proxy"
 	"fmt"
@@ -17,7 +18,7 @@ func TcpDialServe(srcConnCtx context.Context, opts net.TcpOptions, link *net.Con
 	if err != nil {
 		return fmt.Errorf("tcp-dial: %w", err)
 	}
-	defer net.Close(dstConn)
+	defer helper.Close(dstConn)
 	if err := net.SetTcpOptions(dstConn, opts); err != nil {
 		return fmt.Errorf("tcp-dial: set options: %w", err)
 	}
