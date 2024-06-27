@@ -16,8 +16,12 @@ const (
 
 // ListenerOptions 监听器的网络参数
 type ListenerOptions struct {
-	Address string `json:"address"`
-	Port    int    `json:"port"`
+	// Common
+	Address string
+	Port    int
+	// TLS
+	TLSCertFile string
+	TLSKeyFile  string
 }
 
 // ListenerHandler 监听器的回调处理函数

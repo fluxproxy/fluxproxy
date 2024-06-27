@@ -18,11 +18,14 @@ var (
 )
 
 type Listener struct {
+	isHttps      bool
 	listenerOpts proxy.ListenerOptions
 }
 
-func NewHttpListener() *Listener {
-	return &Listener{}
+func NewHttpListener(isHttps bool) *Listener {
+	return &Listener{
+		isHttps: isHttps,
+	}
 }
 
 func (l *Listener) Network() net.Network {
@@ -55,7 +58,11 @@ func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 		logrus.Infof("http serve stop, address: %s", addr)
 		_ = server.Shutdown(serveCtx)
 	}()
-	return server.ListenAndServe()
+	if l.isHttps {
+		return server.ListenAndServeTLS(l.listenerOpts.TLSCertFile, l.listenerOpts.TLSKeyFile)
+	} else {
+		return server.ListenAndServe()
+	}
 }
 
 func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFunc {
