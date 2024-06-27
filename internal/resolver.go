@@ -3,23 +3,38 @@ package internal
 import (
 	"context"
 	"fluxway/proxy"
+	"github.com/bytepowered/cache"
 	"net"
+	"time"
 )
 
 var (
 	_ proxy.Resolver = (*DNSResolver)(nil)
 )
 
-type DNSResolver struct{}
+type DNSResolver struct {
+	cached cache.Cache
+}
 
 func NewDNSResolver() *DNSResolver {
-	return &DNSResolver{}
+	return &DNSResolver{
+		cached: cache.New(1000).
+			LRU().
+			Expiration(time.Minute * 10).
+			Build(),
+	}
 }
 
 func (d DNSResolver) Resolve(_ context.Context, name string) (net.IP, error) {
-	addr, err := net.ResolveIPAddr("ip", name)
+	ipv, err := d.cached.GetOrLoad(name, func(_ interface{}) (cache.Expirable, error) {
+		addr, err := net.ResolveIPAddr("ip", name)
+		if err != nil {
+			return cache.Expirable{}, err
+		}
+		return cache.NewDefault(addr.IP), err
+	})
 	if err != nil {
 		return nil, err
 	}
-	return addr.IP, err
+	return ipv.(net.IP), nil
 }

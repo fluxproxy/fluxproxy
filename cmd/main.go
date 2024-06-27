@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/cristalhq/acmd"
+	"github.com/sirupsen/logrus"
 )
 
 // cli: https://github.com/cristalhq/acmd
@@ -28,6 +29,6 @@ func main() {
 		Version: "2024.1",
 	})
 	if err := r.Run(); err != nil {
-		r.Exit(err)
+		logrus.Fatal(err)
 	}
 }
