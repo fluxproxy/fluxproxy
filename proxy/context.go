@@ -24,7 +24,7 @@ func ContextWithLogger(ctx context.Context, v *logrus.Entry) context.Context {
 	return context.WithValue(ctx, ctxKeyLogger, v)
 }
 
-func RequiredLogger(ctx context.Context) *logrus.Entry {
+func Logger(ctx context.Context) *logrus.Entry {
 	if v, ok := ctx.Value(ctxKeyLogger).(*logrus.Entry); ok {
 		return v
 	}
@@ -37,7 +37,7 @@ func ContextWithConfiger(ctx context.Context, v *koanf.Koanf) context.Context {
 	return context.WithValue(ctx, ctxKeyConfiger, v)
 }
 
-func RequiredConfiger(ctx context.Context) *koanf.Koanf {
+func Configer(ctx context.Context) *koanf.Koanf {
 	if v, ok := ctx.Value(ctxKeyConfiger).(*koanf.Koanf); ok {
 		return v
 	}
@@ -50,7 +50,7 @@ func ContextWithID(ctx context.Context, v string) context.Context {
 	return context.WithValue(ctx, ctxKeyID, v)
 }
 
-func RequiredID(ctx context.Context) string {
+func ID(ctx context.Context) string {
 	if v, ok := ctx.Value(ctxKeyID).(string); ok {
 		return v
 	}
@@ -73,7 +73,7 @@ func RequiredProxyType(ctx context.Context) ProxyType {
 // Utils
 
 func UnmarshalConfig(ctx context.Context, path string, out any) error {
-	k := RequiredConfiger(ctx)
+	k := Configer(ctx)
 	if err := k.UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
 		return fmt.Errorf("unmarshal %s options: %w", path, err)
 	}

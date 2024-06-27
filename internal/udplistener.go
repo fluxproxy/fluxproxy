@@ -86,7 +86,7 @@ func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 					},
 				})
 				if err != nil {
-					proxy.RequiredLogger(connCtx).Errorf("%s conn error: %s", t.tag, err)
+					proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, err)
 				}
 			}()
 		}
