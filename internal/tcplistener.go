@@ -28,8 +28,8 @@ func NewTcpListener(tag string, tcpOpts net.TcpOptions) *TcpListener {
 	}
 }
 
-func (t *TcpListener) ProxyType() proxy.ProxyType {
-	return proxy.ProxyType_RAWTCP
+func (t *TcpListener) ServerType() proxy.ServerType {
+	return proxy.ServerType_RAWTCP
 }
 
 func (t *TcpListener) Network() net.Network {

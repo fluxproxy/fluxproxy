@@ -32,7 +32,7 @@ type ForwardOptions struct {
 
 type ForwardServer struct {
 	options ForwardOptions
-	*DispatchServer
+	*DirectServer
 }
 
 func NewForwardServer(serverOpts ServerOptions, forwardOpts ForwardOptions) *ForwardServer {
@@ -40,8 +40,8 @@ func NewForwardServer(serverOpts ServerOptions, forwardOpts ForwardOptions) *For
 		forwardOpts.Description = fmt.Sprintf("forward-%d-to-%d", forwardOpts.Port, forwardOpts.Destination.Port)
 	}
 	return &ForwardServer{
-		options:        forwardOpts,
-		DispatchServer: NewGenericServer(serverOpts),
+		options:      forwardOpts,
+		DirectServer: NewGenericServer(serverOpts),
 	}
 }
 

@@ -28,7 +28,7 @@ type ServerOptions struct {
 	SocksPort int `yaml:"socks_port"`
 }
 
-type DispatchServer struct {
+type DirectServer struct {
 	opts     ServerOptions
 	listener proxy.Listener
 	router   proxy.Router
@@ -36,47 +36,47 @@ type DispatchServer struct {
 	selector proxy.ConnectorSelector
 }
 
-func NewGenericServer(opts ServerOptions) *DispatchServer {
+func NewGenericServer(opts ServerOptions) *DirectServer {
 	assert.MustNotEmpty(opts.Mode, "server mode is required")
-	return &DispatchServer{
+	return &DirectServer{
 		opts: opts,
 	}
 }
 
-func (s *DispatchServer) Options() ServerOptions {
+func (s *DirectServer) Options() ServerOptions {
 	return s.opts
 }
 
-func (s *DispatchServer) SetListener(listener proxy.Listener) {
+func (s *DirectServer) SetListener(listener proxy.Listener) {
 	s.listener = listener
 }
 
-func (s *DispatchServer) SetRouter(router proxy.Router) {
+func (s *DirectServer) SetRouter(router proxy.Router) {
 	s.router = router
 }
 
-func (s *DispatchServer) SetResolver(resolver proxy.Resolver) {
+func (s *DirectServer) SetResolver(resolver proxy.Resolver) {
 	s.resolver = resolver
 }
 
-func (s *DispatchServer) SetConnector(c proxy.Connector) {
+func (s *DirectServer) SetConnector(c proxy.Connector) {
 	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
 		return c, true
 	})
 }
 
-func (s *DispatchServer) SetConnectorSelector(f proxy.ConnectorSelector) {
+func (s *DirectServer) SetConnectorSelector(f proxy.ConnectorSelector) {
 	s.selector = f
 }
 
-func (s *DispatchServer) Serve(servContext context.Context) error {
+func (s *DirectServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.listener, "server listener is nil")
 	assert.MustNotNil(s.router, "server router is nil")
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
 	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) error {
 		assert.MustTrue(connCtx != servContext, "server context must be new")
 		_ = proxy.RequiredID(connCtx)
-		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.listener.ProxyType())
+		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.listener.ServerType())
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {

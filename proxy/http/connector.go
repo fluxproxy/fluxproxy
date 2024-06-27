@@ -33,22 +33,22 @@ func (c *HrtpConnector) DialServe(connCtx context.Context, link *net.Connection)
 	return c.httpRoundTrip(connCtx, w, r)
 }
 
-func (c *HrtpConnector) httpRoundTrip(ctx context.Context, connWriter http.ResponseWriter, r *http.Request) error {
+func (c *HrtpConnector) httpRoundTrip(ctx context.Context, rw http.ResponseWriter, r *http.Request) error {
 	resp, err := c.roundTripper.RoundTrip(r)
 	if err != nil {
 		return err
 	} else {
 		defer helper.Close(resp.Body)
 	}
-	connHeader := connWriter.Header()
+	connHeader := rw.Header()
 	for k, v := range resp.Header {
 		for _, v1 := range v {
 			connHeader.Add(k, v1)
 		}
 	}
-	connWriter.WriteHeader(resp.StatusCode)
+	rw.WriteHeader(resp.StatusCode)
 	if resp.Body != nil {
-		_, err := io.Copy(connWriter, resp.Body)
+		_, err := io.Copy(rw, resp.Body)
 		return err
 	} else {
 		return nil

@@ -32,8 +32,8 @@ func NewSocksListener() *Listener {
 	}
 }
 
-func (t *Listener) ProxyType() proxy.ProxyType {
-	return proxy.ProxyType_SOCKS5
+func (t *Listener) ServerType() proxy.ServerType {
+	return proxy.ServerType_SOCKS5
 }
 
 func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {

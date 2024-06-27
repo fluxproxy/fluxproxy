@@ -26,11 +26,11 @@ func Logger(ctx context.Context) *logrus.Entry {
 	panic("ctxKeyLogger is not in context.")
 }
 
-func RequiredProxyType(ctx context.Context) ProxyType {
-	if v, ok := ctx.Value(CtxKeyProxyType).(ProxyType); ok {
+func RequiredProxyType(ctx context.Context) ServerType {
+	if v, ok := ctx.Value(CtxKeyProxyType).(ServerType); ok {
 		return v
 	}
-	panic("ProxyType is not in context.")
+	panic("ServerType is not in context.")
 }
 
 func RequiredID(ctx context.Context) string {

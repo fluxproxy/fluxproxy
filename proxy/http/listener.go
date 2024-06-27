@@ -39,8 +39,8 @@ func (l *Listener) Network() net.Network {
 	return net.Network_TCP
 }
 
-func (l *Listener) ProxyType() proxy.ProxyType {
-	return proxy.ProxyType_HTTPS
+func (l *Listener) ServerType() proxy.ServerType {
+	return proxy.ServerType_HTTPS
 }
 
 func (l *Listener) Init(options proxy.ListenerOptions) error {
@@ -77,30 +77,30 @@ func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 }
 
 func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+	return func(rw http.ResponseWriter, r *http.Request) {
 		proxy.Logger(r.Context()).Infof("http: %s %s", r.Method, r.RequestURI)
 
 		// Auth: nop
 		removeHopByHopHeaders(r.Header)
 
 		if r.Method == "CONNECT" {
-			l.handleConnectStream(w, r, handler)
+			l.handleConnectStream(rw, r, handler)
 		} else {
-			l.handlePlainHttp(w, r, handler)
+			l.handlePlainHttp(rw, r, handler)
 		}
 	}
 }
 
-func (l *Listener) handleConnectStream(w http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
 	connCtx, connCancel := context.WithCancel(r.Context())
 	defer connCancel()
 	// Hijacker
 	r = r.WithContext(connCtx)
-	hijacker, ok := w.(http.Hijacker)
+	hijacker, ok := rw.(http.Hijacker)
 	assert.MustTrue(ok, "http: not support hijack")
 	hijConn, _, hijErr := hijacker.Hijack()
 	if hijErr != nil {
-		_, _ = w.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
+		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		proxy.Logger(connCtx).Error("http: not support hijack")
 		return
 	}
@@ -136,7 +136,7 @@ func (l *Listener) handleConnectStream(w http.ResponseWriter, r *http.Request, n
 	}
 }
 
-func (l *Listener) handlePlainHttp(w http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handlePlainHttp(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
 	defer helper.Close(r.Body)
 
 	if r.URL.Host == "" || !r.URL.IsAbs() {
@@ -154,7 +154,7 @@ func (l *Listener) handlePlainHttp(w http.ResponseWriter, r *http.Request, next 
 		}
 		response.Header.Set("Proxy-Connection", "close")
 		response.Header.Set("Connection", "close")
-		_ = response.Write(w)
+		_ = response.Write(rw)
 		return
 	}
 	// Forward host
@@ -175,7 +175,7 @@ func (l *Listener) handlePlainHttp(w http.ResponseWriter, r *http.Request, next 
 	hErr := next(connCtx, net.Connection{
 		Network:     l.Network(),
 		Address:     net.ParseAddress(r.RemoteAddr),
-		UserContext: setWithUserContext(context.Background(), w, r),
+		UserContext: setWithUserContext(context.Background(), rw, r),
 		TCPConn:     nil,
 		ReadWriter:  nil,
 		Destination: net.Destination{
@@ -186,7 +186,7 @@ func (l *Listener) handlePlainHttp(w http.ResponseWriter, r *http.Request, next 
 	})
 	// Complete
 	if hErr != nil {
-		_, _ = w.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
+		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		proxy.Logger(connCtx).Errorf("http: conn handle: %s", hErr)
 	}
 

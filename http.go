@@ -25,14 +25,14 @@ type HttpOptions struct {
 type HttpServer struct {
 	isHttps bool
 	options HttpOptions
-	*DispatchServer
+	*DirectServer
 }
 
 func NewHttpServer(serverOpts ServerOptions, httpOptions HttpOptions, isHttps bool) *HttpServer {
 	return &HttpServer{
-		isHttps:        isHttps,
-		options:        httpOptions,
-		DispatchServer: NewGenericServer(serverOpts),
+		isHttps:      isHttps,
+		options:      httpOptions,
+		DirectServer: NewGenericServer(serverOpts),
 	}
 }
 

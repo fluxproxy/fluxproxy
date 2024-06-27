@@ -5,15 +5,6 @@ import (
 	"fluxway/net"
 )
 
-type ProxyType uint8
-
-const (
-	ProxyType_RAWTCP ProxyType = iota
-	ProxyType_RAWUDP
-	ProxyType_SOCKS5
-	ProxyType_HTTPS
-)
-
 // ListenerOptions 监听器的网络参数
 type ListenerOptions struct {
 	// Common
@@ -32,8 +23,8 @@ type Listener interface {
 	// Network 返回当前监听器网络接口的协议类型
 	Network() net.Network
 
-	// ProxyType 返回当前监听器的代理协议类型
-	ProxyType() ProxyType
+	// ServerType 返回当前监听器的代理协议类型
+	ServerType() ServerType
 
 	// Init 执行监听器实例的初始化操作
 	Init(options ListenerOptions) error
