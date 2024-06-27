@@ -18,7 +18,7 @@ var (
 )
 
 type Listener struct {
-	options proxy.ListenerOptions
+	listenerOpts proxy.ListenerOptions
 }
 
 func NewHttpListener() *Listener {
@@ -34,12 +34,12 @@ func (l *Listener) ProxyType() proxy.ProxyType {
 }
 
 func (l *Listener) Init(options proxy.ListenerOptions) error {
-	l.options = options
+	l.listenerOpts = options
 	return nil
 }
 
 func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
-	addr := stdnet.JoinHostPort(l.options.Address, strconv.Itoa(l.options.Port))
+	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	logrus.Infof("http: serve start, address: %s", addr)
 	server := &http.Server{
 		Addr:    addr,
@@ -106,8 +106,6 @@ func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFu
 			ReadWriter: conn,
 		})
 		if hanErr != nil {
-			_, _ = conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
-			_ = conn.Close()
 			logger.Errorf("http conn error: %s", hanErr)
 		}
 	}

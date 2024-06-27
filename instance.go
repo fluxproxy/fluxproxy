@@ -98,25 +98,25 @@ func (i *Instance) buildSocksServer(serverOpts ServerOptions) error {
 }
 
 func (i *Instance) buildHttpServer(serverOpts ServerOptions) error {
-	buildServer := func(serverOpts ServerOptions, confpath string) error {
+	buildServer := func(serverOpts ServerOptions, isHttps bool) error {
 		var httpOpts HttpOptions
-		if err := proxy.UnmarshalConfig(i.instCtx, confpath, &httpOpts); err != nil {
+		if err := proxy.UnmarshalConfig(i.instCtx, "http", &httpOpts); err != nil {
 			return fmt.Errorf("unmarshal http options: %w", err)
 		}
 		if httpOpts.Disabled {
 			logrus.Warnf("inst: http server is disabled")
 			return nil
 		}
-		i.servers = append(i.servers, NewHttpServer(serverOpts, httpOpts))
+		i.servers = append(i.servers, NewHttpServer(serverOpts, httpOpts, isHttps))
 		return nil
 	}
 	if serverOpts.HttpPort > 0 {
-		if err := buildServer(serverOpts, "http"); err != nil {
+		if err := buildServer(serverOpts, false); err != nil {
 			return err
 		}
 	}
 	if serverOpts.HttpsPort > 0 {
-		if err := buildServer(serverOpts, "https"); err != nil {
+		if err := buildServer(serverOpts, true); err != nil {
 			return err
 		}
 	}

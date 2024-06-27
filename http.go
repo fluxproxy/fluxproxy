@@ -18,12 +18,14 @@ type HttpOptions struct {
 }
 
 type HttpServer struct {
+	isHttps bool
 	options HttpOptions
 	*GenericServer
 }
 
-func NewHttpServer(serverOpts ServerOptions, httpOptions HttpOptions) *HttpServer {
+func NewHttpServer(serverOpts ServerOptions, httpOptions HttpOptions, isHttps bool) *HttpServer {
 	return &HttpServer{
+		isHttps:       isHttps,
 		options:       httpOptions,
 		GenericServer: NewGenericServer(serverOpts),
 	}
@@ -38,8 +40,15 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	s.SetRouter(router)
 	s.SetResolver(internal.NewDNSResolver())
 	s.SetConnector(connector)
+	// Listener init
+	var serverPort int
+	if s.isHttps {
+		serverPort = serverOpts.HttpsPort
+	} else {
+		serverPort = serverOpts.HttpPort
+	}
 	return listener.Init(proxy.ListenerOptions{
 		Address: serverOpts.Bind,
-		Port:    serverOpts.HttpPort,
+		Port:    serverPort,
 	})
 }

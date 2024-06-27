@@ -13,12 +13,10 @@ server:
   # Socks代理端口
   socks_port: 1081
 
-# Http 代理配置
+# Http/https 代理服务配置
 http:
   disabled: false
-  cert-file: ""
 
-# Socks5 代理配置
+# Socks5 代理服务配置
 socks:
   disabled: true
-  allow_no_auth: true
