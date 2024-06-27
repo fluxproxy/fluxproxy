@@ -29,6 +29,6 @@ func NewTcpConnector() *Connector {
 	}
 }
 
-func (d *Connector) DailServe(inctx context.Context, link *net.Connection) error {
-	return internal.TcpDailServe(inctx, d.opts, link)
+func (d *Connector) DialServe(inctx context.Context, link *net.Connection) error {
+	return internal.TcpDialServe(inctx, d.opts, link)
 }

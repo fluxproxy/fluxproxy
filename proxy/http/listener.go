@@ -9,16 +9,12 @@ import (
 	"github.com/sirupsen/logrus"
 	stdnet "net"
 	"net/http"
-	"regexp"
 	"strconv"
+	"strings"
 )
 
 var (
 	_ proxy.Listener = (*Listener)(nil)
-)
-
-var (
-	regHasPort = regexp.MustCompile(`:\d+$`)
 )
 
 type Listener struct {
@@ -64,49 +60,70 @@ func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 
 func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		logger := proxy.LoggerFromContext(r.Context())
+		logger := proxy.RequiredLogger(r.Context())
 		logger.Infof("http: proxy: %s %s", r.Method, r.URL.String())
+		// Auth: nop
+		r.Header.Del("Proxy-Connection")
+		r.Header.Del("Proxy-Authenticate")
+		r.Header.Del("Proxy-Authorization")
 		// Connect
 		if r.Method != "CONNECT" {
 			return
 		}
 		// Hijacker
-		hij, ok := w.(http.Hijacker)
+		hijacker, ok := w.(http.Hijacker)
 		if !ok {
 			logger.Error("http not support hijack")
 			return
 		}
-		conn, _, hijErr := hij.Hijack()
+		conn, _, hijErr := hijacker.Hijack()
 		if hijErr != nil {
 			logger.Error("http not support hijack")
 			return
 		}
-		host, port, _ := stdnet.SplitHostPort(r.URL.Host)
 		connCtx, connCancel := context.WithCancel(r.Context())
 		defer connCancel()
+		// Phase hook
+		connCtx = proxy.ContextWithHookDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
+			if _, hiwErr := conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n")); hiwErr != nil {
+				if !helper.IsConnectionClosed(hiwErr) {
+					logger.Errorf("http response write error: %s", hiwErr)
+				}
+				return hiwErr
+			}
+			return nil
+		})
+		addr, port, _ := parseHostToAddress(r.URL.Host)
 		hanErr := handler(connCtx, net.Connection{
 			Network: net.Network_TCP,
 			Address: net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 			TCPConn: conn.(*net.TCPConn),
 			Destination: net.Destination{
 				Network: net.Network_TCP,
-				Address: net.ParseAddress(host),
-				Port:    net.ParsePort(port, 80),
+				Address: addr,
+				Port:    port,
 			},
 			ReadWriter: conn,
 		})
-		if hanErr == nil {
-			if _, hiwErr := conn.Write([]byte("HTTP/1.1 200 OK\r\n\r\n")); hiwErr != nil {
-				_ = conn.Close()
-				if !helper.IsConnectionClosed(hiwErr) {
-					logger.Errorf("http response write error: %s", hiwErr)
-				}
-				return
-			}
-		} else {
+		if hanErr != nil {
 			_, _ = conn.Write([]byte("HTTP/1.1 404 Not Found\r\n\r\n"))
 			_ = conn.Close()
 			logger.Errorf("http conn error: %s", hanErr)
 		}
 	}
+}
+
+func parseHostToAddress(urlHost string) (addr net.Address, port net.Port, err error) {
+	if strings.LastIndexByte(urlHost, ':') > 0 {
+		h, p, e := stdnet.SplitHostPort(urlHost)
+		if e != nil {
+			return nil, 0, e
+		}
+		addr = net.ParseAddress(h)
+		port = net.ParsePort(p, 80)
+	} else {
+		addr = net.ParseAddress(urlHost)
+		port = net.Port(80)
+	}
+	return addr, port, nil
 }

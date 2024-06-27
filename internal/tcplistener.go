@@ -83,7 +83,7 @@ func (t *TcpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 						ReadWriter:  conn,
 					})
 					if err != nil {
-						logger := proxy.LoggerFromContext(connCtx)
+						logger := proxy.RequiredLogger(connCtx)
 						logger.Errorf("%s conn error: %s", t.tag, err)
 					}
 				}

@@ -78,7 +78,6 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) error {
 		assert.MustTrue(connCtx != servContext, "server context must be a new context")
 		connCtx = proxy.ContextWithProxyType(connCtx, s.listener.ProxyType())
-		connCtx = proxy.ContextWithConnection(connCtx, &conn)
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {
@@ -91,7 +90,6 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 		} else {
 			assert.MustNil(routed.TCPConn, "routed.TCPConn must be nil")
 		}
-		// Resolve
 		if routed.Destination.Address.Family().IsDomain() {
 			if ip, err := s.resolver.Resolve(connCtx, routed.Destination.Address.Domain()); err != nil {
 				return fmt.Errorf("server resolve: %w", err)
@@ -99,10 +97,10 @@ func (s *GenericServer) Serve(servContext context.Context) error {
 				routed.Destination.Address = net.IPAddress(ip)
 			}
 		}
-		// Connect and serve
+		// Connect
 		connector, ok := s.selector(&routed)
 		assert.MustTrue(ok, "invalid connector: %s", routed.Destination.Network)
-		if err := connector.DailServe(connCtx, &routed); errors.Is(err, io.EOF) {
+		if err := connector.DialServe(connCtx, &routed); errors.Is(err, io.EOF) {
 			return nil
 		} else {
 			return err

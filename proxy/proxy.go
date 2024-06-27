@@ -52,8 +52,8 @@ type ConnectorSelector func(*net.Connection) (Connector, bool)
 
 // Connector 远程地址连接器
 type Connector interface {
-	// DailServe 以阻塞状态建立远程地址连接，进行双向数据读写。
-	DailServe(ctx context.Context, link *net.Connection) (err error)
+	// DialServe 以阻塞状态建立远程地址连接，进行双向数据读写。
+	DialServe(ctx context.Context, link *net.Connection) (err error)
 }
 
 // Router 代理路由器

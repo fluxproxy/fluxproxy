@@ -22,7 +22,7 @@ func NewProxyRouter() *ProxyRouter {
 }
 
 func (d *ProxyRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
-	proxyType := proxy.ProxyTypeFromContext(ctx)
+	proxyType := proxy.RequiredProxyType(ctx)
 	switch proxyType {
 	case proxy.ProxyType_SOCKS5, proxy.ProxyType_HTTPS:
 		assert.MustTrue(income.Destination.IsValid(), "proxy-type: socks/https, income destination must be valid")

@@ -40,6 +40,6 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	s.SetConnector(connector)
 	return listener.Init(proxy.ListenerOptions{
 		Address: serverOpts.Bind,
-		Port:    serverOpts.SocksPort,
+		Port:    serverOpts.HttpPort,
 	})
 }
