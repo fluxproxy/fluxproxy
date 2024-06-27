@@ -45,13 +45,13 @@ func (t *UdpListener) Init(options proxy.ListenerOptions) error {
 
 func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
-	logrus.Infof("udp-listener serve: %s", addr.String())
+	logrus.Infof("%s: serve start, address: %s", t.tag, addr)
 	listener, err := ionet.ListenUDP("udp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
 	}
 	defer func() {
-		logrus.Info("udp-listener terminated, address: ", addr)
+		logrus.Infof("%s serve stop, address: %s", t.tag, addr)
 		_ = listener.Close()
 	}()
 	for {
