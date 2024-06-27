@@ -3,6 +3,10 @@ package helper
 import (
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"io"
+	"net"
+	"os"
+	"syscall"
 )
 
 func ErrIf(err error, message string) error {
@@ -16,4 +20,25 @@ func LogIf(err error, message string) {
 	if err != nil {
 		logrus.Errorf(message, err)
 	}
+}
+
+func IsConnectionClosed(err error) bool {
+	if err == nil {
+		return false
+	}
+	if err == io.EOF {
+		return true
+	}
+	i := 0
+	var newerr = &err
+	for opError, ok := (*newerr).(*net.OpError); ok && i < 10; {
+		i++
+		newerr = &opError.Err
+		if syscallError, ok := (*newerr).(*os.SyscallError); ok {
+			if syscallError.Err == syscall.EPIPE || syscallError.Err == syscall.ECONNRESET || syscallError.Err == syscall.EPROTOTYPE {
+				return true
+			}
+		}
+	}
+	return false
 }

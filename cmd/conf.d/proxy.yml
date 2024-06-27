@@ -8,15 +8,17 @@ server:
   bind: "0.0.0.0"
   # Http代理端口
   http_port: 1080
+  # Https代理端口
+  https_port: 0
   # Socks代理端口
   socks_port: 1081
 
 # Http 代理配置
 http:
-  disabled: true
+  disabled: false
   cert-file: ""
 
 # Socks5 代理配置
 socks:
-  disabled: false
+  disabled: true
   allow_no_auth: true

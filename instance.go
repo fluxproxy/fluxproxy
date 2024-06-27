@@ -49,7 +49,12 @@ func (i *Instance) Start(startAsMode string) error {
 		}
 	}
 	if helper.ContainsAnyString(serverOpts.Mode, ServerModeProxy, ServerModeMixin) {
-		if err := i.buildProxyServer(serverOpts); err != nil {
+		// Socks server
+		if err := i.buildSocksServer(serverOpts); err != nil {
+			return err
+		}
+		// Http/Https server
+		if err := i.buildHttpServer(serverOpts); err != nil {
 			return err
 		}
 	}
@@ -79,8 +84,7 @@ func (i *Instance) buildForwardServer(serverOpts ServerOptions) error {
 	return nil
 }
 
-func (i *Instance) buildProxyServer(serverOpts ServerOptions) error {
-	// Socks proxy
+func (i *Instance) buildSocksServer(serverOpts ServerOptions) error {
 	var socksOpts SocksOptions
 	if err := proxy.UnmarshalConfig(i.instCtx, "socks", &socksOpts); err != nil {
 		return fmt.Errorf("unmarshal socks options: %w", err)
@@ -90,6 +94,32 @@ func (i *Instance) buildProxyServer(serverOpts ServerOptions) error {
 		return nil
 	}
 	i.servers = append(i.servers, NewSocksServer(serverOpts, socksOpts))
+	return nil
+}
+
+func (i *Instance) buildHttpServer(serverOpts ServerOptions) error {
+	buildServer := func(serverOpts ServerOptions, confpath string) error {
+		var httpOpts HttpOptions
+		if err := proxy.UnmarshalConfig(i.instCtx, confpath, &httpOpts); err != nil {
+			return fmt.Errorf("unmarshal http options: %w", err)
+		}
+		if httpOpts.Disabled {
+			logrus.Warnf("inst: http server is disabled")
+			return nil
+		}
+		i.servers = append(i.servers, NewHttpServer(serverOpts, httpOpts))
+		return nil
+	}
+	if serverOpts.HttpPort > 0 {
+		if err := buildServer(serverOpts, "http"); err != nil {
+			return err
+		}
+	}
+	if serverOpts.HttpsPort > 0 {
+		if err := buildServer(serverOpts, "https"); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

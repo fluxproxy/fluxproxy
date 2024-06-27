@@ -27,6 +27,14 @@ func PortFromString(s string) (Port, error) {
 	return PortFromInt(uint32(val))
 }
 
+func ParsePort(s string, def Port) Port {
+	p, err := PortFromString(s)
+	if err != nil {
+		return def
+	}
+	return p
+}
+
 func (p Port) Value() uint16 {
 	return uint16(p)
 }
