@@ -9,6 +9,7 @@ import (
 	"fluxway/proxy/route"
 	"fluxway/proxy/socket"
 	"fmt"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -76,4 +77,9 @@ func (s *HttpServer) Init(ctx context.Context) error {
 		TLSCertFile: s.options.TLSCertFile,
 		TLSKeyFile:  s.options.TLSKeyFile,
 	})
+}
+
+func (s *HttpServer) Serve(ctx context.Context) error {
+	defer logrus.Infof("http: serve term")
+	return s.DirectServer.Serve(ctx)
 }

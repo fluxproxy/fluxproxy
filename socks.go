@@ -7,6 +7,7 @@ import (
 	"fluxway/proxy/route"
 	"fluxway/proxy/socket"
 	"fluxway/proxy/socks"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -43,4 +44,9 @@ func (s *SocksServer) Init(ctx context.Context) error {
 		Address: serverOpts.Bind,
 		Port:    serverOpts.SocksPort,
 	})
+}
+
+func (s *SocksServer) Serve(ctx context.Context) error {
+	defer logrus.Infof("socks: serve term")
+	return s.DirectServer.Serve(ctx)
 }
