@@ -7,6 +7,7 @@ import (
 	"fluxway/proxy"
 	"fmt"
 	"github.com/bytepowered/assert-go"
+	stdnet "net"
 	"strings"
 )
 
@@ -79,11 +80,16 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.router, "server router is nil")
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
 	return s.listener.Listen(servContext, func(connCtx context.Context, conn net.Connection) error {
+		// Assert
 		assert.MustTrue(connCtx != servContext, "conn context is the same ref as server context")
 		assert.MustNotNil(conn.UserContext, "user context is nil")
-		_ = proxy.RequiredID(connCtx)
-		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.serverType)
+		assert.MustNotEmpty(proxy.RequiredID(connCtx), "conn id is empty")
+		if conn.Network == net.Network_TCP {
+			_, isTcpConn := conn.ReadWriter.(*stdnet.TCPConn)
+			assert.MustNotNil(isTcpConn, "conn read-writer is not type of *net.TCPConn")
+		}
 		// Route
+		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.serverType)
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {
 			return fmt.Errorf("server route: %w", err)
@@ -92,12 +98,6 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		destAddr := routed.Destination.Address
 		// ---- check route values
 		assert.MustTrue(routed.Destination.IsValid(), "routed destination is invalid")
-		if destNetwork == net.Network_TCP {
-			assert.MustNotNil(routed.TCPConn, "routed tcp conn is nil")
-			assert.MustNotNil(routed.ReadWriter, "routed read-writer is nil")
-		} else {
-			assert.MustNil(routed.TCPConn, "routed tcp conn is not nil")
-		}
 		// ---- resolve dest addr
 		if destNetwork == net.Network_TCP || destNetwork == net.Network_UDP {
 			if destAddr.Family().IsDomain() {

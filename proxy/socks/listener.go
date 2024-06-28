@@ -41,7 +41,7 @@ func (t *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 		socks5.WithResolver(nil), // Ensure: no resolve default
 	)
 	return t.TcpListener.Listen(serveCtx, func(connCtx context.Context, conn net.Connection) error {
-		return t.socks.ServeConn(connCtx, conn.TCPConn)
+		return t.socks.ServeConn(connCtx, conn.ReadWriter.(*net.TCPConn))
 	})
 }
 
@@ -76,14 +76,13 @@ func (t *Listener) handleConnect(connCtx context.Context, w io.Writer, r *socks5
 	err := next(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		TCPConn:     conn.(*net.TCPConn),
+		ReadWriter:  conn.(*net.TCPConn),
 		UserContext: context.Background(),
 		Destination: net.Destination{
 			Network: net.Network_TCP,
 			Address: destAddr,
 			Port:    net.Port(r.DestAddr.Port),
 		},
-		ReadWriter: conn,
 	})
 	// Complete
 	if err != nil {

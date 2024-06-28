@@ -77,7 +77,6 @@ func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandle
 				err := next(connCtx, net.Connection{
 					Network:     t.Network(),
 					Address:     net.IPAddress(srcAddr.IP),
-					TCPConn:     nil,
 					UserContext: context.Background(),
 					ReadWriter: &wrapper{
 						reader: bytes.NewReader(buffer[:n]),

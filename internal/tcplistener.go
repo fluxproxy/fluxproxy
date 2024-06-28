@@ -81,8 +81,7 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 				err := handler(connCtx, net.Connection{
 					Network:     t.Network(),
 					Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-					TCPConn:     tcpConn,
-					ReadWriter:  conn,
+					ReadWriter:  tcpConn,
 					UserContext: context.Background(),
 					Destination: net.DestinationNotset,
 				})

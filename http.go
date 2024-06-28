@@ -37,7 +37,6 @@ func NewHttpServer(serverOpts ServerOptions, httpOptions HttpOptions, isHttps bo
 }
 
 func (s *HttpServer) Init(ctx context.Context) error {
-	serverOpts := s.Options()
 	listener := http.NewHttpListener(s.isHttps)
 	router := route.NewProxyRouter()
 	tcpConnector := tcp.NewTcpConnector()
@@ -57,6 +56,7 @@ func (s *HttpServer) Init(ctx context.Context) error {
 		}
 	})
 	// Listener init
+	serverOpts := s.Options()
 	var serverPort int
 	if s.isHttps {
 		serverPort = serverOpts.HttpsPort

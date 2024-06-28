@@ -117,8 +117,7 @@ func (l *Listener) handshakeConnectStream(rw http.ResponseWriter, r *http.Reques
 	hErr := next(connCtx, net.Connection{
 		Network:    l.Network(),
 		Address:    net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		TCPConn:    hijConn.(*net.TCPConn),
-		ReadWriter: hijConn,
+		ReadWriter: hijConn.(*net.TCPConn),
 		Destination: net.Destination{
 			Network: net.Network_TCP,
 			Address: addr,
@@ -170,7 +169,6 @@ func (l *Listener) handshakePlainHttp(rw http.ResponseWriter, r *http.Request, n
 		Network:     l.Network(),
 		Address:     net.ParseAddress(r.RemoteAddr),
 		UserContext: setWithUserContext(context.Background(), rw, r),
-		TCPConn:     nil,
 		ReadWriter:  nil,
 		Destination: net.Destination{
 			Network: net.Network_HRTP,
