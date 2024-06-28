@@ -5,7 +5,6 @@ import (
 	"fluxway/helper"
 	"fluxway/proxy"
 	"fmt"
-	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
 	"sync"
 )
@@ -44,22 +43,32 @@ func (i *Instance) Start(startAsMode string) error {
 	assertServerModeValid(serverOpts.Mode)
 	// 启动服务端
 	if helper.ContainsAnyString(serverOpts.Mode, ServerModeForward, ServerModeMixin) {
-		if err := i.buildForwardServer(serverOpts); err != nil {
+		if err := i.buildForwardServer(serverOpts, serverOpts.Mode == ServerModeForward); err != nil {
 			return err
 		}
 	}
 	if helper.ContainsAnyString(serverOpts.Mode, ServerModeProxy, ServerModeMixin) {
+		var found = false
 		// Socks server
-		if err := i.buildSocksServer(serverOpts); err != nil {
+		if ok, err := i.buildSocksServer(serverOpts); err != nil {
 			return err
+		} else if ok {
+			found = ok
 		}
 		// Http/Https server
-		if err := i.buildHttpServer(serverOpts); err != nil {
+		if ok, err := i.buildHttpServer(serverOpts); err != nil {
 			return err
+		} else if ok {
+			found = ok
+		}
+		if serverOpts.Mode == ServerModeProxy && !found {
+			return fmt.Errorf("proxy servers not found")
 		}
 	}
 	// 初始化服务
-	assert.MustTrue(len(i.servers) > 0, "servers is required")
+	if len(i.servers) == 0 {
+		return fmt.Errorf("servers not found")
+	}
 	for _, server := range i.servers {
 		if err := server.Init(i.instCtx); err != nil {
 			return fmt.Errorf("server init error. %w", err)
@@ -68,12 +77,14 @@ func (i *Instance) Start(startAsMode string) error {
 	return nil
 }
 
-func (i *Instance) buildForwardServer(serverOpts ServerOptions) error {
+func (i *Instance) buildForwardServer(serverOpts ServerOptions, isRequired bool) error {
 	var forwardOpts ForwardRootOptions
 	if err := proxy.UnmarshalConfig(i.instCtx, "forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
-	assert.MustTrue(len(forwardOpts.Rules) > 0, "forward options is required")
+	if len(forwardOpts.Rules) == 0 && isRequired {
+		return fmt.Errorf("forward rules is empty")
+	}
 	for _, rule := range forwardOpts.Rules {
 		if rule.Disabled {
 			logrus.Warnf("inst: forward server is disabled: %s", rule.Description)
@@ -84,20 +95,23 @@ func (i *Instance) buildForwardServer(serverOpts ServerOptions) error {
 	return nil
 }
 
-func (i *Instance) buildSocksServer(serverOpts ServerOptions) error {
+func (i *Instance) buildSocksServer(serverOpts ServerOptions) (bool, error) {
+	if serverOpts.SocksPort <= 0 {
+		return false, nil
+	}
 	var socksOpts SocksOptions
 	if err := proxy.UnmarshalConfig(i.instCtx, "socks", &socksOpts); err != nil {
-		return fmt.Errorf("unmarshal socks options: %w", err)
+		return false, fmt.Errorf("unmarshal socks options: %w", err)
 	}
 	if socksOpts.Disabled {
 		logrus.Warnf("inst: socks server is disabled")
-		return nil
+		return false, nil
 	}
 	i.servers = append(i.servers, NewSocksServer(serverOpts, socksOpts))
-	return nil
+	return true, nil
 }
 
-func (i *Instance) buildHttpServer(serverOpts ServerOptions) error {
+func (i *Instance) buildHttpServer(serverOpts ServerOptions) (bool, error) {
 	buildServer := func(serverOpts ServerOptions, isHttps bool) error {
 		var httpOpts HttpOptions
 		if err := proxy.UnmarshalConfig(i.instCtx, "http", &httpOpts); err != nil {
@@ -112,15 +126,15 @@ func (i *Instance) buildHttpServer(serverOpts ServerOptions) error {
 	}
 	if serverOpts.HttpPort > 0 {
 		if err := buildServer(serverOpts, false); err != nil {
-			return err
+			return false, err
 		}
 	}
 	if serverOpts.HttpsPort > 0 {
 		if err := buildServer(serverOpts, true); err != nil {
-			return err
+			return false, err
 		}
 	}
-	return nil
+	return true, nil
 }
 
 func (i *Instance) Stop() error {

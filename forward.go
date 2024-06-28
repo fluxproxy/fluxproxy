@@ -61,10 +61,12 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 		listener = udp.NewUdpListener()
 		router = route.NewStaticRouter(dest)
 		connector = udp.NewUdpConnector()
+		s.SetServerType(proxy.ServerType_RAWUDP)
 	case net.Network_TCP:
 		listener = tcp.NewTcpListener()
 		router = route.NewStaticRouter(dest)
 		connector = tcp.NewTcpConnector()
+		s.SetServerType(proxy.ServerType_RAWTCP)
 	default:
 		return fmt.Errorf("forward unsupport network: %s", s.options.Network)
 	}
@@ -73,7 +75,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	s.SetResolver(internal.NewDNSResolver())
 	s.SetConnector(connector)
 	// 初始化
-	assert.MustTrue(network == listener.Network(), "invalid network, was: %s", listener.Network())
+	assert.MustTrue(network == listener.Network(), "server network is not match listener, was: %s", listener.Network())
 	return listener.Init(proxy.ListenerOptions{
 		Address: s.Options().Bind,
 		Port:    s.options.Port,

@@ -33,8 +33,8 @@ func NewTcpConnector() *Connector {
 }
 
 func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) error {
-	assert.MustTrue(link.Destination.Network == net.Network_TCP, "unsupported network: %s", link.Destination.Network)
-	assert.MustTrue(link.Destination.Address.Family().IsIP(), "destination must be an ip, was: %s", link.Destination.Address.String())
+	assert.MustTrue(link.Destination.Network == net.Network_TCP, "dest network is not tcp, was: %s", link.Destination.Network)
+	assert.MustTrue(link.Destination.Address.Family().IsIP(), "dest addr is not an ip, was: %s", link.Destination.Address.String())
 	srcConn := link.TCPConn
 	dstConn, err := stdnet.DialTCP("tcp", nil, &stdnet.TCPAddr{IP: link.Destination.Address.IP(), Port: int(link.Destination.Port)})
 	if err != nil {

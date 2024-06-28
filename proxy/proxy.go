@@ -18,19 +18,16 @@ type ListenerOptions struct {
 // ListenerHandler 监听器的回调处理函数
 type ListenerHandler func(ctx context.Context, conn net.Connection) error
 
-// Listener 监听器，用于建立端口监听，实现网络代理协议的服务端。
+// Listener 监听器，监听服务端口，完成与客户端的连接握手。
 type Listener interface {
-	// Network 返回当前监听器网络接口的协议类型
+	// Network 返回监听服务端口的协议类型
 	Network() net.Network
 
-	// ServerType 返回当前监听器的代理协议类型
-	ServerType() ServerType
-
-	// Init 执行监听器实例的初始化操作
+	// Init 执行初始化操作
 	Init(options ListenerOptions) error
 
-	// Serve 以阻塞状态运行监听器，接收客户端连接。当客户端成功建立连接后，通过 handler 函数回调，进行下一步流量路由。
-	Serve(ctx context.Context, handler ListenerHandler) error
+	// Listen 以阻塞态监听服务端，接收客户端连接，完成连接握手，通过 next 函数回调给下一步处理过程。
+	Listen(ctx context.Context, handler ListenerHandler) error
 }
 
 // Server 代理服务端

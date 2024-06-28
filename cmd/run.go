@@ -42,7 +42,7 @@ func runCommandAs(ctx context.Context, args []string, serverMode string) error {
 	// Instance
 	inst := fluxway.NewInstance(context.WithValue(ctx, proxy.CtxKeyConfiger, k))
 	if err := inst.Start(serverMode); err != nil {
-		return fmt.Errorf("main: instance start: %w", err)
+		return fmt.Errorf("main: %w", err)
 	}
 	defer func() {
 		helper.LogIf(inst.Stop(), "main: instance stop: %w")

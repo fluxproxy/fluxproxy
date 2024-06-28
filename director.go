@@ -29,22 +29,23 @@ type ServerOptions struct {
 }
 
 type DirectServer struct {
-	opts     ServerOptions
-	listener proxy.Listener
-	router   proxy.Router
-	resolver proxy.Resolver
-	selector proxy.ConnectorSelector
+	serverType proxy.ServerType
+	serverOpts ServerOptions
+	listener   proxy.Listener
+	router     proxy.Router
+	resolver   proxy.Resolver
+	selector   proxy.ConnectorSelector
 }
 
 func NewGenericServer(opts ServerOptions) *DirectServer {
-	assert.MustNotEmpty(opts.Mode, "server mode is required")
+	assert.MustNotEmpty(opts.Mode, "server mode is empty")
 	return &DirectServer{
-		opts: opts,
+		serverOpts: opts,
 	}
 }
 
 func (s *DirectServer) Options() ServerOptions {
-	return s.opts
+	return s.serverOpts
 }
 
 func (s *DirectServer) SetListener(listener proxy.Listener) {
@@ -69,14 +70,19 @@ func (s *DirectServer) SetConnectorSelector(f proxy.ConnectorSelector) {
 	s.selector = f
 }
 
+func (s *DirectServer) SetServerType(serverType proxy.ServerType) {
+	s.serverType = serverType
+}
+
 func (s *DirectServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.listener, "server listener is nil")
 	assert.MustNotNil(s.router, "server router is nil")
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
-	return s.listener.Serve(servContext, func(connCtx context.Context, conn net.Connection) error {
-		assert.MustTrue(connCtx != servContext, "server context must be new")
+	return s.listener.Listen(servContext, func(connCtx context.Context, conn net.Connection) error {
+		assert.MustTrue(connCtx != servContext, "conn context is the same ref as server context")
+		assert.MustNotNil(conn.UserContext, "user context is nil")
 		_ = proxy.RequiredID(connCtx)
-		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.listener.ServerType())
+		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.serverType)
 		// Route
 		routed, err := s.router.Route(connCtx, &conn)
 		if err != nil {
@@ -85,12 +91,12 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		destNetwork := routed.Destination.Network
 		destAddr := routed.Destination.Address
 		// ---- check route values
-		assert.MustTrue(routed.Destination.IsValid(), "routed.Destination is invalid")
+		assert.MustTrue(routed.Destination.IsValid(), "routed destination is invalid")
 		if destNetwork == net.Network_TCP {
-			assert.MustNotNil(routed.TCPConn, "routed.TCPConn is required")
-			assert.MustNotNil(routed.ReadWriter, "routed.readWriter is nil")
+			assert.MustNotNil(routed.TCPConn, "routed tcp conn is nil")
+			assert.MustNotNil(routed.ReadWriter, "routed read-writer is nil")
 		} else {
-			assert.MustNil(routed.TCPConn, "routed.TCPConn must be nil")
+			assert.MustNil(routed.TCPConn, "routed tcp conn is not nil")
 		}
 		// ---- resolve dest addr
 		if destNetwork == net.Network_TCP || destNetwork == net.Network_UDP {
@@ -121,5 +127,5 @@ func assertServerModeValid(mode string) {
 	default:
 		valid = false
 	}
-	assert.MustTrue(valid, "invalid server mode: %s", mode)
+	assert.MustTrue(valid, "server mode is invalid, was: %s", mode)
 }

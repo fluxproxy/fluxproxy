@@ -34,6 +34,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	listener := socks.NewSocksListener()
 	router := route.NewProxyRouter()
 	connector := tcp.NewTcpConnector()
+	s.SetServerType(proxy.ServerType_SOCKS5)
 	s.SetListener(listener)
 	s.SetRouter(router)
 	s.SetResolver(internal.NewDNSResolver())

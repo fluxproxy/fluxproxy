@@ -43,15 +43,15 @@ func (t *UdpListener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
+func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandler) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
-	logrus.Infof("%s: serve start, address: %s", t.tag, addr)
+	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
 	listener, err := ionet.ListenUDP("udp", addr)
 	if err != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
 	}
 	defer func() {
-		logrus.Infof("%s serve stop, address: %s", t.tag, addr)
+		logrus.Infof("%s listen stop, address: %s", t.tag, addr)
 		_ = listener.Close()
 	}()
 	for {
@@ -62,7 +62,7 @@ func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 			var buffer = make([]byte, 2048)
 			n, srcAddr, rerr := t.listener.ReadFromUDP(buffer)
 			if rerr != nil {
-				return fmt.Errorf("%s serve read: %w", t.tag, err)
+				return fmt.Errorf("%s listen read: %w", t.tag, err)
 			}
 			go func() {
 				defer func() {
@@ -70,10 +70,11 @@ func (t *UdpListener) Serve(serveCtx context.Context, handler proxy.ListenerHand
 						logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, err, string(debug.Stack()))
 					}
 				}()
+				// Next
 				connCtx, connCancel := context.WithCancel(serveCtx)
 				defer connCancel()
 				connCtx = SetupUdpContextLogger(serveCtx, srcAddr)
-				err := handler(connCtx, net.Connection{
+				err := next(connCtx, net.Connection{
 					Network:     t.Network(),
 					Address:     net.IPAddress(srcAddr.IP),
 					TCPConn:     nil,

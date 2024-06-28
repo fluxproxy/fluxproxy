@@ -2,12 +2,13 @@ package http
 
 import (
 	"context"
-	"crypto/tls"
 	"fluxway/helper"
 	"fluxway/net"
 	"fluxway/proxy"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 )
 
 var (
@@ -21,8 +22,10 @@ type HrtpConnector struct {
 func NewHrtpConnector() *HrtpConnector {
 	return &HrtpConnector{
 		roundTripper: &http.Transport{
-			TLSClientConfig: &tls.Config{},
-			Proxy:           http.ProxyFromEnvironment,
+			// from http.DefaultTransport
+			MaxIdleConns:          100,
+			IdleConnTimeout:       90 * time.Second,
+			ExpectContinueTimeout: 1 * time.Second,
 		},
 	}
 }
@@ -47,10 +50,26 @@ func (c *HrtpConnector) httpRoundTrip(ctx context.Context, rw http.ResponseWrite
 		}
 	}
 	rw.WriteHeader(resp.StatusCode)
+	var writer io.Writer = rw
+	if len(resp.TransferEncoding) > 0 && strings.EqualFold(resp.TransferEncoding[0], "chunked") {
+		writer = httpChunkWriter{Writer: rw}
+	}
 	if resp.Body != nil {
-		_, err := io.Copy(rw, resp.Body)
+		_, err := io.Copy(writer, resp.Body)
 		return err
 	} else {
 		return nil
 	}
+}
+
+type httpChunkWriter struct {
+	io.Writer
+}
+
+func (cw httpChunkWriter) Write(b []byte) (int, error) {
+	n, err := cw.Writer.Write(b)
+	if err == nil {
+		cw.Writer.(http.Flusher).Flush()
+	}
+	return n, err
 }

@@ -5,6 +5,8 @@ import (
 	"fluxway/net"
 )
 
+//// Server Type
+
 type ServerType uint8
 
 const (
@@ -13,5 +15,7 @@ const (
 	ServerType_SOCKS5
 	ServerType_HTTPS
 )
+
+//// Hook func
 
 type HookFunc func(ctx context.Context, conn *net.Connection) error

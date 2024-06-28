@@ -32,11 +32,7 @@ func NewSocksListener() *Listener {
 	}
 }
 
-func (t *Listener) ServerType() proxy.ServerType {
-	return proxy.ServerType_SOCKS5
-}
-
-func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
+func (t *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	t.socks = socks5.NewServer(
 		socks5.WithConnectHandle(t.newSocksHandler(statute.CommandConnect, handler)),
 		socks5.WithBindHandle(t.newSocksHandler(statute.CommandBind, handler)),
@@ -44,7 +40,7 @@ func (t *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 		socks5.WithRewriter(nil), // Ensure: no rewrite default
 		socks5.WithResolver(nil), // Ensure: no resolve default
 	)
-	return t.TcpListener.Serve(serveCtx, func(connCtx context.Context, conn net.Connection) error {
+	return t.TcpListener.Listen(serveCtx, func(connCtx context.Context, conn net.Connection) error {
 		return t.socks.ServeConn(connCtx, conn.TCPConn)
 	})
 }
@@ -53,18 +49,18 @@ func (t *Listener) newSocksHandler(cmd byte, handler proxy.ListenerHandler) sock
 	return func(connCtx context.Context, w io.Writer, r *socks5.Request) error {
 		switch cmd {
 		case statute.CommandConnect:
-			return t.handleSocksConnect(connCtx, w, r, handler)
+			return t.handleConnect(connCtx, w, r, handler)
 		case statute.CommandAssociate:
-			return t.handleSocksAssociate(connCtx, w, r, handler)
+			return t.handleAssociate(connCtx, w, r, handler)
 		case statute.CommandBind:
-			return t.handleSocksBind(connCtx, w, r, handler)
+			return t.handleBind(connCtx, w, r, handler)
 		default:
-			return t.handleSocksNotSupported(connCtx, w, r)
+			return t.handleNotSupported(connCtx, w, r)
 		}
 	}
 }
 
-func (t *Listener) handleSocksConnect(connCtx context.Context, w io.Writer, r *socks5.Request, next proxy.ListenerHandler) error {
+func (t *Listener) handleConnect(connCtx context.Context, w io.Writer, r *socks5.Request, next proxy.ListenerHandler) error {
 	var conn = w.(net.Conn)
 	// Send success
 	if err := socks5.SendReply(w, statute.RepSuccess, conn.LocalAddr()); err != nil {
@@ -107,15 +103,15 @@ func (t *Listener) handleSocksConnect(connCtx context.Context, w io.Writer, r *s
 	}
 }
 
-func (t *Listener) handleSocksAssociate(connCtx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {
-	return t.handleSocksNotSupported(connCtx, w, r)
+func (t *Listener) handleAssociate(connCtx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {
+	return t.handleNotSupported(connCtx, w, r)
 }
 
-func (t *Listener) handleSocksBind(connCtx context.Context, w io.Writer, r *socks5.Request, _ proxy.ListenerHandler) error {
-	return t.handleSocksNotSupported(connCtx, w, r)
+func (t *Listener) handleBind(connCtx context.Context, w io.Writer, r *socks5.Request, _ proxy.ListenerHandler) error {
+	return t.handleNotSupported(connCtx, w, r)
 }
 
-func (t *Listener) handleSocksNotSupported(_ context.Context, w io.Writer, req *socks5.Request) error {
+func (t *Listener) handleNotSupported(_ context.Context, w io.Writer, req *socks5.Request) error {
 	if err := socks5.SendReply(w, statute.RepCommandNotSupported, nil); err != nil {
 		return fmt.Errorf("socks send reply: %w", err)
 	}

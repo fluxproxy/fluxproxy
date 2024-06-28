@@ -39,21 +39,17 @@ func (l *Listener) Network() net.Network {
 	return net.Network_TCP
 }
 
-func (l *Listener) ServerType() proxy.ServerType {
-	return proxy.ServerType_HTTPS
-}
-
 func (l *Listener) Init(options proxy.ListenerOptions) error {
 	l.listenerOpts = options
 	return nil
 }
 
-func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler) error {
+func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.isHttps {
-		logrus.Infof("http: serve start, https, address: %s", addr)
+		logrus.Infof("http: listen start, HTTPS, address: %s", addr)
 	} else {
-		logrus.Infof("http: serve start, address: %s", addr)
+		logrus.Infof("http: listen start, address: %s", addr)
 	}
 	server := &http.Server{
 		Addr:    addr,
@@ -66,7 +62,7 @@ func (l *Listener) Serve(serveCtx context.Context, handler proxy.ListenerHandler
 		},
 	}
 	defer func() {
-		logrus.Infof("http serve stop, address: %s", addr)
+		logrus.Infof("http listen stop, address: %s", addr)
 		_ = server.Shutdown(serveCtx)
 	}()
 	if l.isHttps {
@@ -83,15 +79,15 @@ func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFu
 		// Auth: nop
 		removeHopByHopHeaders(r.Header)
 
-		if r.Method == "CONNECT" {
-			l.handleConnectStream(rw, r, handler)
+		if r.Method == http.MethodConnect {
+			l.handshakeConnectStream(rw, r, handler)
 		} else {
-			l.handlePlainHttp(rw, r, handler)
+			l.handshakePlainHttp(rw, r, handler)
 		}
 	}
 }
 
-func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handshakeConnectStream(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
 	connCtx, connCancel := context.WithCancel(r.Context())
 	defer connCancel()
 	// Hijacker
@@ -136,7 +132,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	}
 }
 
-func (l *Listener) handlePlainHttp(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handshakePlainHttp(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
 	defer helper.Close(r.Body)
 
 	if r.URL.Host == "" || !r.URL.IsAbs() {
@@ -167,10 +163,8 @@ func (l *Listener) handlePlainHttp(rw http.ResponseWriter, r *http.Request, next
 	if r.Header.Get("User-Agent") == "" {
 		r.Header.Set("User-Agent", "")
 	}
-
-	connCtx := r.Context()
-
 	// Next
+	connCtx := r.Context()
 	addr, port, _ := parseHostToAddress(r.URL.Host)
 	hErr := next(connCtx, net.Connection{
 		Network:     l.Network(),
