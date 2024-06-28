@@ -18,19 +18,19 @@ var k = koanf.NewWithConf(koanf.Conf{
 	StrictMerge: true,
 })
 
-func runAsFullServer(ctx context.Context, args []string) error {
-	return runCommandAs(ctx, args, "" /*full by config*/)
+func runAsFullServer(runCtx context.Context, args []string) error {
+	return runCommandAs(runCtx, args, "" /*full by config*/)
 }
 
-func runAsForwardServer(ctx context.Context, args []string) error {
-	return runCommandAs(ctx, args, fluxway.ServerModeForward)
+func runAsForwardServer(runCtx context.Context, args []string) error {
+	return runCommandAs(runCtx, args, fluxway.ServerModeForward)
 }
 
-func runAsProxyServer(ctx context.Context, args []string) error {
-	return runCommandAs(ctx, args, fluxway.ServerModeProxy)
+func runAsProxyServer(runCtx context.Context, args []string) error {
+	return runCommandAs(runCtx, args, fluxway.ServerModeProxy)
 }
 
-func runCommandAs(ctx context.Context, args []string, serverMode string) error {
+func runCommandAs(runCtx context.Context, args []string, serverMode string) error {
 	confpath := "config.yml"
 	if len(args) > 0 {
 		confpath = args[0]
@@ -40,12 +40,10 @@ func runCommandAs(ctx context.Context, args []string, serverMode string) error {
 		return fmt.Errorf("load config file %s: %w", confpath, err)
 	}
 	// Instance
-	inst := fluxway.NewInstance(context.WithValue(ctx, proxy.CtxKeyConfiger, k))
-	if err := inst.Start(serverMode); err != nil {
-		return fmt.Errorf("main: %w", err)
+	runCtx = context.WithValue(runCtx, proxy.CtxKeyConfiger, k)
+	inst := fluxway.NewInstance()
+	if err := inst.Init(runCtx, serverMode); err != nil {
+		return fmt.Errorf("main: instance start: %w", err)
 	}
-	defer func() {
-		helper.LogIf(inst.Stop(), "main: instance stop: %w")
-	}()
-	return helper.ErrIf(inst.Serve(), "main: instance serve")
+	return helper.ErrIf(inst.Serve(runCtx), "main: instance serve")
 }

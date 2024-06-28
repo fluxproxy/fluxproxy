@@ -47,46 +47,46 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 	if err != nil {
 		return fmt.Errorf("failed to listen tcp address %s %w", addr, err)
 	}
-	defer func() {
-		logrus.Infof("%s listen stop, address: %s", t.tag, addr)
+	go func() {
+		<-serveCtx.Done()
 		_ = listener.Close()
 	}()
 	for {
-		select {
-		case <-serveCtx.Done():
-			return nil
-		default:
-			conn, err := listener.Accept()
-			if err != nil {
-				return fmt.Errorf("%s listen accept: %w", t.tag, err)
+		conn, err := listener.Accept()
+		if err != nil {
+			select {
+			case <-serveCtx.Done():
+				return nil
+			default:
 			}
-			go func(tcpConn *stdnet.TCPConn) {
-				defer func() {
-					if err := recover(); err != nil {
-						logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, err, string(debug.Stack()))
-					}
-				}()
-				// Set tcp conn options
-				defer helper.Close(tcpConn)
-				if err := net.SetTcpOptions(tcpConn, t.tcpOpts); err != nil {
-					logrus.Errorf("%s set conn options: %s", t.tag, err)
-					return
-				}
-				// Next
-				connCtx, connCancel := context.WithCancel(serveCtx)
-				defer connCancel()
-				connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
-				err := handler(connCtx, net.Connection{
-					Network:     t.Network(),
-					Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-					ReadWriter:  tcpConn,
-					UserContext: context.Background(),
-					Destination: net.DestinationNotset,
-				})
-				if err != nil {
-					proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, err)
-				}
-			}(conn.(*stdnet.TCPConn))
+			return fmt.Errorf("%s listen accept: %w", t.tag, err)
 		}
+		go func(tcpConn *stdnet.TCPConn) {
+			defer func() {
+				if err := recover(); err != nil {
+					logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, err, string(debug.Stack()))
+				}
+			}()
+			// Set tcp conn options
+			defer helper.Close(tcpConn)
+			if err := net.SetTcpOptions(tcpConn, t.tcpOpts); err != nil {
+				logrus.Errorf("%s set conn options: %s", t.tag, err)
+				return
+			}
+			// Next
+			connCtx, connCancel := context.WithCancel(serveCtx)
+			defer connCancel()
+			connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
+			err := handler(connCtx, net.Connection{
+				Network:     t.Network(),
+				Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+				ReadWriter:  tcpConn,
+				UserContext: context.Background(),
+				Destination: net.DestinationNotset,
+			})
+			if err != nil {
+				proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, err)
+			}
+		}(conn.(*stdnet.TCPConn))
 	}
 }

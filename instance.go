@@ -10,28 +10,22 @@ import (
 )
 
 type Instance struct {
-	instCtx       context.Context
-	instCtxCancel context.CancelFunc
-	servers       []proxy.Server
-	await         sync.WaitGroup
+	//instCtx       context.Context
+	//instCtxCancel context.CancelFunc
+	servers []proxy.Server
+	await   sync.WaitGroup
 }
 
-func NewInstance(runCtx context.Context) *Instance {
-	if runCtx == nil {
-		runCtx = context.Background()
-	}
-	ctx, cancel := context.WithCancel(runCtx)
+func NewInstance() *Instance {
 	return &Instance{
-		instCtx:       ctx,
-		instCtxCancel: cancel,
-		await:         sync.WaitGroup{},
+		await: sync.WaitGroup{},
 	}
 }
 
-func (i *Instance) Start(startAsMode string) error {
+func (i *Instance) Init(runCtx context.Context, startAsMode string) error {
 	// 解析配置
 	var serverOpts ServerOptions
-	if err := proxy.UnmarshalConfig(i.instCtx, "server", &serverOpts); err != nil {
+	if err := proxy.UnmarshalConfig(runCtx, "server", &serverOpts); err != nil {
 		return err
 	}
 	// 指定运行模式
@@ -43,20 +37,20 @@ func (i *Instance) Start(startAsMode string) error {
 	assertServerModeValid(serverOpts.Mode)
 	// 启动服务端
 	if helper.ContainsAnyString(serverOpts.Mode, ServerModeForward, ServerModeMixin) {
-		if err := i.buildForwardServer(serverOpts, serverOpts.Mode == ServerModeForward); err != nil {
+		if err := i.buildForwardServer(runCtx, serverOpts, serverOpts.Mode == ServerModeForward); err != nil {
 			return err
 		}
 	}
 	if helper.ContainsAnyString(serverOpts.Mode, ServerModeProxy, ServerModeMixin) {
 		var found = false
 		// Socks server
-		if ok, err := i.buildSocksServer(serverOpts); err != nil {
+		if ok, err := i.buildSocksServer(runCtx, serverOpts); err != nil {
 			return err
 		} else if ok {
 			found = ok
 		}
 		// Http/Https server
-		if ok, err := i.buildHttpServer(serverOpts); err != nil {
+		if ok, err := i.buildHttpServer(runCtx, serverOpts); err != nil {
 			return err
 		} else if ok {
 			found = ok
@@ -70,16 +64,16 @@ func (i *Instance) Start(startAsMode string) error {
 		return fmt.Errorf("servers not found")
 	}
 	for _, server := range i.servers {
-		if err := server.Init(i.instCtx); err != nil {
+		if err := server.Init(runCtx); err != nil {
 			return fmt.Errorf("server init error. %w", err)
 		}
 	}
 	return nil
 }
 
-func (i *Instance) buildForwardServer(serverOpts ServerOptions, isRequired bool) error {
+func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts ServerOptions, isRequired bool) error {
 	var forwardOpts ForwardRootOptions
-	if err := proxy.UnmarshalConfig(i.instCtx, "forward", &forwardOpts); err != nil {
+	if err := proxy.UnmarshalConfig(runCtx, "forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
 	if len(forwardOpts.Rules) == 0 && isRequired {
@@ -95,12 +89,12 @@ func (i *Instance) buildForwardServer(serverOpts ServerOptions, isRequired bool)
 	return nil
 }
 
-func (i *Instance) buildSocksServer(serverOpts ServerOptions) (bool, error) {
+func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts ServerOptions) (bool, error) {
 	if serverOpts.SocksPort <= 0 {
 		return false, nil
 	}
 	var socksOpts SocksOptions
-	if err := proxy.UnmarshalConfig(i.instCtx, "socks", &socksOpts); err != nil {
+	if err := proxy.UnmarshalConfig(runCtx, "socks", &socksOpts); err != nil {
 		return false, fmt.Errorf("unmarshal socks options: %w", err)
 	}
 	if socksOpts.Disabled {
@@ -111,10 +105,10 @@ func (i *Instance) buildSocksServer(serverOpts ServerOptions) (bool, error) {
 	return true, nil
 }
 
-func (i *Instance) buildHttpServer(serverOpts ServerOptions) (bool, error) {
+func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts ServerOptions) (bool, error) {
 	buildServer := func(serverOpts ServerOptions, isHttps bool) error {
 		var httpOpts HttpOptions
-		if err := proxy.UnmarshalConfig(i.instCtx, "http", &httpOpts); err != nil {
+		if err := proxy.UnmarshalConfig(runCtx, "http", &httpOpts); err != nil {
 			return fmt.Errorf("unmarshal http options: %w", err)
 		}
 		if httpOpts.Disabled {
@@ -137,28 +131,27 @@ func (i *Instance) buildHttpServer(serverOpts ServerOptions) (bool, error) {
 	return true, nil
 }
 
-func (i *Instance) Stop() error {
-	i.instCtxCancel()
-	i.await.Wait()
-	return nil
-}
-
-func (i *Instance) Serve() error {
+func (i *Instance) Serve(runCtx context.Context) error {
 	if len(i.servers) == 0 {
 		return fmt.Errorf("servers is required")
 	}
 	errors := make(chan error, len(i.servers))
 	for _, server := range i.servers {
 		i.await.Add(1)
-		go func(server proxy.Server, ctx context.Context) {
-			defer i.await.Done()
-			errors <- server.Serve(ctx)
-		}(server, i.instCtx)
+		go func(server proxy.Server) {
+			errors <- server.Serve(runCtx)
+			i.await.Done()
+		}(server)
 	}
 	select {
 	case err := <-errors:
-		return err
-	case <-i.instCtx.Done():
-		return nil
+		return i.term(err)
+	case <-runCtx.Done():
+		return i.term(nil)
 	}
+}
+
+func (i *Instance) term(err error) error {
+	i.await.Wait()
+	return err
 }
