@@ -17,8 +17,6 @@ func (d Destination) NetAddr() string {
 	addr := ""
 	if d.Network == Network_TCP || d.Network == Network_UDP {
 		addr = net.JoinHostPort(d.Address.String(), d.Port.String())
-	} else if d.Network == Network_UNIX {
-		addr = d.Address.String()
 	}
 	return addr
 }
@@ -30,8 +28,6 @@ func (d Destination) String() string {
 		prefix = "tcp:"
 	case Network_UDP:
 		prefix = "udp:"
-	case Network_UNIX:
-		prefix = "unix:"
 	}
 	return prefix + "//" + d.NetAddr()
 }

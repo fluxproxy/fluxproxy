@@ -17,10 +17,9 @@ var (
 )
 
 type UdpListener struct {
-	tag      string
-	options  proxy.ListenerOptions
-	listener *ionet.UDPConn
-	udpOpts  net.UdpOptions
+	tag     string
+	options proxy.ListenerOptions
+	udpOpts net.UdpOptions
 }
 
 func NewUdpListener(tag string, udpOpts net.UdpOptions) *UdpListener {
@@ -60,7 +59,7 @@ func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandle
 			return nil
 		default:
 			var buffer = make([]byte, 2048)
-			n, srcAddr, rerr := t.listener.ReadFromUDP(buffer)
+			n, srcAddr, rerr := listener.ReadFromUDP(buffer)
 			if rerr != nil {
 				return fmt.Errorf("%s listen read: %w", t.tag, err)
 			}
@@ -81,7 +80,7 @@ func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandle
 					ReadWriter: &wrapper{
 						reader: bytes.NewReader(buffer[:n]),
 						writer: func(b []byte) (n int, err error) {
-							return t.listener.WriteToUDP(b, srcAddr)
+							return listener.WriteToUDP(b, srcAddr)
 						},
 					},
 					Destination: net.DestinationNotset,

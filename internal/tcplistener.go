@@ -15,10 +15,9 @@ import (
 )
 
 type TcpListener struct {
-	tag      string
-	options  proxy.ListenerOptions
-	listener *stdnet.TCPListener
-	tcpOpts  net.TcpOptions
+	tag     string
+	options proxy.ListenerOptions
+	tcpOpts net.TcpOptions
 }
 
 func NewTcpListener(tag string, tcpOpts net.TcpOptions) *TcpListener {
@@ -48,7 +47,6 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 	if err != nil {
 		return fmt.Errorf("failed to listen tcp address %s %w", addr, err)
 	}
-	t.listener = listener
 	defer func() {
 		logrus.Infof("%s listen stop, address: %s", t.tag, addr)
 		_ = listener.Close()

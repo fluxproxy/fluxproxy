@@ -39,7 +39,7 @@ func (t *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 		socks5.WithResolver(nil), // Ensure: no resolve default
 	)
 	return t.TcpListener.Listen(serveCtx, func(connCtx context.Context, conn net.Connection) error {
-		return t.socks.ServeConn(connCtx, conn.ReadWriter.(*net.TCPConn))
+		return t.socks.ServeConn(connCtx, conn.TCPConn())
 	})
 }
 
