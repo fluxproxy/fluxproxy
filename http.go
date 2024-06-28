@@ -7,7 +7,7 @@ import (
 	"fluxway/proxy"
 	"fluxway/proxy/http"
 	"fluxway/proxy/route"
-	"fluxway/proxy/tcp"
+	"fluxway/proxy/socket"
 	"fmt"
 )
 
@@ -39,7 +39,7 @@ func NewHttpServer(serverOpts ServerOptions, httpOptions HttpOptions, isHttps bo
 func (s *HttpServer) Init(ctx context.Context) error {
 	listener := http.NewHttpListener(s.isHttps)
 	router := route.NewProxyRouter()
-	tcpConnector := tcp.NewTcpConnector()
+	tcpConnector := socket.NewTcpConnector()
 	hstrConnector := http.NewHrtpConnector()
 	s.SetServerType(proxy.ServerType_HTTPS)
 	s.SetListener(listener)

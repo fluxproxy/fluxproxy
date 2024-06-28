@@ -1,4 +1,4 @@
-package tcp
+package socket
 
 import (
 	"context"
@@ -12,15 +12,15 @@ import (
 )
 
 var (
-	_ proxy.Connector = (*Connector)(nil)
+	_ proxy.Connector = (*TcpConnector)(nil)
 )
 
-type Connector struct {
+type TcpConnector struct {
 	opts net.TcpOptions
 }
 
-func NewTcpConnector() *Connector {
-	return &Connector{
+func NewTcpConnector() *TcpConnector {
+	return &TcpConnector{
 		opts: net.TcpOptions{
 			ReadTimeout:  time.Second * 30,
 			WriteTimeout: time.Second * 10,
@@ -32,10 +32,10 @@ func NewTcpConnector() *Connector {
 	}
 }
 
-func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) error {
+func (c *TcpConnector) DialServe(srcConnCtx context.Context, link *net.Connection) error {
 	assert.MustTrue(link.Destination.Network == net.Network_TCP, "dest network is not tcp, was: %s", link.Destination.Network)
 	assert.MustTrue(link.Destination.Address.Family().IsIP(), "dest addr is not an ip, was: %s", link.Destination.Address.String())
-	srcConn := link.TCPConn
+	srcConn := link.TCPConn()
 	dstConn, err := stdnet.DialTCP("tcp", nil, &stdnet.TCPAddr{IP: link.Destination.Address.IP(), Port: int(link.Destination.Port)})
 	if err != nil {
 		return fmt.Errorf("tcp-dial: %w", err)

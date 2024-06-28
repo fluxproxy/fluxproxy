@@ -3,6 +3,7 @@ package net
 import (
 	"context"
 	"io"
+	"net"
 )
 
 type Connection struct {
@@ -26,4 +27,8 @@ func (c Connection) WithDestination(dest Destination) Connection {
 		ReadWriter:  c.ReadWriter,
 		UserContext: c.UserContext,
 	}
+}
+
+func (c Connection) TCPConn() *net.TCPConn {
+	return c.ReadWriter.(*net.TCPConn)
 }

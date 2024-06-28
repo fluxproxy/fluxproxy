@@ -5,8 +5,8 @@ import (
 	"fluxway/internal"
 	"fluxway/proxy"
 	"fluxway/proxy/route"
+	"fluxway/proxy/socket"
 	"fluxway/proxy/socks"
-	"fluxway/proxy/tcp"
 )
 
 var (
@@ -33,7 +33,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	serverOpts := s.Options()
 	listener := socks.NewSocksListener()
 	router := route.NewProxyRouter()
-	connector := tcp.NewTcpConnector()
+	connector := socket.NewTcpConnector()
 	s.SetServerType(proxy.ServerType_SOCKS5)
 	s.SetListener(listener)
 	s.SetRouter(router)

@@ -1,4 +1,4 @@
-package udp
+package socket
 
 import (
 	"fluxway/internal"
@@ -7,15 +7,15 @@ import (
 )
 
 var (
-	_ proxy.Listener = (*Listener)(nil)
+	_ proxy.Listener = (*UdpListener)(nil)
 )
 
-type Listener struct {
+type UdpListener struct {
 	*internal.UdpListener
 }
 
-func NewUdpListener() *Listener {
-	return &Listener{
+func NewUdpListener() *UdpListener {
+	return &UdpListener{
 		UdpListener: internal.NewUdpListener("udp", net.DefaultUdpOptions()),
 	}
 }

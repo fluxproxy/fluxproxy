@@ -18,8 +18,6 @@ var (
 	_ proxy.Listener = (*Listener)(nil)
 )
 
-type socks5Handler func(context.Context, io.Writer, *socks5.Request) error
-
 type Listener struct {
 	*internal.TcpListener
 	socks *socks5.Server
@@ -45,7 +43,7 @@ func (t *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 	})
 }
 
-func (t *Listener) newSocksHandler(cmd byte, handler proxy.ListenerHandler) socks5Handler {
+func (t *Listener) newSocksHandler(cmd byte, handler proxy.ListenerHandler) func(context.Context, io.Writer, *socks5.Request) error {
 	return func(connCtx context.Context, w io.Writer, r *socks5.Request) error {
 		switch cmd {
 		case statute.CommandConnect:

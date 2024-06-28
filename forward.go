@@ -7,8 +7,7 @@ import (
 	"fluxway/net"
 	"fluxway/proxy"
 	"fluxway/proxy/route"
-	"fluxway/proxy/tcp"
-	"fluxway/proxy/udp"
+	"fluxway/proxy/socket"
 	"fmt"
 	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
@@ -58,14 +57,14 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	}
 	switch network {
 	case net.Network_UDP:
-		listener = udp.NewUdpListener()
+		listener = socket.NewUdpListener()
 		router = route.NewStaticRouter(dest)
-		connector = udp.NewUdpConnector()
+		connector = socket.NewUdpConnector()
 		s.SetServerType(proxy.ServerType_RAWUDP)
 	case net.Network_TCP:
-		listener = tcp.NewTcpListener()
+		listener = socket.NewTcpListener()
 		router = route.NewStaticRouter(dest)
-		connector = tcp.NewTcpConnector()
+		connector = socket.NewTcpConnector()
 		s.SetServerType(proxy.ServerType_RAWTCP)
 	default:
 		return fmt.Errorf("forward unsupport network: %s", s.options.Network)

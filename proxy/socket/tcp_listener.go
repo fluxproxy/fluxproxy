@@ -1,4 +1,4 @@
-package tcp
+package socket
 
 import (
 	"fluxway/internal"
@@ -7,15 +7,15 @@ import (
 )
 
 var (
-	_ proxy.Listener = (*Listener)(nil)
+	_ proxy.Listener = (*TcpListener)(nil)
 )
 
-type Listener struct {
+type TcpListener struct {
 	*internal.TcpListener
 }
 
-func NewTcpListener() *Listener {
-	return &Listener{
+func NewTcpListener() *TcpListener {
+	return &TcpListener{
 		TcpListener: internal.NewTcpListener("tcp", net.DefaultTcpOptions()),
 	}
 }
