@@ -78,32 +78,34 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 				return fmt.Errorf("%s listen accept: %w", t.tag, aErr)
 			}
 		}
-		go func(tcpConn *stdnet.TCPConn) {
-			defer func() {
-				if rErr := recover(); rErr != nil {
-					logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
-				}
-			}()
-			// Set tcp conn options
-			defer helper.Close(tcpConn)
-			if err := net.SetTcpOptions(tcpConn, t.tcpOpts); err != nil {
-				logrus.Errorf("%s set conn options: %s", t.tag, err)
-				return
-			}
-			// Next
-			connCtx, connCancel := context.WithCancel(serveCtx)
-			defer connCancel()
-			connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
-			hErr := handler(connCtx, net.Connection{
-				Network:     t.Network(),
-				Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-				ReadWriter:  tcpConn,
-				UserContext: context.Background(),
-				Destination: net.DestinationNotset,
-			})
-			if hErr != nil {
-				proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
-			}
-		}(conn.(*stdnet.TCPConn))
+		go t.handle(serveCtx, conn.(*stdnet.TCPConn), handler)
+	}
+}
+
+func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, handler proxy.ListenerHandler) {
+	defer func() {
+		if rErr := recover(); rErr != nil {
+			logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
+		}
+	}()
+	// Set tcp conn options
+	defer helper.Close(tcpConn)
+	if err := net.SetTcpOptions(tcpConn, t.tcpOpts); err != nil {
+		logrus.Errorf("%s set conn options: %s", t.tag, err)
+		return
+	}
+	// Next
+	connCtx, connCancel := context.WithCancel(serveCtx)
+	defer connCancel()
+	connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
+	hErr := handler(connCtx, net.Connection{
+		Network:     t.Network(),
+		Address:     net.IPAddress((tcpConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+		ReadWriter:  tcpConn,
+		UserContext: context.Background(),
+		Destination: net.DestinationNotset,
+	})
+	if hErr != nil {
+		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }

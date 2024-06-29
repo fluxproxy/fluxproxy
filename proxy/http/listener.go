@@ -80,14 +80,14 @@ func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFu
 		removeHopByHopHeaders(r.Header)
 
 		if r.Method == http.MethodConnect {
-			l.handshakeConnectStream(rw, r, handler)
+			l.handleConnectStream(rw, r, handler)
 		} else {
-			l.handshakePlainHttp(rw, r, handler)
+			l.handlePlainRequest(rw, r, handler)
 		}
 	}
 }
 
-func (l *Listener) handshakeConnectStream(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
 	connCtx, connCancel := context.WithCancel(r.Context())
 	defer connCancel()
 	// Hijacker
@@ -131,7 +131,7 @@ func (l *Listener) handshakeConnectStream(rw http.ResponseWriter, r *http.Reques
 	}
 }
 
-func (l *Listener) handshakePlainHttp(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
 	defer helper.Close(r.Body)
 
 	if r.URL.Host == "" || !r.URL.IsAbs() {

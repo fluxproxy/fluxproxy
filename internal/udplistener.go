@@ -42,7 +42,7 @@ func (t *UdpListener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandler) error {
+func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
 	listener, lErr := ionet.ListenUDP("udp", addr)
@@ -64,32 +64,33 @@ func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandle
 				return fmt.Errorf("%s listen read: %w", t.tag, aErr)
 			}
 		}
-		go func() {
-			defer func() {
-				if rErr := recover(); rErr != nil {
-					logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
-				}
-			}()
-			// Next
-			connCtx, connCancel := context.WithCancel(serveCtx)
-			defer connCancel()
-			connCtx = SetupUdpContextLogger(serveCtx, srcAddr)
-			hErr := next(connCtx, net.Connection{
-				Network:     t.Network(),
-				Address:     net.IPAddress(srcAddr.IP),
-				UserContext: context.Background(),
-				ReadWriter: &wrapper{
-					reader: bytes.NewReader(buffer[:n]),
-					writer: func(b []byte) (_ int, _ error) {
-						return listener.WriteToUDP(b, srcAddr)
-					},
-				},
-				Destination: net.DestinationNotset,
-			})
-			if hErr != nil {
-				proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
-			}
-		}()
+		go t.handle(serveCtx, listener, srcAddr, bytes.NewReader(buffer[:n]), handler)
+	}
+}
+
+func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, reader io.Reader,
+	handler proxy.ListenerHandler) {
+	defer func() {
+		if rErr := recover(); rErr != nil {
+			logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
+		}
+	}()
+	// Next
+	connCtx := SetupUdpContextLogger(ctx, srcAddr)
+	hErr := handler(connCtx, net.Connection{
+		Network:     t.Network(),
+		Address:     net.IPAddress(srcAddr.IP),
+		UserContext: context.Background(),
+		ReadWriter: &wrapper{
+			reader: reader,
+			writer: func(b []byte) (_ int, _ error) {
+				return listener.WriteToUDP(b, srcAddr)
+			},
+		},
+		Destination: net.DestinationNotset,
+	})
+	if hErr != nil {
+		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }
 
