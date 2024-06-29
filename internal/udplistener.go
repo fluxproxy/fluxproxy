@@ -45,9 +45,9 @@ func (t *UdpListener) Init(options proxy.ListenerOptions) error {
 func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandler) error {
 	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
-	listener, err := ionet.ListenUDP("udp", addr)
-	if err != nil {
-		return fmt.Errorf("failed to listen udp address %s %w", addr, err)
+	listener, lErr := ionet.ListenUDP("udp", addr)
+	if lErr != nil {
+		return fmt.Errorf("failed to listen udp address %s %w", addr, lErr)
 	}
 	go func() {
 		<-serveCtx.Done()
@@ -55,39 +55,39 @@ func (t *UdpListener) Listen(serveCtx context.Context, next proxy.ListenerHandle
 	}()
 	for {
 		var buffer = make([]byte, 1024*32)
-		n, srcAddr, rerr := listener.ReadFromUDP(buffer)
-		if rerr != nil {
+		n, srcAddr, aErr := listener.ReadFromUDP(buffer)
+		if aErr != nil {
 			select {
 			case <-serveCtx.Done():
-				return nil
+				return serveCtx.Err()
 			default:
+				return fmt.Errorf("%s listen read: %w", t.tag, aErr)
 			}
-			return fmt.Errorf("%s listen read: %w", t.tag, err)
 		}
 		go func() {
 			defer func() {
-				if err := recover(); err != nil {
-					logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, err, string(debug.Stack()))
+				if rErr := recover(); rErr != nil {
+					logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 				}
 			}()
 			// Next
 			connCtx, connCancel := context.WithCancel(serveCtx)
 			defer connCancel()
 			connCtx = SetupUdpContextLogger(serveCtx, srcAddr)
-			err := next(connCtx, net.Connection{
+			hErr := next(connCtx, net.Connection{
 				Network:     t.Network(),
 				Address:     net.IPAddress(srcAddr.IP),
 				UserContext: context.Background(),
 				ReadWriter: &wrapper{
 					reader: bytes.NewReader(buffer[:n]),
-					writer: func(b []byte) (n int, err error) {
+					writer: func(b []byte) (_ int, _ error) {
 						return listener.WriteToUDP(b, srcAddr)
 					},
 				},
 				Destination: net.DestinationNotset,
 			})
-			if err != nil {
-				proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, err)
+			if hErr != nil {
+				proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 			}
 		}()
 	}

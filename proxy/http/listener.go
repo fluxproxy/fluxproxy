@@ -58,11 +58,11 @@ func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 			return serveCtx
 		},
 		ConnContext: func(ctx context.Context, conn stdnet.Conn) context.Context {
-			return internal.SetupTcpContextLogger(serveCtx, conn.(*net.TCPConn))
+			return internal.SetupTcpContextLogger(ctx, conn.(*net.TCPConn))
 		},
 	}
-	defer func() {
-		logrus.Infof("http listen stop, address: %s", addr)
+	go func() {
+		<-serveCtx.Done()
 		_ = server.Shutdown(serveCtx)
 	}()
 	if l.isHttps {

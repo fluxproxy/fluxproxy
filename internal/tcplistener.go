@@ -1,9 +1,11 @@
 package internal
 
 import (
+	"errors"
 	"fluxway/helper"
 	"fluxway/proxy"
 	"runtime/debug"
+	"time"
 )
 
 import (
@@ -43,28 +45,43 @@ func (t *TcpListener) Init(options proxy.ListenerOptions) error {
 func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := &stdnet.TCPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
-	listener, err := stdnet.ListenTCP("tcp", addr)
-	if err != nil {
-		return fmt.Errorf("failed to listen tcp address %s %w", addr, err)
+	listener, lErr := stdnet.ListenTCP("tcp", addr)
+	if lErr != nil {
+		return fmt.Errorf("failed to listen tcp address %s %w", addr, lErr)
 	}
 	go func() {
 		<-serveCtx.Done()
 		_ = listener.Close()
 	}()
+	var tempDelay time.Duration
 	for {
-		conn, err := listener.Accept()
-		if err != nil {
+		conn, aErr := listener.Accept()
+		if aErr != nil {
 			select {
 			case <-serveCtx.Done():
-				return nil
+				return serveCtx.Err()
 			default:
+				var netErr net.Error
+				if errors.As(aErr, &netErr) && netErr.Temporary() {
+					if tempDelay == 0 {
+						tempDelay = 5 * time.Millisecond
+					} else {
+						tempDelay *= 2
+					}
+					if maxDuration := 1 * time.Second; tempDelay > maxDuration {
+						tempDelay = maxDuration
+					}
+					logrus.Errorf("http: Accept error: %v; retrying in %v", aErr, tempDelay)
+					time.Sleep(tempDelay)
+					continue
+				}
+				return fmt.Errorf("%s listen accept: %w", t.tag, aErr)
 			}
-			return fmt.Errorf("%s listen accept: %w", t.tag, err)
 		}
 		go func(tcpConn *stdnet.TCPConn) {
 			defer func() {
-				if err := recover(); err != nil {
-					logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, err, string(debug.Stack()))
+				if rErr := recover(); rErr != nil {
+					logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 				}
 			}()
 			// Set tcp conn options
@@ -77,15 +94,15 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 			connCtx, connCancel := context.WithCancel(serveCtx)
 			defer connCancel()
 			connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
-			err := handler(connCtx, net.Connection{
+			hErr := handler(connCtx, net.Connection{
 				Network:     t.Network(),
 				Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 				ReadWriter:  tcpConn,
 				UserContext: context.Background(),
 				Destination: net.DestinationNotset,
 			})
-			if err != nil {
-				proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, err)
+			if hErr != nil {
+				proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 			}
 		}(conn.(*stdnet.TCPConn))
 	}

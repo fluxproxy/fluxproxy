@@ -2,10 +2,13 @@ package fluxway
 
 import (
 	"context"
+	"errors"
 	"fluxway/helper"
 	"fluxway/proxy"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"io"
+	"net/http"
 	"sync"
 )
 
@@ -135,16 +138,23 @@ func (i *Instance) Serve(runCtx context.Context) error {
 	if len(i.servers) == 0 {
 		return fmt.Errorf("servers is required")
 	}
-	errors := make(chan error, len(i.servers))
+	servErrors := make(chan error, len(i.servers))
 	for _, server := range i.servers {
 		i.await.Add(1)
 		go func(server proxy.Server) {
-			errors <- server.Serve(runCtx)
+			if err := server.Serve(runCtx);
+				errors.Is(err, io.EOF) ||
+					errors.Is(err, context.Canceled) ||
+					errors.Is(err, http.ErrServerClosed) {
+				servErrors <- nil
+			} else {
+				servErrors <- err
+			}
 			i.await.Done()
 		}(server)
 	}
 	select {
-	case err := <-errors:
+	case err := <-servErrors:
 		return i.term(err)
 	case <-runCtx.Done():
 		return i.term(nil)
