@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"github.com/bytepowered/goes"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"runtime/debug"
@@ -79,7 +80,9 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 				return fmt.Errorf("%s listen accept: %w", t.tag, aErr)
 			}
 		}
-		go t.handle(serveCtx, conn.(*stdnet.TCPConn), handler)
+		goes.Go(func() {
+			t.handle(serveCtx, conn.(*stdnet.TCPConn), handler)
+		})
 	}
 }
 

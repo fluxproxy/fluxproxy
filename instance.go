@@ -4,17 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytepowered/goes"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
+	"runtime/debug"
 	"sync"
 )
 
+func init() {
+	goes.SetPanicHandler(func(ctx context.Context, r interface{}) {
+		logrus.Errorf("goroutine panic %v: %s", r, debug.Stack())
+	})
+}
+
 type Instance struct {
-	//instCtx       context.Context
-	//instCtxCancel context.CancelFunc
 	servers []proxy.Server
 	await   sync.WaitGroup
 }
