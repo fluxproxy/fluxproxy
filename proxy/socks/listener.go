@@ -3,14 +3,14 @@ package socks
 import "C"
 import (
 	"context"
-	"fluxway/internal"
-	"fluxway/net"
-	"fluxway/proxy"
 	"fmt"
 	"github.com/things-go/go-socks5"
 	"github.com/things-go/go-socks5/statute"
 	"io"
 	stdnet "net"
+	"rocket/internal"
+	"rocket/net"
+	"rocket/proxy"
 	"strings"
 )
 

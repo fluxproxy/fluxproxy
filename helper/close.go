@@ -1,8 +1,8 @@
 package helper
 
 import (
-	"fluxway/net"
 	"io"
+	"net"
 	"time"
 )
 

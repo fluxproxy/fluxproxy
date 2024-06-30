@@ -2,10 +2,10 @@ package internal
 
 import (
 	"context"
-	"fluxway/net"
-	"fluxway/proxy"
 	"github.com/hashicorp/go-uuid"
 	"github.com/sirupsen/logrus"
+	"rocket/net"
+	"rocket/proxy"
 )
 
 func SetupTcpContextLogger(ctx context.Context, conn *net.TCPConn) context.Context {

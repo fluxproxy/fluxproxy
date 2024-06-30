@@ -3,12 +3,12 @@ package internal
 import (
 	"bytes"
 	"context"
-	"fluxway/net"
-	"fluxway/proxy"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"io"
 	ionet "net"
+	"rocket/net"
+	"rocket/proxy"
 	"runtime/debug"
 )
 

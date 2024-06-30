@@ -2,14 +2,14 @@ package main
 
 import (
 	"context"
-	"fluxway"
-	"fluxway/helper"
-	"fluxway/proxy"
 	"fmt"
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/sirupsen/logrus"
+	"rocket"
+	"rocket/helper"
+	"rocket/proxy"
 )
 
 // Configuration
@@ -23,11 +23,11 @@ func runAsFullServer(runCtx context.Context, args []string) error {
 }
 
 func runAsForwardServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, fluxway.ServerModeForward)
+	return runCommandAs(runCtx, args, rocket.ServerModeForward)
 }
 
 func runAsProxyServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, fluxway.ServerModeProxy)
+	return runCommandAs(runCtx, args, rocket.ServerModeProxy)
 }
 
 func runCommandAs(runCtx context.Context, args []string, serverMode string) error {
@@ -41,7 +41,7 @@ func runCommandAs(runCtx context.Context, args []string, serverMode string) erro
 	}
 	// Instance
 	runCtx = context.WithValue(runCtx, proxy.CtxKeyConfiger, k)
-	inst := fluxway.NewInstance()
+	inst := rocket.NewInstance()
 	if err := inst.Init(runCtx, serverMode); err != nil {
 		return fmt.Errorf("main: instance start: %w", err)
 	}

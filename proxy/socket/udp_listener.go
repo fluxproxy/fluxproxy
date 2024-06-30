@@ -1,9 +1,9 @@
 package socket
 
 import (
-	"fluxway/internal"
-	"fluxway/net"
-	"fluxway/proxy"
+	"rocket/internal"
+	"rocket/net"
+	"rocket/proxy"
 )
 
 var (

@@ -1,13 +1,13 @@
-package fluxway
+package rocket
 
 import (
 	"context"
-	"fluxway/internal"
-	"fluxway/proxy"
-	"fluxway/proxy/route"
-	"fluxway/proxy/socket"
-	"fluxway/proxy/socks"
 	"github.com/sirupsen/logrus"
+	"rocket/internal"
+	"rocket/proxy"
+	"rocket/proxy/route"
+	"rocket/proxy/socket"
+	"rocket/proxy/socks"
 )
 
 var (

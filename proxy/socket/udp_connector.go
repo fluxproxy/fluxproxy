@@ -2,9 +2,9 @@ package socket
 
 import (
 	"context"
-	"fluxway/net"
-	"fluxway/proxy"
 	"github.com/bytepowered/assert-go"
+	"rocket/net"
+	"rocket/proxy"
 )
 
 var (

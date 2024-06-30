@@ -1,4 +1,4 @@
-module fluxway
+module rocket
 
 go 1.18
 
