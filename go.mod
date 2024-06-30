@@ -5,15 +5,15 @@ go 1.18
 require (
 	github.com/bytepowered/assert-go v1.0.2
 	github.com/bytepowered/cache v0.3.0
+	github.com/bytepowered/goes v1.0.0
 	github.com/cristalhq/acmd v0.12.0
 	github.com/hashicorp/go-uuid v1.0.3
 	github.com/knadh/koanf v1.5.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/things-go/go-socks5 v0.0.5
+	github.com/stretchr/testify v1.9.0
 )
 
 require (
-	github.com/bytepowered/goes v1.0.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect

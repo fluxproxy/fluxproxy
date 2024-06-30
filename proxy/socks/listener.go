@@ -2,13 +2,14 @@ package socks
 
 import "C"
 import (
+	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
-	"github.com/things-go/go-socks5"
-	"github.com/things-go/go-socks5/statute"
+	"github.com/rocketmanapp/rocket-proxy/proxy/socks/v5"
 	"io"
 	stdnet "net"
 	"strings"
@@ -20,56 +21,59 @@ var (
 
 type Listener struct {
 	*internal.TcpListener
-	socks *socks5.Server
 }
 
 func NewSocksListener() *Listener {
 	return &Listener{
 		TcpListener: internal.NewTcpListener("socks", net.DefaultTcpOptions()),
-		socks:       nil,
 	}
 }
 
 func (t *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
-	t.socks = socks5.NewServer(
-		socks5.WithConnectHandle(t.newSocksHandler(statute.CommandConnect, handler)),
-		socks5.WithBindHandle(t.newSocksHandler(statute.CommandBind, handler)),
-		socks5.WithAssociateHandle(t.newSocksHandler(statute.CommandAssociate, handler)),
-		socks5.WithRewriter(nil), // Ensure: no rewrite default
-		socks5.WithResolver(nil), // Ensure: no resolve default
-	)
 	return t.TcpListener.Listen(serveCtx, func(connCtx context.Context, conn net.Connection) error {
-		return t.socks.ServeConn(connCtx, conn.TCPConn())
+		return t.handle(connCtx, conn.TCPConn(), handler)
 	})
 }
 
-func (t *Listener) newSocksHandler(cmd byte, handler proxy.ListenerHandler) func(context.Context, io.Writer, *socks5.Request) error {
-	return func(connCtx context.Context, w io.Writer, r *socks5.Request) error {
-		switch cmd {
-		case statute.CommandConnect:
-			return t.handleConnect(connCtx, w, r, handler)
-		case statute.CommandAssociate:
-			return t.handleAssociate(connCtx, w, r, handler)
-		case statute.CommandBind:
-			return t.handleBind(connCtx, w, r, handler)
-		default:
-			return t.handleNotSupported(connCtx, w, r)
+func (t *Listener) handle(connCtx context.Context, conn net.Conn, handler proxy.ListenerHandler) error {
+	bufConn := bufio.NewReader(conn)
+	if method, err := v5.ParseMethodRequest(bufConn); err != nil {
+		return err
+	} else if method.Ver != v5.VersionSocks5 {
+		return v5.ErrNotSupportVersion
+	}
+	request, err := v5.ParseRequest(bufConn)
+	if err != nil {
+		if errors.Is(err, v5.ErrUnrecognizedAddrType) {
+			if err := send(conn, v5.RepAddrTypeNotSupported, nil); err != nil {
+				return fmt.Errorf("failed to send reply %w", err)
+			}
 		}
+		return fmt.Errorf("failed to read destination address, %w", err)
+	}
+	switch request.Command {
+	case v5.CommandConnect:
+		return t.handleConnect(connCtx, conn, request, handler)
+	case v5.CommandAssociate:
+		return t.handleAssociate(connCtx, conn, request, handler)
+	case v5.CommandBind:
+		return t.handleBind(connCtx, conn, request, handler)
+	default:
+		return t.handleNotSupported(connCtx, conn, request)
 	}
 }
 
-func (t *Listener) handleConnect(connCtx context.Context, w io.Writer, r *socks5.Request, next proxy.ListenerHandler) error {
-	var conn = w.(net.Conn)
+func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Request, next proxy.ListenerHandler) error {
 	// Send success
-	if err := socks5.SendReply(w, statute.RepSuccess, conn.LocalAddr()); err != nil {
+	if err := send(conn, v5.RepSuccess, conn.LocalAddr()); err != nil {
 		return fmt.Errorf("socks send reply: %w", err)
 	}
 	// Next
 	var destAddr net.Address
-	if r.DestAddr.FQDN != "" {
-		destAddr = net.DomainAddress(r.DestAddr.FQDN)
+	if r.DstAddr.FQDN != "" {
+		destAddr = net.DomainAddress(r.DstAddr.FQDN)
 	} else {
-		destAddr = net.IPAddress(r.DestAddr.IP)
+		destAddr = net.IPAddress(r.DstAddr.IP)
 	}
 	err := next(connCtx, net.Connection{
 		Network:     t.Network(),
@@ -79,19 +83,19 @@ func (t *Listener) handleConnect(connCtx context.Context, w io.Writer, r *socks5
 		Destination: net.Destination{
 			Network: net.Network_TCP,
 			Address: destAddr,
-			Port:    net.Port(r.DestAddr.Port),
+			Port:    net.Port(r.DstAddr.Port),
 		},
 	})
 	// Complete
 	if err != nil {
 		msg := err.Error()
-		resp := statute.RepHostUnreachable
+		resp := v5.RepHostUnreachable
 		if strings.Contains(msg, "refused") {
-			resp = statute.RepConnectionRefused
+			resp = v5.RepConnectionRefused
 		} else if strings.Contains(msg, "network is unreachable") {
-			resp = statute.RepNetworkUnreachable
+			resp = v5.RepNetworkUnreachable
 		}
-		if err := socks5.SendReply(w, resp, conn.LocalAddr()); err != nil {
+		if err := send(conn, resp, conn.LocalAddr()); err != nil {
 			return fmt.Errorf("socks send reply, %v", err)
 		}
 		return err
@@ -100,17 +104,17 @@ func (t *Listener) handleConnect(connCtx context.Context, w io.Writer, r *socks5
 	}
 }
 
-func (t *Listener) handleAssociate(connCtx context.Context, w io.Writer, r *socks5.Request, handler proxy.ListenerHandler) error {
+func (t *Listener) handleAssociate(connCtx context.Context, w io.Writer, r v5.Request, handler proxy.ListenerHandler) error {
 	return t.handleNotSupported(connCtx, w, r)
 }
 
-func (t *Listener) handleBind(connCtx context.Context, w io.Writer, r *socks5.Request, _ proxy.ListenerHandler) error {
+func (t *Listener) handleBind(connCtx context.Context, w io.Writer, r v5.Request, _ proxy.ListenerHandler) error {
 	return t.handleNotSupported(connCtx, w, r)
 }
 
-func (t *Listener) handleNotSupported(_ context.Context, w io.Writer, req *socks5.Request) error {
-	if err := socks5.SendReply(w, statute.RepCommandNotSupported, nil); err != nil {
+func (t *Listener) handleNotSupported(_ context.Context, w io.Writer, r v5.Request) error {
+	if err := send(w, v5.RepCommandNotSupported, nil); err != nil {
 		return fmt.Errorf("socks send reply: %w", err)
 	}
-	return fmt.Errorf("socks unsupported command: %v", req.Command)
+	return fmt.Errorf("socks unsupported command: %v", r.Command)
 }
