@@ -49,6 +49,7 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 	if lErr != nil {
 		return fmt.Errorf("failed to listen tcp address %s %w", addr, lErr)
 	}
+	_ = listener.SetDeadline(time.Time{})
 	go func() {
 		<-serveCtx.Done()
 		_ = listener.Close()
@@ -90,8 +91,8 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 	}()
 	// Set tcp conn options
 	defer helper.Close(tcpConn)
-	if err := net.SetTcpConnOptions(tcpConn, t.tcpOpts); err != nil {
-		logrus.Errorf("%s set conn options: %s", t.tag, err)
+	if oErr := net.SetTcpConnOptions(tcpConn, t.tcpOpts); oErr != nil {
+		logrus.Errorf("%s set conn options: %s", t.tag, oErr)
 		return
 	}
 	// Next
@@ -105,7 +106,7 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		UserContext: context.Background(),
 		Destination: net.DestinationNotset,
 	})
-	if hErr != nil {
+	if hErr != nil && !helper.IsConnectionClosed(hErr) {
 		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }

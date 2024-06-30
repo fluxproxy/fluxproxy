@@ -13,16 +13,16 @@ forward:
   rules:
     - description: "forward-udp-9999-to-127.0.0.1-1234"
       network: tcp
-      port: 9999
+      port: 8886
       disabled: false
       destination:
         address: "127.0.0.1"
-        port: 1234
+        port: 8888
 
     - description: "forward-udp-8888-to-127.0.0.1-1235"
       network: udp
-      port: 8888
+      port: 8887
       disabled: false
       destination:
         address: "127.0.0.1"
-        port: 1235
+        port: 8888

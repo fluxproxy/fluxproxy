@@ -4,20 +4,18 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	"io"
 	ionet "net"
 	"runtime/debug"
+	"time"
 )
 
 var (
 	_ proxy.Listener = (*UdpListener)(nil)
-)
-
-var (
-	udpBuffer = NewByteBufferPool(1024 * 32)
 )
 
 type UdpListener struct {
@@ -53,12 +51,13 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 	if lErr != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, lErr)
 	}
+	_ = listener.SetDeadline(time.Time{})
 	go func() {
 		<-serveCtx.Done()
 		_ = listener.Close()
 	}()
 	for {
-		var buffer = udpBuffer.Get()
+		buffer := make([]byte, 1024*32)
 		n, srcAddr, aErr := listener.ReadFromUDP(buffer)
 		if aErr != nil {
 			select {
@@ -69,7 +68,6 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 			}
 		}
 		go func() {
-			defer udpBuffer.Put(buffer)
 			t.handle(serveCtx, listener, srcAddr, buffer[:n], handler)
 		}()
 	}
@@ -96,7 +94,7 @@ func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr
 		},
 		Destination: net.DestinationNotset,
 	})
-	if hErr != nil {
+	if hErr != nil && !helper.IsConnectionClosed(hErr) {
 		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }
