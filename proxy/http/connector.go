@@ -2,11 +2,11 @@ package http
 
 import (
 	"context"
+	"github.com/rocketmanapp/rocket-proxy/helper"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"io"
 	"net/http"
-	"rocket/helper"
-	"rocket/net"
-	"rocket/proxy"
 	"strings"
 	"time"
 )

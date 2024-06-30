@@ -2,7 +2,7 @@ package proxy
 
 import (
 	"context"
-	"rocket/net"
+	"github.com/rocketmanapp/rocket-proxy/net"
 )
 
 //// Server Type

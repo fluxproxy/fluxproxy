@@ -6,10 +6,10 @@ import (
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
+	"github.com/rocketmanapp/rocket-proxy"
+	"github.com/rocketmanapp/rocket-proxy/helper"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
-	"rocket"
-	"rocket/helper"
-	"rocket/proxy"
 )
 
 // Configuration

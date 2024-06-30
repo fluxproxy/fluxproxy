@@ -2,7 +2,7 @@ package route
 
 import (
 	"context"
-	"rocket/net"
+	"github.com/rocketmanapp/rocket-proxy/net"
 )
 
 //// Static target router

@@ -3,8 +3,8 @@ package socket
 import (
 	"context"
 	"github.com/bytepowered/assert-go"
-	"rocket/net"
-	"rocket/proxy"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 )
 
 var (

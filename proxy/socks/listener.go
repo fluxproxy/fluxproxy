@@ -4,13 +4,13 @@ import "C"
 import (
 	"context"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy/internal"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/things-go/go-socks5"
 	"github.com/things-go/go-socks5/statute"
 	"io"
 	stdnet "net"
-	"rocket/internal"
-	"rocket/net"
-	"rocket/proxy"
 	"strings"
 )
 

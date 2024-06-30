@@ -3,12 +3,12 @@ package rocket
 import (
 	"context"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
+	"github.com/rocketmanapp/rocket-proxy/proxy/http"
+	"github.com/rocketmanapp/rocket-proxy/proxy/route"
+	"github.com/rocketmanapp/rocket-proxy/proxy/socket"
 	"github.com/sirupsen/logrus"
-	"rocket/net"
-	"rocket/proxy"
-	"rocket/proxy/http"
-	"rocket/proxy/route"
-	"rocket/proxy/socket"
 )
 
 var (

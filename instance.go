@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy/helper"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
-	"rocket/helper"
-	"rocket/proxy"
 	"sync"
 )
 

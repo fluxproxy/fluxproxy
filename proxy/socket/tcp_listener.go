@@ -1,9 +1,9 @@
 package socket
 
 import (
-	"rocket/internal"
-	"rocket/net"
-	"rocket/proxy"
+	"github.com/rocketmanapp/rocket-proxy/internal"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 )
 
 var (

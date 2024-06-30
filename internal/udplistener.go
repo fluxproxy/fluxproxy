@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	"io"
 	ionet "net"
-	"rocket/net"
-	"rocket/proxy"
 	"runtime/debug"
 )
 

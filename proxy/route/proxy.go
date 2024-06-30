@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/assert-go"
-	"rocket/net"
-	"rocket/proxy"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 )
 
 //// 由客户端指定代理目标地址的路由器

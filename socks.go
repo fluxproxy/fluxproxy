@@ -2,11 +2,11 @@ package rocket
 
 import (
 	"context"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
+	"github.com/rocketmanapp/rocket-proxy/proxy/route"
+	"github.com/rocketmanapp/rocket-proxy/proxy/socket"
+	"github.com/rocketmanapp/rocket-proxy/proxy/socks"
 	"github.com/sirupsen/logrus"
-	"rocket/proxy"
-	"rocket/proxy/route"
-	"rocket/proxy/socket"
-	"rocket/proxy/socks"
 )
 
 var (

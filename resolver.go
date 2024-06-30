@@ -3,8 +3,8 @@ package rocket
 import (
 	"context"
 	"github.com/bytepowered/cache"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"net"
-	"rocket/proxy"
 	"time"
 )
 

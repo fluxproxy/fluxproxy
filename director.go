@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/assert-go"
+	"github.com/rocketmanapp/rocket-proxy/helper"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	stdnet "net"
-	"rocket/helper"
-	"rocket/net"
-	"rocket/proxy"
 	"strings"
 )
 

@@ -1,4 +1,4 @@
-module rocket
+module github.com/rocketmanapp/rocket-proxy
 
 go 1.18
 

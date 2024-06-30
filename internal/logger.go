@@ -3,9 +3,9 @@ package internal
 import (
 	"context"
 	"github.com/hashicorp/go-uuid"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
-	"rocket/net"
-	"rocket/proxy"
 )
 
 func SetupTcpContextLogger(ctx context.Context, conn *net.TCPConn) context.Context {

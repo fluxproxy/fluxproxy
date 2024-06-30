@@ -2,8 +2,8 @@ package internal
 
 import (
 	"errors"
-	"rocket/helper"
-	"rocket/proxy"
+	"github.com/rocketmanapp/rocket-proxy/helper"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"runtime/debug"
 	"time"
 )
@@ -11,9 +11,9 @@ import (
 import (
 	"context"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
-	"rocket/net"
 )
 
 type TcpListener struct {

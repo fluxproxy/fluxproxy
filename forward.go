@@ -4,12 +4,12 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/assert-go"
+	"github.com/rocketmanapp/rocket-proxy/common"
+	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/rocketmanapp/rocket-proxy/proxy"
+	"github.com/rocketmanapp/rocket-proxy/proxy/route"
+	"github.com/rocketmanapp/rocket-proxy/proxy/socket"
 	"github.com/sirupsen/logrus"
-	"rocket/common"
-	"rocket/net"
-	"rocket/proxy"
-	"rocket/proxy/route"
-	"rocket/proxy/socket"
 )
 
 var (
