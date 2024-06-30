@@ -75,13 +75,12 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 
 func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, data []byte,
 	handler proxy.ListenerHandler) {
+	connCtx := SetupUdpContextLogger(ctx, srcAddr)
 	defer func() {
 		if rErr := recover(); rErr != nil {
-			logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
+			proxy.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 		}
 	}()
-	// Next
-	connCtx := SetupUdpContextLogger(ctx, srcAddr)
 	hErr := handler(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress(srcAddr.IP),

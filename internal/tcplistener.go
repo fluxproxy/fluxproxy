@@ -84,21 +84,21 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 }
 
 func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, handler proxy.ListenerHandler) {
+	connCtx, connCancel := context.WithCancel(serveCtx)
+	defer connCancel()
+	connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
 	defer func() {
 		if rErr := recover(); rErr != nil {
-			logrus.Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
+			proxy.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 		}
 	}()
 	// Set tcp conn options
 	defer helper.Close(tcpConn)
 	if oErr := net.SetTcpConnOptions(tcpConn, t.tcpOpts); oErr != nil {
-		logrus.Errorf("%s set conn options: %s", t.tag, oErr)
+		proxy.Logger(connCtx).Errorf("%s set conn options: %s", t.tag, oErr)
 		return
 	}
 	// Next
-	connCtx, connCancel := context.WithCancel(serveCtx)
-	defer connCancel()
-	connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
 	hErr := handler(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress((tcpConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
