@@ -1,4 +1,4 @@
-package internal
+package rocket
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func NewDNSResolver() *DNSResolver {
 	}
 }
 
-func (d DNSResolver) Resolve(_ context.Context, name string) (net.IP, error) {
+func (d *DNSResolver) Resolve(_ context.Context, name string) (net.IP, error) {
 	ipv, err := d.cached.GetOrLoad(name, func(_ interface{}) (cache.Expirable, error) {
 		addr, err := net.ResolveIPAddr("ip", name)
 		if err != nil {

@@ -3,7 +3,6 @@ package rocket
 import (
 	"context"
 	"github.com/sirupsen/logrus"
-	"rocket/internal"
 	"rocket/proxy"
 	"rocket/proxy/route"
 	"rocket/proxy/socket"
@@ -38,7 +37,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetServerType(proxy.ServerType_SOCKS5)
 	s.SetListener(listener)
 	s.SetRouter(router)
-	s.SetResolver(internal.NewDNSResolver())
+	s.SetResolver(NewDNSResolver())
 	s.SetConnector(connector)
 	return listener.Init(proxy.ListenerOptions{
 		Address: serverOpts.Bind,

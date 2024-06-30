@@ -54,7 +54,7 @@ func (c *TcpConnector) DialServe(srcConnCtx context.Context, link *net.Connectio
 	}
 	errors := make(chan error, 2)
 	copier := func(_ context.Context, name string, from, to net.Conn) {
-		errors <- net.Copier(from, to)
+		errors <- helper.Copier(from, to)
 	}
 	go copier(dstCtx, "src-to-dest", srcConn, dstConn)
 	go copier(dstCtx, "dest-to-src", dstConn, srcConn)

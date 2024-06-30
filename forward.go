@@ -6,7 +6,6 @@ import (
 	"github.com/bytepowered/assert-go"
 	"github.com/sirupsen/logrus"
 	"rocket/common"
-	"rocket/internal"
 	"rocket/net"
 	"rocket/proxy"
 	"rocket/proxy/route"
@@ -71,7 +70,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	}
 	s.SetListener(listener)
 	s.SetRouter(router)
-	s.SetResolver(internal.NewDNSResolver())
+	s.SetResolver(NewDNSResolver())
 	s.SetConnector(connector)
 	// 初始化
 	assert.MustTrue(network == listener.Network(), "server network is not match listener, was: %s", listener.Network())

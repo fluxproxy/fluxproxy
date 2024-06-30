@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/sirupsen/logrus"
-	"rocket/internal"
 	"rocket/net"
 	"rocket/proxy"
 	"rocket/proxy/http"
@@ -45,7 +44,7 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	s.SetServerType(proxy.ServerType_HTTPS)
 	s.SetListener(listener)
 	s.SetRouter(router)
-	s.SetResolver(internal.NewDNSResolver())
+	s.SetResolver(NewDNSResolver())
 	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:
