@@ -30,11 +30,11 @@ func IsConnectionClosed(err error) bool {
 		return true
 	}
 	i := 0
-	var newerr = &err
-	for opError, ok := (*newerr).(*net.OpError); ok && i < 10; {
+	var newErr = &err
+	for opError, ok := (*newErr).(*net.OpError); ok && i < 10; {
 		i++
-		newerr = &opError.Err
-		if syscallError, ok := (*newerr).(*os.SyscallError); ok {
+		newErr = &opError.Err
+		if syscallError, ok := (*newErr).(*os.SyscallError); ok {
 			if syscallError.Err == syscall.EPIPE || syscallError.Err == syscall.ECONNRESET || syscallError.Err == syscall.EPROTOTYPE {
 				return true
 			}

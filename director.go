@@ -7,6 +7,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
+	"io"
 	stdnet "net"
 	"strings"
 )
@@ -90,9 +91,9 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		}
 		// Route
 		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.serverType)
-		routed, err := s.router.Route(connCtx, &conn)
-		if err != nil {
-			return fmt.Errorf("server route: %w", err)
+		routed, rErr := s.router.Route(connCtx, &conn)
+		if rErr != nil {
+			return fmt.Errorf("server route: %w", rErr)
 		}
 		destNetwork := routed.Destination.Network
 		destAddr := routed.Destination.Address
@@ -101,8 +102,8 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		// ---- resolve dest addr
 		if destNetwork == net.Network_TCP || destNetwork == net.Network_UDP {
 			if destAddr.Family().IsDomain() {
-				if ip, err := s.resolver.Resolve(connCtx, destAddr.Domain()); err != nil {
-					return fmt.Errorf("server resolve: %w", err)
+				if ip, sErr := s.resolver.Resolve(connCtx, destAddr.Domain()); sErr != nil {
+					return fmt.Errorf("server resolve: %w", sErr)
 				} else {
 					routed.Destination.Address = net.IPAddress(ip)
 				}
@@ -111,10 +112,22 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		// Connect
 		connector, ok := s.selector(&routed)
 		assert.MustTrue(ok, "connector not found, network: %s", destNetwork)
-		if err := connector.DialServe(connCtx, &routed); err != nil && helper.IsConnectionClosed(err) {
+		if dErr := connector.DialServe(connCtx, &routed); dErr == nil {
+			return nil
+		} else if helper.IsConnectionClosed(dErr) {
 			return nil
 		} else {
-			return err
+			msg := dErr.Error()
+			if strings.Contains(msg, "use of closed network connection") {
+				return io.EOF
+			}
+			if strings.Contains(msg, "i/o timeout") {
+				return io.EOF
+			}
+			if strings.Contains(msg, "connection reset by peer") {
+				return io.EOF
+			}
+			return dErr
 		}
 	})
 }
