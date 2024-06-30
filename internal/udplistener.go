@@ -16,6 +16,10 @@ var (
 	_ proxy.Listener = (*UdpListener)(nil)
 )
 
+var (
+	udpBuffer = NewByteBufferPool(1024 * 32)
+)
+
 type UdpListener struct {
 	tag     string
 	options proxy.ListenerOptions
@@ -54,7 +58,7 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 		_ = listener.Close()
 	}()
 	for {
-		var buffer = make([]byte, 1024*32)
+		var buffer = udpBuffer.Get()
 		n, srcAddr, aErr := listener.ReadFromUDP(buffer)
 		if aErr != nil {
 			select {
@@ -64,11 +68,14 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 				return fmt.Errorf("%s listen read: %w", t.tag, aErr)
 			}
 		}
-		go t.handle(serveCtx, listener, srcAddr, bytes.NewReader(buffer[:n]), handler)
+		go func() {
+			defer udpBuffer.Put(buffer)
+			t.handle(serveCtx, listener, srcAddr, buffer[:n], handler)
+		}()
 	}
 }
 
-func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, reader io.Reader,
+func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, data []byte,
 	handler proxy.ListenerHandler) {
 	defer func() {
 		if rErr := recover(); rErr != nil {
@@ -82,7 +89,7 @@ func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr
 		Address:     net.IPAddress(srcAddr.IP),
 		UserContext: context.Background(),
 		ReadWriter: &wrapper{
-			reader: reader,
+			reader: bytes.NewReader(data),
 			writer: func(b []byte) (_ int, _ error) {
 				return listener.WriteToUDP(b, srcAddr)
 			},
