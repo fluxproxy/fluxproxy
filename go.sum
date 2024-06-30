@@ -31,6 +31,8 @@ github.com/bytepowered/cache v0.3.0 h1:3uWRQ7DJZ/jLbLnAWQV0F2TaJDZ8CqOzFAIt7b+PP
 github.com/bytepowered/cache v0.3.0/go.mod h1:LtakMd/bUm/IS2juhxIewuM+cvkp3v8OIBjbcSkDY1E=
 github.com/bytepowered/go-socks5 v0.0.7 h1:i1GBisE/CpEXJ8FgS3TF8/NGJAYC3JklauoHEJXk5dQ=
 github.com/bytepowered/go-socks5 v0.0.7/go.mod h1:4OQe4ySJBf3ZPOC9fCSimnLQlA+qAnECmeyPqEzwZLs=
+github.com/bytepowered/goes v1.0.0 h1:eOgFFj48qHpG5ISqHmrTWMeyyhVKqsQ9cn/VRrKdgtY=
+github.com/bytepowered/goes v1.0.0/go.mod h1:D+zs7XEyJLtRVdQYZIJQEZH58NMWKvZOSFlM7zyq7gU=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=

@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/bytepowered/goes"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	"io"
-	ionet "net"
+	stdnet "net"
 	"runtime/debug"
 	"time"
 )
@@ -44,9 +45,9 @@ func (t *UdpListener) Init(options proxy.ListenerOptions) error {
 }
 
 func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
-	addr := &ionet.UDPAddr{IP: ionet.ParseIP(t.options.Address), Port: t.options.Port}
+	addr := &stdnet.UDPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
-	listener, lErr := ionet.ListenUDP("udp", addr)
+	listener, lErr := stdnet.ListenUDP("udp", addr)
 	if lErr != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, lErr)
 	}
@@ -66,10 +67,9 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 				return fmt.Errorf("%s listen read: %w", t.tag, aErr)
 			}
 		}
-		// TODO go pool
-		go func() {
+		goes.Go(func() {
 			t.handle(serveCtx, listener, srcAddr, buffer[:n], handler)
-		}()
+		})
 	}
 }
 
