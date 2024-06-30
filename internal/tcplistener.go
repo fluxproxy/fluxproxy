@@ -90,7 +90,7 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 	}()
 	// Set tcp conn options
 	defer helper.Close(tcpConn)
-	if err := net.SetTcpOptions(tcpConn, t.tcpOpts); err != nil {
+	if err := net.SetTcpConnOptions(tcpConn, t.tcpOpts); err != nil {
 		logrus.Errorf("%s set conn options: %s", t.tag, err)
 		return
 	}

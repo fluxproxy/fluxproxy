@@ -8,7 +8,6 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	stdnet "net"
-	"time"
 )
 
 var (
@@ -21,14 +20,7 @@ type TcpConnector struct {
 
 func NewTcpConnector() *TcpConnector {
 	return &TcpConnector{
-		opts: net.TcpOptions{
-			ReadTimeout:  time.Second * 30,
-			WriteTimeout: time.Second * 10,
-			ReadBuffer:   1024,
-			WriteBuffer:  1024,
-			NoDelay:      true,
-			KeepAlive:    time.Second * 10,
-		},
+		opts: net.DefaultTcpOptions(),
 	}
 }
 
@@ -41,7 +33,7 @@ func (c *TcpConnector) DialServe(srcConnCtx context.Context, link *net.Connectio
 		return fmt.Errorf("tcp-dial: %w", err)
 	}
 	defer helper.Close(dstConn)
-	if err := net.SetTcpOptions(dstConn, c.opts); err != nil {
+	if err := net.SetTcpConnOptions(dstConn, c.opts); err != nil {
 		return fmt.Errorf("tcp-dial: set options: %w", err)
 	}
 	dstCtx, dstCancel := context.WithCancel(srcConnCtx)

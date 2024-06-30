@@ -6,14 +6,14 @@ import (
 	"time"
 )
 
-func Close(v any) {
-	if v == nil {
+func Close(c io.Closer) {
+	if c == nil {
 		return
 	}
-	if c, ok := v.(io.Closer); ok {
+	if conn, ok := c.(net.Conn); ok {
+		closeConn(conn)
+	} else {
 		closeCloser(c)
-	} else if n, ok := v.(net.Conn); ok {
-		closeConn(n)
 	}
 }
 

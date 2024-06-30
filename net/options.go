@@ -6,27 +6,23 @@ import (
 )
 
 type TcpOptions struct {
-	NoDelay      bool          `json:"no_delay"`
-	KeepAlive    time.Duration `json:"keep_alive"`
-	Linger       int           `json:"linger"`
-	ReadTimeout  time.Duration `json:"read_timeout"`
-	WriteTimeout time.Duration `json:"write_timeout"`
-	ReadBuffer   int           `json:"read_buffer"`
-	WriteBuffer  int           `json:"write_buffer"`
+	NoDelay     bool          `json:"no_delay"`
+	KeepAlive   time.Duration `json:"keep_alive"`
+	Linger      int           `json:"linger"`
+	ReadBuffer  int           `json:"read_buffer"`
+	WriteBuffer int           `json:"write_buffer"`
 }
 
 func DefaultTcpOptions() TcpOptions {
 	return TcpOptions{
-		ReadTimeout:  0,
-		WriteTimeout: 0,
-		ReadBuffer:   1024,
-		WriteBuffer:  1024,
-		NoDelay:      true,
-		KeepAlive:    time.Second * 10,
+		ReadBuffer:  1024 * 32,
+		WriteBuffer: 1024 * 32,
+		NoDelay:     true,
+		KeepAlive:   time.Second * 10,
 	}
 }
 
-func SetTcpOptions(conn net.Conn, opts TcpOptions) error {
+func SetTcpConnOptions(conn net.Conn, opts TcpOptions) error {
 	if tcpConn, ok := conn.(*net.TCPConn); ok {
 		// No delay
 		if err := tcpConn.SetNoDelay(opts.NoDelay); err != nil {
@@ -67,8 +63,32 @@ func SetTcpOptions(conn net.Conn, opts TcpOptions) error {
 //// UDP
 
 type UdpOptions struct {
+	ReadBuffer  int `json:"read_buffer"`
+	WriteBuffer int `json:"write_buffer"`
 }
 
 func DefaultUdpOptions() UdpOptions {
-	return UdpOptions{}
+	return UdpOptions{
+		ReadBuffer:  1024 * 32,
+		WriteBuffer: 1024 * 32,
+	}
+}
+
+func SetUdpConnOptions(conn net.Conn, opts UdpOptions) error {
+	if udpConn, ok := conn.(*net.UDPConn); ok {
+		// Read buffer
+		if opts.ReadBuffer > 0 {
+			if err := udpConn.SetReadBuffer(opts.ReadBuffer); err != nil {
+				return err
+			}
+		}
+		// Write buffer
+		if opts.WriteBuffer > 0 {
+			if err := udpConn.SetWriteBuffer(opts.WriteBuffer); err != nil {
+				return err
+			}
+		}
+	}
+	// Deadline defaults
+	return conn.SetDeadline(time.Time{})
 }
