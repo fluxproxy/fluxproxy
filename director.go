@@ -7,7 +7,6 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
-	"io"
 	stdnet "net"
 	"strings"
 )
@@ -119,13 +118,13 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		} else {
 			msg := dErr.Error()
 			if strings.Contains(msg, "use of closed network connection") {
-				return io.EOF
+				return nil
 			}
 			if strings.Contains(msg, "i/o timeout") {
-				return io.EOF
+				return nil
 			}
 			if strings.Contains(msg, "connection reset by peer") {
-				return io.EOF
+				return nil
 			}
 			return dErr
 		}

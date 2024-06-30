@@ -106,7 +106,7 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		UserContext: context.Background(),
 		Destination: net.DestinationNotset,
 	})
-	if hErr != nil && !helper.IsConnectionClosed(hErr) {
+	if hErr != nil {
 		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }

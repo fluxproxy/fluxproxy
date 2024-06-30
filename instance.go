@@ -143,9 +143,11 @@ func (i *Instance) Serve(runCtx context.Context) error {
 		i.await.Add(1)
 		go func(server proxy.Server) {
 			if err := server.Serve(runCtx);
-				errors.Is(err, io.EOF) ||
+				err == nil ||
+					errors.Is(err, io.EOF) ||
 					errors.Is(err, context.Canceled) ||
-					errors.Is(err, http.ErrServerClosed) {
+					errors.Is(err, http.ErrServerClosed) ||
+					helper.IsConnectionClosed(err) {
 				servErrors <- nil
 			} else {
 				servErrors <- err

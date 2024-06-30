@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
@@ -67,6 +66,7 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 				return fmt.Errorf("%s listen read: %w", t.tag, aErr)
 			}
 		}
+		// TODO go pool
 		go func() {
 			t.handle(serveCtx, listener, srcAddr, buffer[:n], handler)
 		}()
@@ -94,7 +94,7 @@ func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr
 		},
 		Destination: net.DestinationNotset,
 	})
-	if hErr != nil && !helper.IsConnectionClosed(hErr) {
+	if hErr != nil {
 		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }
