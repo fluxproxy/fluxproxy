@@ -32,7 +32,7 @@ func main() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	r := acmd.RunnerOf(cmds, acmd.Config{
-		AppName: "fluxway",
+		AppName: "rocket-proxy",
 		Version: "2024.1",
 		Context: cmdCtx,
 	})
