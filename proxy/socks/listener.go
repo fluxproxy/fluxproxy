@@ -118,3 +118,34 @@ func (t *Listener) handleNotSupported(_ context.Context, w io.Writer, r v5.Reque
 	}
 	return fmt.Errorf("socks unsupported command: %v", r.Command)
 }
+
+func send(w io.Writer, rep uint8, bindAddr net.Addr) error {
+	reply := v5.Reply{
+		Version:  v5.VersionSocks5,
+		Response: rep,
+		BndAddr: v5.AddrSpec{
+			AddrType: v5.ATYPIPv4,
+			IP:       stdnet.IPv4zero,
+			Port:     0,
+		},
+	}
+	if reply.Response == v5.RepSuccess {
+		if tcpAddr, ok := bindAddr.(*net.TCPAddr); ok && tcpAddr != nil {
+			reply.BndAddr.IP = tcpAddr.IP
+			reply.BndAddr.Port = tcpAddr.Port
+		} else if udpAddr, ok := bindAddr.(*net.UDPAddr); ok && udpAddr != nil {
+			reply.BndAddr.IP = udpAddr.IP
+			reply.BndAddr.Port = udpAddr.Port
+		} else {
+			reply.Response = v5.RepAddrTypeNotSupported
+		}
+
+		if reply.BndAddr.IP.To4() != nil {
+			reply.BndAddr.AddrType = v5.ATYPIPv4
+		} else if reply.BndAddr.IP.To16() != nil {
+			reply.BndAddr.AddrType = v5.ATYPIPv6
+		}
+	}
+	_, err := w.Write(reply.Bytes())
+	return err
+}
