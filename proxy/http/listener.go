@@ -115,9 +115,10 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	// Next
 	addr, port, _ := parseHostToAddress(r.URL.Host)
 	hErr := next(connCtx, net.Connection{
-		Network:    l.Network(),
-		Address:    net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		ReadWriter: hijConn.(*net.TCPConn),
+		Network:     l.Network(),
+		Address:     net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+		ReadWriter:  hijConn.(*net.TCPConn),
+		UserContext: setWithUserContext(context.Background(), rw, r),
 		Destination: net.Destination{
 			Network: net.Network_TCP,
 			Address: addr,
