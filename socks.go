@@ -37,7 +37,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetServerType(proxy.ServerType_SOCKS)
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(NewDNSResolver())
+	s.SetResolver(NewDNSResolverWith(ctx))
 	s.SetConnector(connector)
 	return socksListener.Init(proxy.ListenerOptions{
 		Address: serverOpts.Bind,

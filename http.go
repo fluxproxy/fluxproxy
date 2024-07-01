@@ -44,7 +44,7 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	s.SetServerType(proxy.ServerType_HTTP)
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(NewDNSResolver())
+	s.SetResolver(NewDNSResolverWith(ctx))
 	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:

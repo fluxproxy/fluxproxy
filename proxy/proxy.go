@@ -56,5 +56,5 @@ type Router interface {
 
 // Resolver 域名解析器
 type Resolver interface {
-	Resolve(ctx context.Context, name string) (net.IP, error)
+	Resolve(ctx context.Context, addr net.Address) (net.IP, error)
 }

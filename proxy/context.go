@@ -13,8 +13,6 @@ const (
 	CtxKeyHookDialPhased
 )
 
-// Logger
-
 func SetContextLogger(ctx context.Context, id string, logger *logrus.Entry) context.Context {
 	return context.WithValue(context.WithValue(ctx, CtxKeyID, id), CtxKeyLogger, logger)
 }

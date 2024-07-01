@@ -6,14 +6,15 @@ import (
 	"github.com/knadh/koanf/v2"
 )
 
-// Utils
-
-func UnmarshalConfig(ctx context.Context, path string, out any) error {
-	k, ok := ctx.Value(CtxKeyConfiger).(*koanf.Koanf)
-	if !ok {
-		panic("Configer 'Koanf' is not in context.")
+func Configer(ctx context.Context) *koanf.Koanf {
+	if v, ok := ctx.Value(CtxKeyConfiger).(*koanf.Koanf); ok {
+		return v
 	}
-	if err := k.UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
+	panic("Configer is not in context.")
+}
+
+func ConfigUnmarshalWith(ctx context.Context, path string, out any) error {
+	if err := Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
 		return fmt.Errorf("unmarshal %s config: %w", path, err)
 	}
 	return nil

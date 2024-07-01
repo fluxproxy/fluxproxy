@@ -13,6 +13,14 @@ server:
   # Socks代理端口
   socks_port: 1081
 
+# DNS配置
+dns:
+  cache_size: 10000
+  cache_ttl: 60
+  hosts:
+    #示例 domain: ip
+    "fake.domain.com": "127.0.0.1"
+
 # Http/https 代理服务配置
 http:
   disabled: false

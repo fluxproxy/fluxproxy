@@ -7,6 +7,14 @@ server:
   # 绑定地址，默认： 0.0.0.0
   bind: "0.0.0.0"
 
+# DNS配置
+dns:
+  cache_size: 10000
+  cache_ttl: 60
+  hosts:
+    #示例 domain: ip
+    "fake.domain.com": "127.0.0.1"
+
 # 端口转发器
 forward:
   # 转发规则列表

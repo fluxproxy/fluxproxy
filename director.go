@@ -109,14 +109,10 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		// ---- check router values
 		assert.MustTrue(routed.Destination.IsValid(), "routed destination is invalid")
 		// ---- resolve dest addr
-		if destNetwork == net.Network_TCP || destNetwork == net.Network_UDP {
-			if destAddr.Family().IsDomain() {
-				if ip, sErr := s.resolver.Resolve(connCtx, destAddr.Domain()); sErr != nil {
-					return fmt.Errorf("server resolve: %w", sErr)
-				} else {
-					routed.Destination.Address = net.IPAddress(ip)
-				}
-			}
+		if ip, sErr := s.resolver.Resolve(connCtx, destAddr); sErr != nil {
+			return fmt.Errorf("server resolve: %w", sErr)
+		} else {
+			routed.Destination.Address = net.IPAddress(ip)
 		}
 		// Connect
 		connector, ok := s.selector(&routed)

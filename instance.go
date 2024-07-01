@@ -34,7 +34,7 @@ func NewInstance() *Instance {
 func (i *Instance) Init(runCtx context.Context, startAsMode string) error {
 	// 解析配置
 	var serverOpts ServerOptions
-	if err := proxy.UnmarshalConfig(runCtx, "server", &serverOpts); err != nil {
+	if err := proxy.ConfigUnmarshalWith(runCtx, "server", &serverOpts); err != nil {
 		return err
 	}
 	// 指定运行模式
@@ -82,7 +82,7 @@ func (i *Instance) Init(runCtx context.Context, startAsMode string) error {
 
 func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts ServerOptions, isRequired bool) error {
 	var forwardOpts ForwardRootOptions
-	if err := proxy.UnmarshalConfig(runCtx, "forward", &forwardOpts); err != nil {
+	if err := proxy.ConfigUnmarshalWith(runCtx, "forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
 	if len(forwardOpts.Rules) == 0 && isRequired {
@@ -103,7 +103,7 @@ func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts ServerOpt
 		return false, nil
 	}
 	var socksOpts SocksOptions
-	if err := proxy.UnmarshalConfig(runCtx, "socks", &socksOpts); err != nil {
+	if err := proxy.ConfigUnmarshalWith(runCtx, "socks", &socksOpts); err != nil {
 		return false, fmt.Errorf("unmarshal socks options: %w", err)
 	}
 	if socksOpts.Disabled {
@@ -117,7 +117,7 @@ func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts ServerOpt
 func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts ServerOptions) (bool, error) {
 	buildServer := func(serverOpts ServerOptions, isHttps bool) error {
 		var httpOpts HttpOptions
-		if err := proxy.UnmarshalConfig(runCtx, "http", &httpOpts); err != nil {
+		if err := proxy.ConfigUnmarshalWith(runCtx, "http", &httpOpts); err != nil {
 			return fmt.Errorf("unmarshal http options: %w", err)
 		}
 		if httpOpts.Disabled {
