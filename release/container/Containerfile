@@ -9,7 +9,7 @@ COPY --from=builder /etc/group /etc/group
 COPY --from=builder /tmp /tmp
 COPY --from=builder /dev /dev
 
-COPY ./ /opt/fluxway/
+COPY ./ /opt/rocket-proxy/
 
-ENTRYPOINT [ "/opt/fluxway/bin/fluxway" ]
-CMD [ "run", "/etc/fluxway/config.yml" ]
+ENTRYPOINT [ "/opt/rocket-proxy/bin/rocket-proxy" ]
+CMD [ "run", "/etc/rocket-proxy/config.yml" ]
