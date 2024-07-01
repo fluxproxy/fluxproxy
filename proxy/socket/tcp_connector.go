@@ -3,7 +3,7 @@ package socket
 import (
 	"context"
 	"fmt"
-	"github.com/bytepowered/assert-go"
+	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"

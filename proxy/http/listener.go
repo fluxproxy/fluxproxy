@@ -3,7 +3,7 @@ package http
 import (
 	"context"
 	"crypto/tls"
-	"github.com/bytepowered/assert-go"
+	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/net"

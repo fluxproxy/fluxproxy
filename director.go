@@ -3,8 +3,7 @@ package rocket
 import (
 	"context"
 	"fmt"
-	"github.com/bytepowered/assert-go"
-	"github.com/rocketmanapp/rocket-proxy/helper"
+	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	stdnet "net"
@@ -50,24 +49,29 @@ func (s *DirectServer) Options() ServerOptions {
 }
 
 func (s *DirectServer) SetListener(listener proxy.Listener) {
+	assert.MustNotNil(listener, "listener is nil")
 	s.listener = listener
 }
 
 func (s *DirectServer) SetRouter(router proxy.Router) {
+	assert.MustNotNil(router, "router is nil")
 	s.router = router
 }
 
 func (s *DirectServer) SetResolver(resolver proxy.Resolver) {
+	assert.MustNotNil(resolver, "resolver is nil")
 	s.resolver = resolver
 }
 
 func (s *DirectServer) SetConnector(c proxy.Connector) {
+	assert.MustNotNil(c, "connector is nil")
 	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
 		return c, true
 	})
 }
 
 func (s *DirectServer) SetConnectorSelector(f proxy.ConnectorSelector) {
+	assert.MustNotNil(f, "connector-selector is nil")
 	s.selector = f
 }
 
@@ -78,6 +82,7 @@ func (s *DirectServer) SetServerType(serverType proxy.ServerType) {
 func (s *DirectServer) Serve(servContext context.Context) error {
 	assert.MustNotNil(s.listener, "server listener is nil")
 	assert.MustNotNil(s.router, "server router is nil")
+	assert.MustNotNil(s.resolver, "server resolver is nil")
 	assert.MustNotNil(s.selector, "server connector-selector is nil")
 	return s.listener.Listen(servContext, func(connCtx context.Context, conn net.Connection) error {
 		// Assert
@@ -92,11 +97,11 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.serverType)
 		routed, rErr := s.router.Route(connCtx, &conn)
 		if rErr != nil {
-			return fmt.Errorf("server route: %w", rErr)
+			return fmt.Errorf("server router: %w", rErr)
 		}
 		destNetwork := routed.Destination.Network
 		destAddr := routed.Destination.Address
-		// ---- check route values
+		// ---- check router values
 		assert.MustTrue(routed.Destination.IsValid(), "routed destination is invalid")
 		// ---- resolve dest addr
 		if destNetwork == net.Network_TCP || destNetwork == net.Network_UDP {
@@ -112,8 +117,6 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		connector, ok := s.selector(&routed)
 		assert.MustTrue(ok, "connector not found, network: %s", destNetwork)
 		if dErr := connector.DialServe(connCtx, &routed); dErr == nil {
-			return nil
-		} else if helper.IsConnectionClosed(dErr) {
 			return nil
 		} else {
 			msg := dErr.Error()

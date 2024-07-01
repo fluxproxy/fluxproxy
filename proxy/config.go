@@ -3,7 +3,7 @@ package proxy
 import (
 	"context"
 	"fmt"
-	"github.com/knadh/koanf"
+	"github.com/knadh/koanf/v2"
 )
 
 // Utils

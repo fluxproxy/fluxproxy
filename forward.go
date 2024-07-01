@@ -3,11 +3,11 @@ package rocket
 import (
 	"context"
 	"fmt"
-	"github.com/bytepowered/assert-go"
+	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy/common"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
-	"github.com/rocketmanapp/rocket-proxy/proxy/route"
+	"github.com/rocketmanapp/rocket-proxy/proxy/router"
 	"github.com/rocketmanapp/rocket-proxy/proxy/socket"
 	"github.com/sirupsen/logrus"
 )
@@ -47,7 +47,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	logrus.Infof("forward: init: %s:%s:%d, desc: %s", s.options.Network, s.Options().Bind, s.options.Port, s.options.Description)
 	// 构建服务组件
 	var listener proxy.Listener = nil
-	var router proxy.Router = nil
+	var proxyRouter proxy.Router = nil
 	var connector proxy.Connector = nil
 	network := net.ParseNetwork(s.options.Network)
 	dest, err := parseDestinationWith(network, s.options.Destination)
@@ -57,19 +57,19 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	switch network {
 	case net.Network_UDP:
 		listener = socket.NewUdpListener()
-		router = route.NewStaticRouter(dest)
+		proxyRouter = router.NewStaticRouter(dest)
 		connector = socket.NewUdpConnector()
 		s.SetServerType(proxy.ServerType_RAWUDP)
 	case net.Network_TCP:
 		listener = socket.NewTcpListener()
-		router = route.NewStaticRouter(dest)
+		proxyRouter = router.NewStaticRouter(dest)
 		connector = socket.NewTcpConnector()
 		s.SetServerType(proxy.ServerType_RAWTCP)
 	default:
 		return fmt.Errorf("forward unsupport network: %s", s.options.Network)
 	}
 	s.SetListener(listener)
-	s.SetRouter(router)
+	s.SetRouter(proxyRouter)
 	s.SetResolver(NewDNSResolver())
 	s.SetConnector(connector)
 	// 初始化
