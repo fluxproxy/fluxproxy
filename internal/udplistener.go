@@ -32,7 +32,7 @@ func NewUdpListener(tag string, udpOpts net.UdpOptions) *UdpListener {
 }
 
 func (t *UdpListener) ServerType() proxy.ServerType {
-	return proxy.ServerType_RAWUDP
+	return proxy.ServerType_UDP
 }
 
 func (t *UdpListener) Network() net.Network {

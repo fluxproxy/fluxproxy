@@ -41,7 +41,7 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	proxyRouter := router.NewProxyRouter()
 	tcpConnector := socket.NewTcpConnector()
 	hstrConnector := http.NewHrtpConnector()
-	s.SetServerType(proxy.ServerType_HTTPS)
+	s.SetServerType(proxy.ServerType_HTTP)
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(NewDNSResolver())

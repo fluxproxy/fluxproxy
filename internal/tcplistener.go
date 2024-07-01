@@ -31,7 +31,7 @@ func NewTcpListener(tag string, tcpOpts net.TcpOptions) *TcpListener {
 }
 
 func (t *TcpListener) ServerType() proxy.ServerType {
-	return proxy.ServerType_RAWTCP
+	return proxy.ServerType_TCP
 }
 
 func (t *TcpListener) Network() net.Network {

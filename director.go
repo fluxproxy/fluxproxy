@@ -96,7 +96,7 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 		}
 		// Log duration
 		defer func(start time.Time) {
-			proxy.Logger(connCtx).Infof("%s conn duration: %dms", s.serverType, time.Since(start).Milliseconds())
+			proxy.Logger(connCtx).Infof("%s: conn duration: %dms", s.serverType, time.Since(start).Milliseconds())
 		}(time.Now())
 		// Route
 		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.serverType)
