@@ -21,8 +21,12 @@ jobs:
       with:
         go-version: '1.20'
 
-    - name: Build
-      run: go build -v ./...
+    - name: Build Darwin x86
+      run: GOOS=darwin GOARCH=amd64 go build -v -o rocket-proxy_darwin_x86 ./../../cmd/*.go
+      
+    - name: Build Linux x86
+      run: GOOS=linux GOARCH=amd64 go build -v -o rocket-proxy_linux_x86 ./../../cmd/*.go
 
     - name: Test
-      run: go test -v ./...
+      run: go test -v ./../../
+
