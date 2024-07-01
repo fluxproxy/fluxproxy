@@ -35,10 +35,21 @@ func runCommandAs(runCtx context.Context, args []string, serverMode string) erro
 	if len(args) > 0 {
 		confpath = args[0]
 	}
-	logrus.Infof("main: load config file: %s", confpath)
 	if err := k.Load(file.Provider(confpath), yaml.Parser()); err != nil {
 		return fmt.Errorf("load config file %s: %w", confpath, err)
 	}
+	switch k.String("log.format") {
+	case "json":
+		logrus.SetFormatter(&logrus.JSONFormatter{})
+	default:
+		logrus.SetFormatter(&logrus.TextFormatter{
+			DisableColors:    false,
+			DisableTimestamp: false,
+			FullTimestamp:    true,
+		})
+	}
+	logrus.SetReportCaller(false)
+	logrus.Infof("main: load config file: %s", confpath)
 	// Instance
 	runCtx = context.WithValue(runCtx, proxy.CtxKeyConfiger, k)
 	inst := rocket.NewInstance()
