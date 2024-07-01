@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var (
@@ -75,9 +74,6 @@ func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 
 func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		defer func(start time.Time) {
-			proxy.Logger(r.Context()).Infof("http: %s %s, elapsed: %s", r.Method, r.RequestURI, time.Since(start))
-		}(time.Now())
 		proxy.Logger(r.Context()).Infof("http: %s %s", r.Method, r.RequestURI)
 
 		// Auth: nop

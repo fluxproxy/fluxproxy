@@ -8,6 +8,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/proxy"
 	stdnet "net"
 	"strings"
+	"time"
 )
 
 const (
@@ -93,6 +94,10 @@ func (s *DirectServer) Serve(servContext context.Context) error {
 			_, isTcpConn := conn.ReadWriter.(*stdnet.TCPConn)
 			assert.MustNotNil(isTcpConn, "conn read-writer is not type of *net.TCPConn")
 		}
+		// Log duration
+		defer func(start time.Time) {
+			proxy.Logger(connCtx).Infof("%s conn duration: %dms", s.serverType, time.Since(start).Milliseconds())
+		}(time.Now())
 		// Route
 		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, s.serverType)
 		routed, rErr := s.router.Route(connCtx, &conn)
