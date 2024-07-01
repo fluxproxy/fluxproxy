@@ -1,6 +1,5 @@
 package socks
 
-import "C"
 import (
 	"bufio"
 	"context"

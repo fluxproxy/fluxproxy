@@ -1,6 +1,5 @@
 package net
 
-import "C"
 import "net"
 
 var (
