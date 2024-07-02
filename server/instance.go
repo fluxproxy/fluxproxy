@@ -5,28 +5,20 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/assert"
-	"github.com/bytepowered/goes"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
-	"runtime/debug"
 	"strings"
 	"sync"
 )
 
 const (
-	ServerModeAuto    string = "auto"
-	ServerModeProxy   string = "proxy"
-	ServerModeForward string = "forward"
+	RunServerModeAuto    string = "auto"
+	RunServerModeProxy   string = "proxy"
+	RunServerModeForward string = "forward"
 )
-
-func init() {
-	goes.SetPanicHandler(func(ctx context.Context, r interface{}) {
-		logrus.Errorf("goroutine panic %v: %s", r, debug.Stack())
-	})
-}
 
 type Instance struct {
 	servers []rocket.Server
@@ -47,18 +39,18 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 	}
 	// 指定运行模式
 	if serverMode == "" {
-		serverOpts.Mode = ServerModeAuto
+		serverOpts.Mode = RunServerModeAuto
 	}
 	logrus.Info("inst: run as server mode: ", serverMode)
 	// 检测运行模式
 	assertServerModeValid(serverOpts.Mode)
 	// 启动服务端
-	if helper.ContainsAnyString(serverOpts.Mode, ServerModeForward, ServerModeAuto) {
-		if err := i.buildForwardServer(runCtx, serverOpts, serverOpts.Mode == ServerModeForward); err != nil {
+	if helper.ContainsAnyString(serverOpts.Mode, RunServerModeForward, RunServerModeAuto) {
+		if err := i.buildForwardServer(runCtx, serverOpts, serverOpts.Mode == RunServerModeForward); err != nil {
 			return err
 		}
 	}
-	if helper.ContainsAnyString(serverOpts.Mode, ServerModeProxy, ServerModeAuto) {
+	if helper.ContainsAnyString(serverOpts.Mode, RunServerModeProxy, RunServerModeAuto) {
 		var found = false
 		// Socks server
 		if ok, err := i.buildSocksServer(runCtx, serverOpts); err != nil {
@@ -72,7 +64,7 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 		} else if ok {
 			found = ok
 		}
-		if serverOpts.Mode == ServerModeProxy && !found {
+		if serverOpts.Mode == RunServerModeProxy && !found {
 			return fmt.Errorf("proxy servers not found")
 		}
 	}
@@ -185,7 +177,7 @@ func (i *Instance) term(err error) error {
 func assertServerModeValid(mode string) {
 	valid := false
 	switch strings.ToLower(mode) {
-	case ServerModeForward, ServerModeAuto, ServerModeProxy:
+	case RunServerModeForward, RunServerModeAuto, RunServerModeProxy:
 		valid = true
 	default:
 		valid = false

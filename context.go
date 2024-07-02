@@ -5,12 +5,16 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-const (
-	CtxKeyID uint32 = iota
-	CtxKeyLogger
-	CtxKeyConfiger
-	CtxKeyServerType
-	CtxKeyHookDialPhased
+type contextKey struct {
+	key string
+}
+
+var (
+	CtxKeyID                 = contextKey{key: "ctx-key-id"}
+	CtxKeyLogger             = contextKey{key: "ctx-key-logger"}
+	CtxKeyConfiger           = contextKey{key: "ctx-key-configer"}
+	CtxKeyServerType         = contextKey{key: "ctx-key-server-type"}
+	CtxKeyHookFuncDialPhased = contextKey{key: "ctx-key-hook-func-dial-phased"}
 )
 
 func SetContextLogger(ctx context.Context, id string, logger *logrus.Entry) context.Context {
@@ -41,11 +45,11 @@ func RequiredID(ctx context.Context) string {
 // Hooks
 
 func ContextWithHookFuncDialPhased(ctx context.Context, v HookFunc) context.Context {
-	return context.WithValue(ctx, CtxKeyHookDialPhased, v)
+	return context.WithValue(ctx, CtxKeyHookFuncDialPhased, v)
 }
 
 func HookFuncDialPhased(ctx context.Context) HookFunc {
-	if v, ok := ctx.Value(CtxKeyHookDialPhased).(HookFunc); ok {
+	if v, ok := ctx.Value(CtxKeyHookFuncDialPhased).(HookFunc); ok {
 		return v
 	}
 	return nil

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/bytepowered/goes"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
@@ -10,6 +11,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/server"
 	"github.com/sirupsen/logrus"
+	"runtime/debug"
 )
 
 // Configuration
@@ -18,16 +20,22 @@ var k = koanf.NewWithConf(koanf.Conf{
 	StrictMerge: true,
 })
 
+func init() {
+	goes.SetPanicHandler(func(ctx context.Context, r interface{}) {
+		logrus.Errorf("goroutine panic %v: %s", r, debug.Stack())
+	})
+}
+
 func runAsAutoServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, server.ServerModeAuto)
+	return runCommandAs(runCtx, args, server.RunServerModeAuto)
 }
 
 func runAsForwardServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, server.ServerModeForward)
+	return runCommandAs(runCtx, args, server.RunServerModeForward)
 }
 
 func runAsProxyServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, server.ServerModeProxy)
+	return runCommandAs(runCtx, args, server.RunServerModeProxy)
 }
 
 func runCommandAs(runCtx context.Context, args []string, serverMode string) error {
