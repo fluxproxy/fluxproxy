@@ -27,4 +27,4 @@ https:
 
 # Socks5 代理服务配置
 socks:
-  disabled: true
+  disabled: false

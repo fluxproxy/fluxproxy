@@ -5,7 +5,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/net"
 )
 
-//// Director Type
+//// Server Type
 
 type ServerType uint8
 
@@ -33,3 +33,22 @@ func (t ServerType) String() string {
 //// Hook func
 
 type HookFunc func(ctx context.Context, conn *net.Connection) error
+
+////
+
+var (
+	_ ListenerHandler = (*ListenerHandlerAdapter)(nil)
+)
+
+type ListenerHandlerAdapter struct {
+	Authorizer ListenerAuthorizeFunc
+	Handler    ListenerHandlerFunc
+}
+
+func (l *ListenerHandlerAdapter) Handle(ctx context.Context, conn net.Connection) error {
+	return l.Handler(ctx, conn)
+}
+
+func (l *ListenerHandlerAdapter) Auth(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error {
+	return l.Authorizer(ctx, conn, auth)
+}

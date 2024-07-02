@@ -15,8 +15,31 @@ type ListenerOptions struct {
 	TLSKeyFile  string
 }
 
+const (
+	AuthenticateSourceAddr = "Source-Addr"
+	AuthenticateUserPass   = "User-Passkey"
+)
+
+type ListenerAuthorization struct {
+	// 授权方式
+	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authenticate
+	Authenticate  string
+	Authorization string
+	Username      string
+	Password      string
+}
+
+// ListenerAuthorizeFunc 连接授权函数
+type ListenerAuthorizeFunc func(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error
+
+// ListenerHandlerFunc 监听器的回调处理函数
+type ListenerHandlerFunc func(ctx context.Context, conn net.Connection) error
+
 // ListenerHandler 监听器的回调处理函数
-type ListenerHandler func(ctx context.Context, conn net.Connection) error
+type ListenerHandler interface {
+	Handle(ctx context.Context, conn net.Connection) error
+	Auth(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error
+}
 
 // Listener 监听器，监听服务端口，完成与客户端的连接握手。
 type Listener interface {

@@ -75,10 +75,6 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 func (l *Listener) newServeHandler(dispatchHandler rocket.ListenerHandler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		rocket.Logger(r.Context()).Infof("https: %s %s", r.Method, r.RequestURI)
-
-		// Auth: nop
-		removeHopByHopHeaders(r.Header)
-
 		if r.Method == http.MethodConnect {
 			l.handleConnectStream(rw, r, dispatchHandler)
 		} else {
@@ -101,7 +97,30 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		return
 	}
 	defer helper.Close(hijConn)
-
+	addr, port, _ := parseHostToAddress(r.URL.Host)
+	conn := net.Connection{
+		Network:     l.Network(),
+		Address:     net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+		ReadWriter:  hijConn.(*net.TCPConn),
+		UserContext: setWithUserContext(context.Background(), rw, r),
+		Destination: net.Destination{
+			Network: net.Network_TCP,
+			Address: addr,
+			Port:    port,
+		},
+	}
+	// Auth
+	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
+		Authenticate:  r.Header.Get("Proxy-Authenticate"),
+		Authorization: r.Header.Get("Proxy-Authorization"),
+	})
+	if aErr != nil {
+		_, _ = hijConn.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\n"))
+		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
+		return
+	} else {
+		removeHopByHopHeaders(r.Header)
+	}
 	// Phase hook
 	connCtx = rocket.ContextWithHookFuncDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
 		if _, hiwErr := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
@@ -113,18 +132,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		return nil
 	})
 	// Next
-	addr, port, _ := parseHostToAddress(r.URL.Host)
-	hErr := dispatchHandler(connCtx, net.Connection{
-		Network:     l.Network(),
-		Address:     net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		ReadWriter:  hijConn.(*net.TCPConn),
-		UserContext: setWithUserContext(context.Background(), rw, r),
-		Destination: net.Destination{
-			Network: net.Network_TCP,
-			Address: addr,
-			Port:    port,
-		},
-	})
+	hErr := dispatchHandler.Handle(connCtx, conn)
 	// Complete
 	if hErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
@@ -157,16 +165,14 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	if len(r.URL.Host) > 0 {
 		r.Host = r.URL.Host
 	}
-	// Header
-	removeHopByHopHeaders(r.Header)
-	// ---- Prevent UA from being set to golang's default ones
+	// Prevent UA from being set to golang's default ones
 	if r.Header.Get("User-Agent") == "" {
 		r.Header.Set("User-Agent", "")
 	}
 	// Next
 	connCtx := r.Context()
 	addr, port, _ := parseHostToAddress(r.URL.Host)
-	hErr := dispatchHandler(connCtx, net.Connection{
+	conn := net.Connection{
 		Network:     l.Network(),
 		Address:     net.ParseAddress(r.RemoteAddr),
 		UserContext: setWithUserContext(context.Background(), rw, r),
@@ -176,13 +182,26 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 			Address: addr,
 			Port:    port,
 		},
+	}
+	// Auth
+	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
+		Authenticate:  r.Header.Get("Proxy-Authenticate"),
+		Authorization: r.Header.Get("Proxy-Authorization"),
 	})
+	if aErr != nil {
+		_, _ = rw.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\n"))
+		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
+		return
+	} else {
+		removeHopByHopHeaders(r.Header)
+	}
+	// Next
+	hErr := dispatchHandler.Handle(connCtx, conn)
 	// Complete
 	if hErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
 	}
-
 }
 
 func parseHostToAddress(urlHost string) (addr net.Address, port net.Port, err error) {

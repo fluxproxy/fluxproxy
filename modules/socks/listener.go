@@ -1,7 +1,6 @@
 package socks
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -19,6 +18,7 @@ var (
 )
 
 type Listener struct {
+	authEnabled bool
 	*internal.TcpListener
 }
 
@@ -29,26 +29,39 @@ func NewSocksListener() *Listener {
 }
 
 func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
-	return t.TcpListener.Listen(serveCtx, func(connCtx context.Context, conn net.Connection) error {
-		return t.handle(connCtx, conn.TCPConn(), dispatchHandler)
+	return t.TcpListener.Listen(serveCtx, &rocket.ListenerHandlerAdapter{
+		Authorizer: nil, // 忽略TCPListener的校验
+		Handler: func(connCtx context.Context, conn net.Connection) error {
+			return t.handle(connCtx, conn.TCPConn(), dispatchHandler)
+		},
 	})
 }
 
 func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandler rocket.ListenerHandler) error {
-	bufConn := bufio.NewReader(conn)
-	if method, err := v5.ParseMethodRequest(bufConn); err != nil {
+	//reader := bufio.NewReader(conn)
+	if method, err := v5.ParseMethodRequest(conn); err != nil {
 		return err
 	} else if method.Ver != v5.VersionSocks5 {
 		return v5.ErrNotSupportVersion
 	}
-	request, err := v5.ParseRequest(bufConn)
-	if err != nil {
-		if errors.Is(err, v5.ErrUnrecognizedAddrType) {
+	if t.authEnabled {
+		if aErr := t.noAuth(connCtx, conn, dispatchHandler); aErr != nil {
+			return aErr
+		}
+	} else {
+		if aErr := t.doAuth(connCtx, conn, dispatchHandler); aErr != nil {
+			return aErr
+		}
+	}
+	// Next
+	request, pErr := v5.ParseRequest(conn)
+	if pErr != nil {
+		if errors.Is(pErr, v5.ErrUnrecognizedAddrType) {
 			if err := send(conn, v5.RepAddrTypeNotSupported, nil); err != nil {
 				return fmt.Errorf("failed to send reply %w", err)
 			}
 		}
-		return fmt.Errorf("failed to read destination address, %w", err)
+		return fmt.Errorf("failed to read destination address, %w", pErr)
 	}
 	switch request.Command {
 	case v5.CommandConnect:
@@ -65,7 +78,7 @@ func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandle
 func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Request, dispatchHandler rocket.ListenerHandler) error {
 	// Send success
 	if sErr := send(conn, v5.RepSuccess, conn.LocalAddr()); sErr != nil {
-		return fmt.Errorf("socks send reply: %w", sErr)
+		return fmt.Errorf("socks send reply/0: %w", sErr)
 	}
 	// Next
 	var destAddr net.Address
@@ -74,7 +87,8 @@ func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Re
 	} else {
 		destAddr = net.IPAddress(r.DstAddr.IP)
 	}
-	hErr := dispatchHandler(connCtx, net.Connection{
+	// Next
+	hErr := dispatchHandler.Handle(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		ReadWriter:  conn.(*net.TCPConn),
@@ -95,12 +109,50 @@ func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Re
 			resp = v5.RepNetworkUnreachable
 		}
 		if err := send(conn, resp, conn.LocalAddr()); err != nil {
-			return fmt.Errorf("socks send reply, %v", err)
+			return fmt.Errorf("socks send reply/3, %v", err)
 		}
 		return hErr
 	} else {
 		return nil
 	}
+}
+
+func (t *Listener) noAuth(connCtx context.Context, conn net.Conn, dispatchHandler rocket.ListenerHandler) error {
+	if _, err := conn.Write([]byte{v5.VersionSocks5, v5.MethodNoAuth}); err != nil {
+		return fmt.Errorf("socks send reply/na: %w", err)
+	}
+	return nil
+}
+
+func (t *Listener) doAuth(connCtx context.Context, conn net.Conn, dispatchHandler rocket.ListenerHandler) error {
+	// Auth: user + pass
+	if _, err := conn.Write([]byte{v5.VersionSocks5, v5.MethodUserPassAuth}); err != nil {
+		return fmt.Errorf("socks send reply/up: %w", err)
+	}
+	upr, err := v5.ParseUserPassRequest(conn)
+	if err != nil {
+		return fmt.Errorf("failed to authenticate: %w", err)
+	}
+	nConn := net.Connection{
+		Network:     t.Network(),
+		Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
+		ReadWriter:  conn.(*net.TCPConn),
+		UserContext: context.Background(),
+		Destination: net.DestinationNotset,
+	}
+	aErr := dispatchHandler.Auth(connCtx, nConn, rocket.ListenerAuthorization{
+		Authenticate: rocket.AuthenticateUserPass,
+		Username:     string(upr.User),
+		Password:     string(upr.Pass),
+	})
+	if aErr != nil {
+		if _, err := conn.Write([]byte{v5.UserPassAuthVersion, v5.AuthFailure}); err != nil {
+			return fmt.Errorf("socks send reply/af, %v", err)
+		}
+	} else if _, err := conn.Write([]byte{v5.UserPassAuthVersion, v5.AuthSuccess}); err != nil {
+		return fmt.Errorf("socks send reply/as, %v", err)
+	}
+	return nil
 }
 
 func (t *Listener) handleAssociate(connCtx context.Context, w io.Writer, r v5.Request, handler rocket.ListenerHandler) error {

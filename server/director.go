@@ -18,12 +18,16 @@ type Director struct {
 	router     rocket.Router
 	resolver   rocket.Resolver
 	selector   rocket.ConnectorSelector
+	authorizer rocket.ListenerAuthorizeFunc
 }
 
 func NewDirector(opts Options) *Director {
 	assert.MustNotEmpty(opts.Mode, "server mode is empty")
 	return &Director{
 		serverOpts: opts,
+		authorizer: func(_ context.Context, _ net.Connection, _ rocket.ListenerAuthorization) error {
+			return nil
+		},
 	}
 }
 
@@ -58,6 +62,10 @@ func (d *Director) SetConnectorSelector(f rocket.ConnectorSelector) {
 	d.selector = f
 }
 
+func (d *Director) SetAuthorizer(f rocket.ListenerAuthorizeFunc) {
+	d.authorizer = f
+}
+
 func (d *Director) SetServerType(serverType rocket.ServerType) {
 	d.serverType = serverType
 }
@@ -66,52 +74,56 @@ func (d *Director) ServeListen(servContext context.Context) error {
 	assert.MustNotNil(d.listener, "server listener is nil")
 	assert.MustNotNil(d.router, "server router is nil")
 	assert.MustNotNil(d.resolver, "server resolver is nil")
+	assert.MustNotNil(d.authorizer, "server authorizer is nil")
 	assert.MustNotNil(d.selector, "server connector-selector is nil")
-	return d.listener.Listen(servContext, func(connCtx context.Context, conn net.Connection) error {
-		assert.MustTrue(connCtx != servContext, "conn context is the same ref as server context")
-		assert.MustNotNil(conn.UserContext, "user context is nil")
-		assert.MustNotEmpty(rocket.RequiredID(connCtx), "conn id is empty")
-		if conn.Network == net.Network_TCP {
-			_, isTcpConn := conn.ReadWriter.(*stdnet.TCPConn)
-			assert.MustNotNil(isTcpConn, "conn read-writer is not type of *net.TCPConn")
-		}
-
-		defer func(start time.Time) {
-			rocket.Logger(connCtx).Infof("%s: conn duration: %dms", d.serverType, time.Since(start).Milliseconds())
-		}(time.Now())
-
-		connCtx = context.WithValue(connCtx, rocket.CtxKeyServerType, d.serverType)
-		routed, rErr := d.router.Route(connCtx, &conn)
-		if rErr != nil {
-			return fmt.Errorf("server router: %w", rErr)
-		}
-		destNetwork := routed.Destination.Network
-		destAddr := routed.Destination.Address
-
-		assert.MustTrue(routed.Destination.IsValid(), "routed destination is invalid")
-
-		if ip, sErr := d.resolver.Resolve(connCtx, destAddr); sErr != nil {
-			return fmt.Errorf("server resolve: %w", sErr)
-		} else {
-			routed.Destination.Address = net.IPAddress(ip)
-		}
-
-		connector, ok := d.selector(&routed)
-		assert.MustTrue(ok, "connector not found, network: %d", destNetwork)
-		if dErr := connector.DialServe(connCtx, &routed); dErr == nil {
-			return nil
-		} else {
-			msg := dErr.Error()
-			if strings.Contains(msg, "use of closed network connection") {
-				return nil
+	return d.listener.Listen(servContext, &rocket.ListenerHandlerAdapter{
+		Authorizer: d.authorizer,
+		Handler: func(connCtx context.Context, conn net.Connection) error {
+			assert.MustTrue(connCtx != servContext, "conn context is the same ref as server context")
+			assert.MustNotNil(conn.UserContext, "user context is nil")
+			assert.MustNotEmpty(rocket.RequiredID(connCtx), "conn id is empty")
+			if conn.Network == net.Network_TCP {
+				_, isTcpConn := conn.ReadWriter.(*stdnet.TCPConn)
+				assert.MustNotNil(isTcpConn, "conn read-writer is not type of *net.TCPConn")
 			}
-			if strings.Contains(msg, "i/o timeout") {
-				return nil
+
+			defer func(start time.Time) {
+				rocket.Logger(connCtx).Infof("%s: conn duration: %dms", d.serverType, time.Since(start).Milliseconds())
+			}(time.Now())
+
+			connCtx = context.WithValue(connCtx, rocket.CtxKeyServerType, d.serverType)
+			routed, rErr := d.router.Route(connCtx, &conn)
+			if rErr != nil {
+				return fmt.Errorf("server router: %w", rErr)
 			}
-			if strings.Contains(msg, "connection reset by peer") {
-				return nil
+			destNetwork := routed.Destination.Network
+			destAddr := routed.Destination.Address
+
+			assert.MustTrue(routed.Destination.IsValid(), "routed destination is invalid")
+
+			if ip, sErr := d.resolver.Resolve(connCtx, destAddr); sErr != nil {
+				return fmt.Errorf("server resolve: %w", sErr)
+			} else {
+				routed.Destination.Address = net.IPAddress(ip)
 			}
-			return dErr
-		}
+
+			connector, ok := d.selector(&routed)
+			assert.MustTrue(ok, "connector not found, network: %d", destNetwork)
+			if dErr := connector.DialServe(connCtx, &routed); dErr == nil {
+				return nil
+			} else {
+				msg := dErr.Error()
+				if strings.Contains(msg, "use of closed network connection") {
+					return nil
+				}
+				if strings.Contains(msg, "i/o timeout") {
+					return nil
+				}
+				if strings.Contains(msg, "connection reset by peer") {
+					return nil
+				}
+				return dErr
+			}
+		},
 	})
 }
