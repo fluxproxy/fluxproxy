@@ -2,16 +2,16 @@ package server
 
 import (
 	"context"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
 	"github.com/rocketmanapp/rocket-proxy/modules/socket"
 	"github.com/rocketmanapp/rocket-proxy/modules/socks"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	_ proxy.Server = (*SocksServer)(nil)
+	_ rocket.Server = (*SocksServer)(nil)
 )
 
 type SocksOptions struct {
@@ -35,12 +35,12 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	socksListener := socks.NewSocksListener()
 	proxyRouter := router.NewProxyRouter()
 	connector := socket.NewTcpConnector()
-	s.SetServerType(proxy.ServerTypeSOCKS)
+	s.SetServerType(rocket.ServerTypeSOCKS)
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewDNSResolverWith(ctx))
 	s.SetConnector(connector)
-	return socksListener.Init(proxy.ListenerOptions{
+	return socksListener.Init(rocket.ListenerOptions{
 		Address: serverOpts.Bind,
 		Port:    serverOpts.SocksPort,
 	})

@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/bytepowered/assert"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
 	"net/http"
@@ -16,12 +16,12 @@ import (
 )
 
 var (
-	_ proxy.Listener = (*Listener)(nil)
+	_ rocket.Listener = (*Listener)(nil)
 )
 
 type Listener struct {
 	isHttps      bool
-	listenerOpts proxy.ListenerOptions
+	listenerOpts rocket.ListenerOptions
 	roundTripper http.RoundTripper
 }
 
@@ -39,12 +39,12 @@ func (l *Listener) Network() net.Network {
 	return net.Network_TCP
 }
 
-func (l *Listener) Init(options proxy.ListenerOptions) error {
+func (l *Listener) Init(options rocket.ListenerOptions) error {
 	l.listenerOpts = options
 	return nil
 }
 
-func (l *Listener) Listen(serveCtx context.Context, dispatchHandler proxy.ListenerHandler) error {
+func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.isHttps {
 		logrus.Infof("https: listen start, HTTPS, address: %s", addr)
@@ -72,9 +72,9 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler proxy.Listen
 	}
 }
 
-func (l *Listener) newServeHandler(dispatchHandler proxy.ListenerHandler) http.HandlerFunc {
+func (l *Listener) newServeHandler(dispatchHandler rocket.ListenerHandler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		proxy.Logger(r.Context()).Infof("https: %s %s", r.Method, r.RequestURI)
+		rocket.Logger(r.Context()).Infof("https: %s %s", r.Method, r.RequestURI)
 
 		// Auth: nop
 		removeHopByHopHeaders(r.Header)
@@ -87,7 +87,7 @@ func (l *Listener) newServeHandler(dispatchHandler proxy.ListenerHandler) http.H
 	}
 }
 
-func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, dispatchHandler proxy.ListenerHandler) {
+func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, dispatchHandler rocket.ListenerHandler) {
 	connCtx, connCancel := context.WithCancel(r.Context())
 	defer connCancel()
 	// Hijacker
@@ -97,16 +97,16 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	hijConn, _, hijErr := hijacker.Hijack()
 	if hijErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		proxy.Logger(connCtx).Error("https: not support hijack")
+		rocket.Logger(connCtx).Error("https: not support hijack")
 		return
 	}
 	defer helper.Close(hijConn)
 
 	// Phase hook
-	connCtx = proxy.ContextWithHookFuncDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
+	connCtx = rocket.ContextWithHookFuncDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
 		if _, hiwErr := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
 			if !helper.IsConnectionClosed(hiwErr) {
-				proxy.Logger(connCtx).Errorf("https: write back ok response: %s", hiwErr)
+				rocket.Logger(connCtx).Errorf("https: write back ok response: %s", hiwErr)
 			}
 			return hiwErr
 		}
@@ -128,11 +128,11 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	// Complete
 	if hErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		proxy.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
+		rocket.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
 	}
 }
 
-func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatchHandler proxy.ListenerHandler) {
+func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatchHandler rocket.ListenerHandler) {
 	defer helper.Close(r.Body)
 
 	if r.URL.Host == "" || !r.URL.IsAbs() {
@@ -180,7 +180,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	// Complete
 	if hErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		proxy.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
+		rocket.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
 	}
 
 }

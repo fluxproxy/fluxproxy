@@ -4,20 +4,20 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/assert"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	stdnet "net"
 	"strings"
 	"time"
 )
 
 type Director struct {
-	serverType proxy.ServerType
+	serverType rocket.ServerType
 	serverOpts Options
-	listener   proxy.Listener
-	router     proxy.Router
-	resolver   proxy.Resolver
-	selector   proxy.ConnectorSelector
+	listener   rocket.Listener
+	router     rocket.Router
+	resolver   rocket.Resolver
+	selector   rocket.ConnectorSelector
 }
 
 func NewDirector(opts Options) *Director {
@@ -31,34 +31,34 @@ func (d *Director) Options() Options {
 	return d.serverOpts
 }
 
-func (d *Director) SetListener(listener proxy.Listener) {
+func (d *Director) SetListener(listener rocket.Listener) {
 	assert.MustNotNil(listener, "listener is nil")
 	d.listener = listener
 }
 
-func (d *Director) SetRouter(router proxy.Router) {
+func (d *Director) SetRouter(router rocket.Router) {
 	assert.MustNotNil(router, "router is nil")
 	d.router = router
 }
 
-func (d *Director) SetResolver(resolver proxy.Resolver) {
+func (d *Director) SetResolver(resolver rocket.Resolver) {
 	assert.MustNotNil(resolver, "resolver is nil")
 	d.resolver = resolver
 }
 
-func (d *Director) SetConnector(c proxy.Connector) {
+func (d *Director) SetConnector(c rocket.Connector) {
 	assert.MustNotNil(c, "connector is nil")
-	d.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
+	d.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		return c, true
 	})
 }
 
-func (d *Director) SetConnectorSelector(f proxy.ConnectorSelector) {
+func (d *Director) SetConnectorSelector(f rocket.ConnectorSelector) {
 	assert.MustNotNil(f, "connector-selector is nil")
 	d.selector = f
 }
 
-func (d *Director) SetServerType(serverType proxy.ServerType) {
+func (d *Director) SetServerType(serverType rocket.ServerType) {
 	d.serverType = serverType
 }
 
@@ -70,17 +70,17 @@ func (d *Director) ServeListen(servContext context.Context) error {
 	return d.listener.Listen(servContext, func(connCtx context.Context, conn net.Connection) error {
 		assert.MustTrue(connCtx != servContext, "conn context is the same ref as server context")
 		assert.MustNotNil(conn.UserContext, "user context is nil")
-		assert.MustNotEmpty(proxy.RequiredID(connCtx), "conn id is empty")
+		assert.MustNotEmpty(rocket.RequiredID(connCtx), "conn id is empty")
 		if conn.Network == net.Network_TCP {
 			_, isTcpConn := conn.ReadWriter.(*stdnet.TCPConn)
 			assert.MustNotNil(isTcpConn, "conn read-writer is not type of *net.TCPConn")
 		}
 
 		defer func(start time.Time) {
-			proxy.Logger(connCtx).Infof("%d: conn duration: %dms", d.serverType, time.Since(start).Milliseconds())
+			rocket.Logger(connCtx).Infof("%d: conn duration: %dms", d.serverType, time.Since(start).Milliseconds())
 		}(time.Now())
 
-		connCtx = context.WithValue(connCtx, proxy.CtxKeyServerType, d.serverType)
+		connCtx = context.WithValue(connCtx, rocket.CtxKeyServerType, d.serverType)
 		routed, rErr := d.router.Route(connCtx, &conn)
 		if rErr != nil {
 			return fmt.Errorf("server router: %w", rErr)

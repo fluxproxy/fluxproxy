@@ -4,16 +4,16 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/assert"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
 	"github.com/rocketmanapp/rocket-proxy/modules/socket"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	_ proxy.Server = (*ForwardServer)(nil)
+	_ rocket.Server = (*ForwardServer)(nil)
 )
 
 type ForwardRootOptions struct {
@@ -46,9 +46,9 @@ func NewForwardServer(serverOpts Options, forwardOpts ForwardOptions) *ForwardSe
 func (s *ForwardServer) Init(ctx context.Context) error {
 	logrus.Infof("forward: init: %s:%s:%d, desc: %s", s.options.Network, s.Options().Bind, s.options.Port, s.options.Description)
 	// 构建服务组件
-	var listener proxy.Listener = nil
-	var proxyRouter proxy.Router = nil
-	var connector proxy.Connector = nil
+	var listener rocket.Listener = nil
+	var proxyRouter rocket.Router = nil
+	var connector rocket.Connector = nil
 	network := net.ParseNetwork(s.options.Network)
 	dest, err := parseDestinationWith(network, s.options.Destination)
 	if err != nil {
@@ -59,12 +59,12 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 		listener = socket.NewUdpListener()
 		proxyRouter = router.NewStaticRouter(dest)
 		connector = socket.NewUdpConnector()
-		s.SetServerType(proxy.ServerTypeUDP)
+		s.SetServerType(rocket.ServerTypeUDP)
 	case net.Network_TCP:
 		listener = socket.NewTcpListener()
 		proxyRouter = router.NewStaticRouter(dest)
 		connector = socket.NewTcpConnector()
-		s.SetServerType(proxy.ServerTypeTCP)
+		s.SetServerType(rocket.ServerTypeTCP)
 	default:
 		return fmt.Errorf("forward unsupport network: %s", s.options.Network)
 	}
@@ -74,7 +74,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	s.SetConnector(connector)
 	// 初始化
 	assert.MustTrue(network == listener.Network(), "server network is not match listener, was: %s", listener.Network())
-	return listener.Init(proxy.ListenerOptions{
+	return listener.Init(rocket.ListenerOptions{
 		Address: s.Options().Bind,
 		Port:    s.options.Port,
 	})

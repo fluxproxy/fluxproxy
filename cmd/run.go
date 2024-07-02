@@ -8,7 +8,7 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
+	"github.com/rocketmanapp/rocket-proxy/server"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,15 +19,15 @@ var k = koanf.NewWithConf(koanf.Conf{
 })
 
 func runAsAutoServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, rocket.ServerModeAuto)
+	return runCommandAs(runCtx, args, server.ServerModeAuto)
 }
 
 func runAsForwardServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, rocket.ServerModeForward)
+	return runCommandAs(runCtx, args, server.ServerModeForward)
 }
 
 func runAsProxyServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, rocket.ServerModeProxy)
+	return runCommandAs(runCtx, args, server.ServerModeProxy)
 }
 
 func runCommandAs(runCtx context.Context, args []string, serverMode string) error {
@@ -51,8 +51,8 @@ func runCommandAs(runCtx context.Context, args []string, serverMode string) erro
 	logrus.SetReportCaller(false)
 	logrus.Infof("main: load config file: %s", confpath)
 	// Instance
-	runCtx = context.WithValue(runCtx, proxy.CtxKeyConfiger, k)
-	inst := rocket.NewInstance()
+	runCtx = context.WithValue(runCtx, rocket.CtxKeyConfiger, k)
+	inst := server.NewInstance()
 	if err := inst.Init(runCtx, serverMode); err != nil {
 		return fmt.Errorf("main: instance start: %w", err)
 	}

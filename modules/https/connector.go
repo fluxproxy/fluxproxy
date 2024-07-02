@@ -2,9 +2,9 @@ package https
 
 import (
 	"context"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"io"
 	"net/http"
 	"strings"
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	_ proxy.Connector = (*HrtpConnector)(nil)
+	_ rocket.Connector = (*HrtpConnector)(nil)
 )
 
 type HrtpConnector struct {

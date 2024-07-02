@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/assert"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"io"
 	stdnet "net"
 )
 
 var (
-	_ proxy.Connector = (*Connector)(nil)
+	_ rocket.Connector = (*Connector)(nil)
 )
 
 type Connector struct {
@@ -39,7 +39,7 @@ func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) 
 	dstCtx, dstCancel := context.WithCancel(srcConnCtx)
 	defer dstCancel()
 	// Hook: dail
-	if hook := proxy.HookFuncDialPhased(srcConnCtx); hook != nil {
+	if hook := rocket.HookFuncDialPhased(srcConnCtx); hook != nil {
 		if err := hook(srcConnCtx, link); err != nil {
 			return err
 		}

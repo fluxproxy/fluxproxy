@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/goes"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	"io"
 	stdnet "net"
@@ -15,12 +15,12 @@ import (
 )
 
 var (
-	_ proxy.Listener = (*UdpListener)(nil)
+	_ rocket.Listener = (*UdpListener)(nil)
 )
 
 type UdpListener struct {
 	tag     string
-	options proxy.ListenerOptions
+	options rocket.ListenerOptions
 	udpOpts net.UdpOptions
 }
 
@@ -31,20 +31,20 @@ func NewUdpListener(tag string, udpOpts net.UdpOptions) *UdpListener {
 	}
 }
 
-func (t *UdpListener) ServerType() proxy.ServerType {
-	return proxy.ServerTypeUDP
+func (t *UdpListener) ServerType() rocket.ServerType {
+	return rocket.ServerTypeUDP
 }
 
 func (t *UdpListener) Network() net.Network {
 	return net.Network_UDP
 }
 
-func (t *UdpListener) Init(options proxy.ListenerOptions) error {
+func (t *UdpListener) Init(options rocket.ListenerOptions) error {
 	t.options = options
 	return nil
 }
 
-func (t *UdpListener) Listen(serveCtx context.Context, dispatchHandler proxy.ListenerHandler) error {
+func (t *UdpListener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	addr := &stdnet.UDPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
 	listener, lErr := stdnet.ListenUDP("udp", addr)
@@ -74,11 +74,11 @@ func (t *UdpListener) Listen(serveCtx context.Context, dispatchHandler proxy.Lis
 }
 
 func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, data []byte,
-	dispatchHandler proxy.ListenerHandler) {
+	dispatchHandler rocket.ListenerHandler) {
 	connCtx := SetupUdpContextLogger(ctx, srcAddr)
 	defer func() {
 		if rErr := recover(); rErr != nil {
-			proxy.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
+			rocket.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 		}
 	}()
 	hErr := dispatchHandler(connCtx, net.Connection{
@@ -94,7 +94,7 @@ func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr
 		Destination: net.DestinationNotset,
 	})
 	if hErr != nil {
-		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
+		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }
 

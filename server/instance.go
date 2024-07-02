@@ -1,4 +1,4 @@
-package rocket
+package server
 
 import (
 	"context"
@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"github.com/bytepowered/assert"
 	"github.com/bytepowered/goes"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
-	"github.com/rocketmanapp/rocket-proxy/server"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
@@ -30,7 +29,7 @@ func init() {
 }
 
 type Instance struct {
-	servers []proxy.Server
+	servers []rocket.Server
 	await   sync.WaitGroup
 }
 
@@ -42,8 +41,8 @@ func NewInstance() *Instance {
 
 func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 	// 解析配置
-	var serverOpts server.Options
-	if err := proxy.ConfigUnmarshalWith(runCtx, "server", &serverOpts); err != nil {
+	var serverOpts Options
+	if err := rocket.ConfigUnmarshalWith(runCtx, "server", &serverOpts); err != nil {
 		return err
 	}
 	// 指定运行模式
@@ -89,9 +88,9 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 	return nil
 }
 
-func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts server.Options, isRequired bool) error {
-	var forwardOpts server.ForwardRootOptions
-	if err := proxy.ConfigUnmarshalWith(runCtx, "forward", &forwardOpts); err != nil {
+func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts Options, isRequired bool) error {
+	var forwardOpts ForwardRootOptions
+	if err := rocket.ConfigUnmarshalWith(runCtx, "forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
 	if len(forwardOpts.Rules) == 0 && isRequired {
@@ -102,38 +101,38 @@ func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts server.
 			logrus.Warnf("inst: forward server is disabled: %s", rule.Description)
 			continue
 		}
-		i.servers = append(i.servers, server.NewForwardServer(serverOpts, rule))
+		i.servers = append(i.servers, NewForwardServer(serverOpts, rule))
 	}
 	return nil
 }
 
-func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts server.Options) (bool, error) {
+func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts Options) (bool, error) {
 	if serverOpts.SocksPort <= 0 {
 		return false, nil
 	}
-	var socksOpts server.SocksOptions
-	if err := proxy.ConfigUnmarshalWith(runCtx, "socks", &socksOpts); err != nil {
+	var socksOpts SocksOptions
+	if err := rocket.ConfigUnmarshalWith(runCtx, "socks", &socksOpts); err != nil {
 		return false, fmt.Errorf("unmarshal socks options: %w", err)
 	}
 	if socksOpts.Disabled {
 		logrus.Warnf("inst: socks server is disabled")
 		return false, nil
 	}
-	i.servers = append(i.servers, server.NewSocksServer(serverOpts, socksOpts))
+	i.servers = append(i.servers, NewSocksServer(serverOpts, socksOpts))
 	return true, nil
 }
 
-func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts server.Options) (bool, error) {
-	buildServer := func(serverOpts server.Options, isHttps bool) error {
-		var httpOpts server.HttpsOptions
-		if err := proxy.ConfigUnmarshalWith(runCtx, "https", &httpOpts); err != nil {
+func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts Options) (bool, error) {
+	buildServer := func(serverOpts Options, isHttps bool) error {
+		var httpOpts HttpsOptions
+		if err := rocket.ConfigUnmarshalWith(runCtx, "https", &httpOpts); err != nil {
 			return fmt.Errorf("unmarshal https options: %w", err)
 		}
 		if httpOpts.Disabled {
 			logrus.Warnf("inst: https server is disabled")
 			return nil
 		}
-		i.servers = append(i.servers, server.NewHttpsServer(serverOpts, httpOpts, isHttps))
+		i.servers = append(i.servers, NewHttpsServer(serverOpts, httpOpts, isHttps))
 		return nil
 	}
 	if serverOpts.HttpPort > 0 {
@@ -156,7 +155,7 @@ func (i *Instance) Serve(runCtx context.Context) error {
 	servErrors := make(chan error, len(i.servers))
 	for _, srv := range i.servers {
 		i.await.Add(1)
-		go func(psrv proxy.Server) {
+		go func(psrv rocket.Server) {
 			if err := psrv.Serve(runCtx);
 				err == nil ||
 					errors.Is(err, io.EOF) ||

@@ -5,17 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/modules/socks/v5"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"io"
 	stdnet "net"
 	"strings"
 )
 
 var (
-	_ proxy.Listener = (*Listener)(nil)
+	_ rocket.Listener = (*Listener)(nil)
 )
 
 type Listener struct {
@@ -28,13 +28,13 @@ func NewSocksListener() *Listener {
 	}
 }
 
-func (t *Listener) Listen(serveCtx context.Context, dispatchHandler proxy.ListenerHandler) error {
+func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	return t.TcpListener.Listen(serveCtx, func(connCtx context.Context, conn net.Connection) error {
 		return t.handle(connCtx, conn.TCPConn(), dispatchHandler)
 	})
 }
 
-func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandler proxy.ListenerHandler) error {
+func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandler rocket.ListenerHandler) error {
 	bufConn := bufio.NewReader(conn)
 	if method, err := v5.ParseMethodRequest(bufConn); err != nil {
 		return err
@@ -62,7 +62,7 @@ func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandle
 	}
 }
 
-func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Request, dispatchHandler proxy.ListenerHandler) error {
+func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Request, dispatchHandler rocket.ListenerHandler) error {
 	// Send success
 	if sErr := send(conn, v5.RepSuccess, conn.LocalAddr()); sErr != nil {
 		return fmt.Errorf("socks send reply: %w", sErr)
@@ -103,11 +103,11 @@ func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Re
 	}
 }
 
-func (t *Listener) handleAssociate(connCtx context.Context, w io.Writer, r v5.Request, handler proxy.ListenerHandler) error {
+func (t *Listener) handleAssociate(connCtx context.Context, w io.Writer, r v5.Request, handler rocket.ListenerHandler) error {
 	return t.handleNotSupported(connCtx, w, r)
 }
 
-func (t *Listener) handleBind(connCtx context.Context, w io.Writer, r v5.Request, _ proxy.ListenerHandler) error {
+func (t *Listener) handleBind(connCtx context.Context, w io.Writer, r v5.Request, _ rocket.ListenerHandler) error {
 	return t.handleNotSupported(connCtx, w, r)
 }
 

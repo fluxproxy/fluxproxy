@@ -1,13 +1,13 @@
 package socket
 
 import (
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 )
 
 var (
-	_ proxy.Listener = (*TcpListener)(nil)
+	_ rocket.Listener = (*TcpListener)(nil)
 )
 
 type TcpListener struct {

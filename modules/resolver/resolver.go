@@ -3,8 +3,8 @@ package resolver
 import (
 	"context"
 	"github.com/bytepowered/cache"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
 	"sync"
@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	_ proxy.Resolver = (*DNSResolver)(nil)
+	_ rocket.Resolver = (*DNSResolver)(nil)
 )
 
 var (
@@ -32,7 +32,7 @@ type DNSResolver struct {
 func NewDNSResolverWith(ctx context.Context) *DNSResolver {
 	resolverOnce.Do(func() {
 		var opts DNSOptions
-		_ = proxy.ConfigUnmarshalWith(ctx, "dns", &opts)
+		_ = rocket.ConfigUnmarshalWith(ctx, "dns", &opts)
 		if opts.CacheSize <= 0 {
 			opts.CacheSize = 1024 * 10
 		}
@@ -50,7 +50,7 @@ func NewDNSResolverWith(ctx context.Context) *DNSResolver {
 }
 
 func (d *DNSResolver) Resolve(ctx context.Context, addr net.Address) (stdnet.IP, error) {
-	configer := proxy.Configer(ctx)
+	configer := rocket.Configer(ctx)
 	name := addr.String()
 	ipv, err := d.cached.GetOrLoad(name, func(_ interface{}) (cache.Expirable, error) {
 		// S1: 通过配置文件实现 resolve/rewrite

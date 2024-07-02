@@ -3,17 +3,17 @@ package server
 import (
 	"context"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/modules/https"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
 	"github.com/rocketmanapp/rocket-proxy/modules/socket"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	_ proxy.Server = (*HttpsServer)(nil)
+	_ rocket.Server = (*HttpsServer)(nil)
 )
 
 type HttpsOptions struct {
@@ -42,11 +42,11 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	proxyRouter := router.NewProxyRouter()
 	tcpConnector := socket.NewTcpConnector()
 	hstrConnector := https.NewHrtpConnector()
-	s.SetServerType(proxy.ServerTypeHTTPS)
+	s.SetServerType(rocket.ServerTypeHTTPS)
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewDNSResolverWith(ctx))
-	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
+	s.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:
 			return tcpConnector, true
@@ -70,7 +70,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	} else {
 		serverPort = serverOpts.HttpPort
 	}
-	return httpListener.Init(proxy.ListenerOptions{
+	return httpListener.Init(rocket.ListenerOptions{
 		Address: serverOpts.Bind,
 		Port:    serverPort,
 		// TLS

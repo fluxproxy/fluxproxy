@@ -3,8 +3,8 @@ package internal
 import (
 	"errors"
 	"github.com/bytepowered/goes"
+	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
-	"github.com/rocketmanapp/rocket-proxy/proxy"
 	"runtime/debug"
 	"time"
 )
@@ -19,7 +19,7 @@ import (
 
 type TcpListener struct {
 	tag     string
-	options proxy.ListenerOptions
+	options rocket.ListenerOptions
 	tcpOpts net.TcpOptions
 }
 
@@ -30,20 +30,20 @@ func NewTcpListener(tag string, tcpOpts net.TcpOptions) *TcpListener {
 	}
 }
 
-func (t *TcpListener) ServerType() proxy.ServerType {
-	return proxy.ServerTypeTCP
+func (t *TcpListener) ServerType() rocket.ServerType {
+	return rocket.ServerTypeTCP
 }
 
 func (t *TcpListener) Network() net.Network {
 	return net.Network_TCP
 }
 
-func (t *TcpListener) Init(options proxy.ListenerOptions) error {
+func (t *TcpListener) Init(options rocket.ListenerOptions) error {
 	t.options = options
 	return nil
 }
 
-func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler proxy.ListenerHandler) error {
+func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	addr := &stdnet.TCPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
 	listener, lErr := stdnet.ListenTCP("tcp", addr)
@@ -86,19 +86,19 @@ func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler proxy.Lis
 	}
 }
 
-func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, dispatchHandler proxy.ListenerHandler) {
+func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, dispatchHandler rocket.ListenerHandler) {
 	connCtx, connCancel := context.WithCancel(serveCtx)
 	defer connCancel()
 	connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
 	defer func() {
 		if rErr := recover(); rErr != nil {
-			proxy.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
+			rocket.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 		}
 	}()
 	// Set tcp conn options
 	defer helper.Close(tcpConn)
 	if oErr := net.SetTcpConnOptions(tcpConn, t.tcpOpts); oErr != nil {
-		proxy.Logger(connCtx).Errorf("%s set conn options: %s", t.tag, oErr)
+		rocket.Logger(connCtx).Errorf("%s set conn options: %s", t.tag, oErr)
 		return
 	}
 	// Next
@@ -110,6 +110,6 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		Destination: net.DestinationNotset,
 	})
 	if hErr != nil {
-		proxy.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
+		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}
 }
