@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"github.com/bytepowered/assert"
 	"github.com/bytepowered/goes"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
@@ -98,7 +99,7 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 	}
 	srcAddr := net.IPAddress((tcpConn.RemoteAddr().(*stdnet.TCPAddr)).IP)
 	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
+	connCtx, aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
 		Source:         srcAddr,
 		Authenticate:   rocket.AuthenticateSource, // 源地址校验
 		Authentication: tcpConn.RemoteAddr().String(),
@@ -106,6 +107,8 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 	if aErr != nil {
 		rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
 		return
+	} else {
+		assert.MustNotNil(connCtx, "authenticated context is nil")
 	}
 	// Next
 	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{

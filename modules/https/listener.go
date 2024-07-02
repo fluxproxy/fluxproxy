@@ -59,7 +59,7 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 	server := &http.Server{
 		Addr:    addr,
 		Handler: l.newServeHandler(dispatchHandler),
-		BaseContext: func(l stdnet.Listener) context.Context {
+		BaseContext: func(_ stdnet.Listener) context.Context {
 			return serveCtx
 		},
 		ConnContext: func(ctx context.Context, conn stdnet.Conn) context.Context {
@@ -104,12 +104,13 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	defer helper.Close(hijConn)
 	srcAddr := net.ParseAddress(r.RemoteAddr)
 	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
+	connCtx, aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
 	if aErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
 		return
 	} else {
+		assert.MustNotNil(connCtx, "authenticated context is nil")
 		removeHopByHopHeaders(r.Header)
 	}
 	// Phase hook
@@ -175,12 +176,13 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	// Next
 	connCtx := r.Context()
 	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
+	connCtx, aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
 	if aErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
 		return
 	} else {
+		assert.MustNotNil(connCtx, "authenticated context is nil")
 		removeHopByHopHeaders(r.Header)
 	}
 	// Next

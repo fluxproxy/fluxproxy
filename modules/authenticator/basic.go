@@ -20,24 +20,24 @@ func WithBasicUsers(enabled bool, users map[string]string) *BasicAuthenticator {
 	return &BasicAuthenticator{enabled: enabled, users: users}
 }
 
-func (u *BasicAuthenticator) Authenticate(ctx context.Context, auth rocket.Authentication) error {
+func (u *BasicAuthenticator) Authenticate(ctx context.Context, auth rocket.Authentication) (context.Context, error) {
 	if !u.enabled {
-		return nil
+		return ctx, nil
 	}
 	//assert.MustTrue(auth.Authenticate == rocket.AuthenticateBasic, "invalid auth type: %s", auth.Authenticate)
 	username, password, ok := strings.Cut(auth.Authentication, ":")
 	if !ok {
-		return errors.New("invalid username or password")
+		return ctx, errors.New("invalid username or password")
 	}
 	// check username and password
 	if username == "" {
-		return errors.New("username is empty")
+		return ctx, errors.New("username is empty")
 	}
 	if password == "" {
-		return errors.New("password is empty")
+		return ctx, errors.New("password is empty")
 	}
 	if u.users[username] != password {
-		return errors.New("invalid username or password")
+		return ctx, errors.New("invalid username or password")
 	}
-	return nil
+	return ctx, nil
 }

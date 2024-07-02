@@ -23,7 +23,7 @@ type Authentication struct {
 
 // Authenticator 连接身份验证函数
 type Authenticator interface {
-	Authenticate(context.Context, Authentication) error
+	Authenticate(context.Context, Authentication) (context.Context, error)
 }
 
 // DispatchFunc 监听器的回调处理函数
@@ -32,10 +32,10 @@ type DispatchFunc func(context.Context, net.Connection) error
 // ListenerHandler 监听器处理函数
 type ListenerHandler interface {
 	// Authenticate 连接身份验证
-	Authenticate(ctx context.Context, authorization Authentication) error
+	Authenticate(context.Context, Authentication) (context.Context, error)
 
 	// Dispatch 连接处理
-	Dispatch(ctx context.Context, conn net.Connection) error
+	Dispatch(context.Context, net.Connection) error
 }
 
 // Listener 监听器，监听服务端口，完成与客户端的连接握手。

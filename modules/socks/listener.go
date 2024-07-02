@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/modules/socks/v5"
@@ -35,8 +36,8 @@ func NewSocksListener(opts Options) *Listener {
 
 func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	return t.TcpListener.Listen(serveCtx, &rocket.ListenerHandlerAdapter{
-		Authenticator: rocket.AuthenticatorFunc(func(_ context.Context, _ rocket.Authentication) error {
-			return nil // 忽略TCPListener的校验
+		Authenticator: rocket.AuthenticatorFunc(func(connCtx context.Context, _ rocket.Authentication) (context.Context, error) {
+			return connCtx, nil // 忽略TCPListener的校验
 		}),
 		Dispatcher: func(connCtx context.Context, conn net.Connection) error {
 			return t.handle(connCtx, conn.TCPConn(), dispatchHandler)
@@ -140,7 +141,7 @@ func (t *Listener) doAuthHandshake(connCtx context.Context, netConn net.Conn, di
 	if uErr != nil {
 		return fmt.Errorf("socks parse user-pass: %w", uErr)
 	}
-	aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
+	connCtx, aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
 		Source:         net.IPAddress((netConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		Authenticate:   rocket.AuthenticateBasic,
 		Authentication: string(upr.User) + ":" + string(upr.Pass),
@@ -150,6 +151,8 @@ func (t *Listener) doAuthHandshake(connCtx context.Context, netConn net.Conn, di
 			return fmt.Errorf("socks send reply/af, %v", fErr)
 		}
 		return aErr
+	} else {
+		assert.MustNotNil(connCtx, "authenticated context is nil")
 	}
 	// Authenticate success
 	if _, sErr := netConn.Write([]byte{v5.UserPassAuthVersion, v5.AuthSuccess}); sErr != nil {

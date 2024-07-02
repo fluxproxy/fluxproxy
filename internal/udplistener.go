@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/bytepowered/assert"
 	"github.com/bytepowered/goes"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
@@ -79,7 +80,7 @@ func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, sr
 	}()
 	srcIPAddr := net.IPAddress(srcAddr.IP)
 	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
+	connCtx, aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
 		Source:         srcIPAddr,
 		Authenticate:   rocket.AuthenticateSource, // 源地址校验
 		Authentication: srcIPAddr.String(),
@@ -87,6 +88,8 @@ func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, sr
 	if aErr != nil {
 		rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
 		return
+	} else {
+		assert.MustNotNil(connCtx, "authenticated context is nil")
 	}
 	// Next
 	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{

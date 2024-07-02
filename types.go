@@ -54,7 +54,7 @@ func (l *ListenerHandlerAdapter) Dispatch(ctx context.Context, conn net.Connecti
 	return l.Dispatcher(ctx, conn)
 }
 
-func (l *ListenerHandlerAdapter) Authenticate(ctx context.Context, auth Authentication) error {
+func (l *ListenerHandlerAdapter) Authenticate(ctx context.Context, auth Authentication) (context.Context, error) {
 	return l.Authenticator.Authenticate(ctx, auth)
 }
 
@@ -64,8 +64,8 @@ var (
 	_ Authenticator = (AuthenticatorFunc)(nil)
 )
 
-type AuthenticatorFunc func(ctx context.Context, auth Authentication) error
+type AuthenticatorFunc func(ctx context.Context, auth Authentication) (context.Context, error)
 
-func (f AuthenticatorFunc) Authenticate(ctx context.Context, auth Authentication) error {
+func (f AuthenticatorFunc) Authenticate(ctx context.Context, auth Authentication) (context.Context, error) {
 	return f(ctx, auth)
 }
