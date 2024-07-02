@@ -1,4 +1,4 @@
-package http
+package https
 
 import (
 	"context"
@@ -22,7 +22,7 @@ type HrtpConnector struct {
 func NewHrtpConnector() *HrtpConnector {
 	return &HrtpConnector{
 		roundTripper: &http.Transport{
-			// from http.DefaultTransport
+			// from https.DefaultTransport
 			MaxIdleConns:          100,
 			IdleConnTimeout:       90 * time.Second,
 			ExpectContinueTimeout: 1 * time.Second,

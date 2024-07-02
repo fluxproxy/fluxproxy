@@ -5,7 +5,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/net"
 )
 
-//// Server Type
+//// Director Type
 
 type ServerType uint8
 
@@ -25,7 +25,7 @@ func (t ServerType) String() string {
 	case ServerType_SOCKS:
 		return "socks"
 	case ServerType_HTTP:
-		return "http"
+		return "https"
 	}
 	return "unknown"
 }

@@ -18,8 +18,8 @@ var k = koanf.NewWithConf(koanf.Conf{
 	StrictMerge: true,
 })
 
-func runAsFullServer(runCtx context.Context, args []string) error {
-	return runCommandAs(runCtx, args, "" /*full by config*/)
+func runAsAutoServer(runCtx context.Context, args []string) error {
+	return runCommandAs(runCtx, args, rocket.ServerModeAuto)
 }
 
 func runAsForwardServer(runCtx context.Context, args []string) error {

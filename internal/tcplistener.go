@@ -73,7 +73,7 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 					if maxDuration := 1 * time.Second; tempDelay > maxDuration {
 						tempDelay = maxDuration
 					}
-					logrus.Errorf("http: Accept error: %v; retrying in %v", aErr, tempDelay)
+					logrus.Errorf("https: Accept error: %v; retrying in %v", aErr, tempDelay)
 					time.Sleep(tempDelay)
 					continue
 				}

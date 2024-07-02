@@ -15,7 +15,7 @@ func main() {
 		{
 			Name:        "run",
 			Description: "Run as a proxy server, full features",
-			ExecFunc:    runAsFullServer,
+			ExecFunc:    runAsAutoServer,
 		},
 		{
 			Name:        "proxy",

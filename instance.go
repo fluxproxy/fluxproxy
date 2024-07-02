@@ -4,14 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytepowered/assert"
 	"github.com/bytepowered/goes"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
+	"github.com/rocketmanapp/rocket-proxy/server"
 	"github.com/sirupsen/logrus"
 	"io"
 	"net/http"
 	"runtime/debug"
+	"strings"
 	"sync"
+)
+
+const (
+	ServerModeAuto    string = "auto"
+	ServerModeProxy   string = "proxy"
+	ServerModeForward string = "forward"
 )
 
 func init() {
@@ -31,26 +40,26 @@ func NewInstance() *Instance {
 	}
 }
 
-func (i *Instance) Init(runCtx context.Context, startAsMode string) error {
+func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 	// 解析配置
-	var serverOpts ServerOptions
+	var serverOpts server.Options
 	if err := proxy.ConfigUnmarshalWith(runCtx, "server", &serverOpts); err != nil {
 		return err
 	}
 	// 指定运行模式
-	if startAsMode != "" {
-		serverOpts.Mode = startAsMode
+	if serverMode == "" {
+		serverOpts.Mode = ServerModeAuto
 	}
-	logrus.Info("inst: run as server mode: ", startAsMode)
+	logrus.Info("inst: run as server mode: ", serverMode)
 	// 检测运行模式
 	assertServerModeValid(serverOpts.Mode)
 	// 启动服务端
-	if helper.ContainsAnyString(serverOpts.Mode, ServerModeForward, ServerModeMixin) {
+	if helper.ContainsAnyString(serverOpts.Mode, ServerModeForward, ServerModeAuto) {
 		if err := i.buildForwardServer(runCtx, serverOpts, serverOpts.Mode == ServerModeForward); err != nil {
 			return err
 		}
 	}
-	if helper.ContainsAnyString(serverOpts.Mode, ServerModeProxy, ServerModeMixin) {
+	if helper.ContainsAnyString(serverOpts.Mode, ServerModeProxy, ServerModeAuto) {
 		var found = false
 		// Socks server
 		if ok, err := i.buildSocksServer(runCtx, serverOpts); err != nil {
@@ -72,16 +81,16 @@ func (i *Instance) Init(runCtx context.Context, startAsMode string) error {
 	if len(i.servers) == 0 {
 		return fmt.Errorf("servers not found")
 	}
-	for _, server := range i.servers {
-		if err := server.Init(runCtx); err != nil {
+	for _, srv := range i.servers {
+		if err := srv.Init(runCtx); err != nil {
 			return fmt.Errorf("server init error. %w", err)
 		}
 	}
 	return nil
 }
 
-func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts ServerOptions, isRequired bool) error {
-	var forwardOpts ForwardRootOptions
+func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts server.Options, isRequired bool) error {
+	var forwardOpts server.ForwardRootOptions
 	if err := proxy.ConfigUnmarshalWith(runCtx, "forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
@@ -93,16 +102,16 @@ func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts ServerO
 			logrus.Warnf("inst: forward server is disabled: %s", rule.Description)
 			continue
 		}
-		i.servers = append(i.servers, NewForwardServer(serverOpts, rule))
+		i.servers = append(i.servers, server.NewForwardServer(serverOpts, rule))
 	}
 	return nil
 }
 
-func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts ServerOptions) (bool, error) {
+func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts server.Options) (bool, error) {
 	if serverOpts.SocksPort <= 0 {
 		return false, nil
 	}
-	var socksOpts SocksOptions
+	var socksOpts server.SocksOptions
 	if err := proxy.ConfigUnmarshalWith(runCtx, "socks", &socksOpts); err != nil {
 		return false, fmt.Errorf("unmarshal socks options: %w", err)
 	}
@@ -110,21 +119,21 @@ func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts ServerOpt
 		logrus.Warnf("inst: socks server is disabled")
 		return false, nil
 	}
-	i.servers = append(i.servers, NewSocksServer(serverOpts, socksOpts))
+	i.servers = append(i.servers, server.NewSocksServer(serverOpts, socksOpts))
 	return true, nil
 }
 
-func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts ServerOptions) (bool, error) {
-	buildServer := func(serverOpts ServerOptions, isHttps bool) error {
-		var httpOpts HttpOptions
-		if err := proxy.ConfigUnmarshalWith(runCtx, "http", &httpOpts); err != nil {
-			return fmt.Errorf("unmarshal http options: %w", err)
+func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts server.Options) (bool, error) {
+	buildServer := func(serverOpts server.Options, isHttps bool) error {
+		var httpOpts server.HttpsOptions
+		if err := proxy.ConfigUnmarshalWith(runCtx, "https", &httpOpts); err != nil {
+			return fmt.Errorf("unmarshal https options: %w", err)
 		}
 		if httpOpts.Disabled {
-			logrus.Warnf("inst: http server is disabled")
+			logrus.Warnf("inst: https server is disabled")
 			return nil
 		}
-		i.servers = append(i.servers, NewHttpServer(serverOpts, httpOpts, isHttps))
+		i.servers = append(i.servers, server.NewHttpsServer(serverOpts, httpOpts, isHttps))
 		return nil
 	}
 	if serverOpts.HttpPort > 0 {
@@ -145,10 +154,10 @@ func (i *Instance) Serve(runCtx context.Context) error {
 		return fmt.Errorf("servers is required")
 	}
 	servErrors := make(chan error, len(i.servers))
-	for _, server := range i.servers {
+	for _, srv := range i.servers {
 		i.await.Add(1)
-		go func(server proxy.Server) {
-			if err := server.Serve(runCtx);
+		go func(psrv proxy.Server) {
+			if err := psrv.Serve(runCtx);
 				err == nil ||
 					errors.Is(err, io.EOF) ||
 					errors.Is(err, context.Canceled) ||
@@ -159,7 +168,7 @@ func (i *Instance) Serve(runCtx context.Context) error {
 				servErrors <- err
 			}
 			i.await.Done()
-		}(server)
+		}(srv)
 	}
 	select {
 	case err := <-servErrors:
@@ -172,4 +181,15 @@ func (i *Instance) Serve(runCtx context.Context) error {
 func (i *Instance) term(err error) error {
 	i.await.Wait()
 	return err
+}
+
+func assertServerModeValid(mode string) {
+	valid := false
+	switch strings.ToLower(mode) {
+	case ServerModeForward, ServerModeAuto, ServerModeProxy:
+		valid = true
+	default:
+		valid = false
+	}
+	assert.MustTrue(valid, "server mode is invalid, was: %s", mode)
 }

@@ -1,4 +1,4 @@
-package http
+package https
 
 import (
 	"context"
@@ -47,9 +47,9 @@ func (l *Listener) Init(options proxy.ListenerOptions) error {
 func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.isHttps {
-		logrus.Infof("http: listen start, HTTPS, address: %s", addr)
+		logrus.Infof("https: listen start, HTTPS, address: %s", addr)
 	} else {
-		logrus.Infof("http: listen start, address: %s", addr)
+		logrus.Infof("https: listen start, address: %s", addr)
 	}
 	server := &http.Server{
 		Addr:    addr,
@@ -74,7 +74,7 @@ func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 
 func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		proxy.Logger(r.Context()).Infof("http: %s %s", r.Method, r.RequestURI)
+		proxy.Logger(r.Context()).Infof("https: %s %s", r.Method, r.RequestURI)
 
 		// Auth: nop
 		removeHopByHopHeaders(r.Header)
@@ -93,11 +93,11 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	// Hijacker
 	r = r.WithContext(connCtx)
 	hijacker, ok := rw.(http.Hijacker)
-	assert.MustTrue(ok, "http: not support hijack")
+	assert.MustTrue(ok, "https: not support hijack")
 	hijConn, _, hijErr := hijacker.Hijack()
 	if hijErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		proxy.Logger(connCtx).Error("http: not support hijack")
+		proxy.Logger(connCtx).Error("https: not support hijack")
 		return
 	}
 	defer helper.Close(hijConn)
@@ -106,7 +106,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	connCtx = proxy.ContextWithHookFuncDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
 		if _, hiwErr := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
 			if !helper.IsConnectionClosed(hiwErr) {
-				proxy.Logger(connCtx).Errorf("http: write back ok response: %s", hiwErr)
+				proxy.Logger(connCtx).Errorf("https: write back ok response: %s", hiwErr)
 			}
 			return hiwErr
 		}
@@ -128,7 +128,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	// Complete
 	if hErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		proxy.Logger(connCtx).Errorf("http: conn handle: %s", hErr)
+		proxy.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
 	}
 }
 
@@ -180,7 +180,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, n
 	// Complete
 	if hErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		proxy.Logger(connCtx).Errorf("http: conn handle: %s", hErr)
+		proxy.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
 	}
 
 }

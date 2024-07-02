@@ -1,11 +1,12 @@
-package rocket
+package server
 
 import (
 	"context"
+	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
+	"github.com/rocketmanapp/rocket-proxy/modules/router"
+	"github.com/rocketmanapp/rocket-proxy/modules/socket"
+	"github.com/rocketmanapp/rocket-proxy/modules/socks"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
-	"github.com/rocketmanapp/rocket-proxy/proxy/router"
-	"github.com/rocketmanapp/rocket-proxy/proxy/socket"
-	"github.com/rocketmanapp/rocket-proxy/proxy/socks"
 	"github.com/sirupsen/logrus"
 )
 
@@ -19,13 +20,13 @@ type SocksOptions struct {
 
 type SocksServer struct {
 	options SocksOptions
-	*DirectServer
+	*Director
 }
 
-func NewSocksServer(serverOpts ServerOptions, socksOptions SocksOptions) *SocksServer {
+func NewSocksServer(serverOpts Options, socksOptions SocksOptions) *SocksServer {
 	return &SocksServer{
-		options:      socksOptions,
-		DirectServer: NewGenericServer(serverOpts),
+		options:  socksOptions,
+		Director: NewDirector(serverOpts),
 	}
 }
 
@@ -37,7 +38,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetServerType(proxy.ServerType_SOCKS)
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(NewDNSResolverWith(ctx))
+	s.SetResolver(resolver.NewDNSResolverWith(ctx))
 	s.SetConnector(connector)
 	return socksListener.Init(proxy.ListenerOptions{
 		Address: serverOpts.Bind,
@@ -47,5 +48,5 @@ func (s *SocksServer) Init(ctx context.Context) error {
 
 func (s *SocksServer) Serve(ctx context.Context) error {
 	defer logrus.Infof("socks: serve term")
-	return s.DirectServer.Serve(ctx)
+	return s.Director.ServeListen(ctx)
 }

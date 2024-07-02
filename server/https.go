@@ -1,50 +1,51 @@
-package rocket
+package server
 
 import (
 	"context"
 	"fmt"
+	"github.com/rocketmanapp/rocket-proxy/modules/https"
+	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
+	"github.com/rocketmanapp/rocket-proxy/modules/router"
+	"github.com/rocketmanapp/rocket-proxy/modules/socket"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/rocketmanapp/rocket-proxy/proxy"
-	"github.com/rocketmanapp/rocket-proxy/proxy/http"
-	"github.com/rocketmanapp/rocket-proxy/proxy/router"
-	"github.com/rocketmanapp/rocket-proxy/proxy/socket"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	_ proxy.Server = (*HttpServer)(nil)
+	_ proxy.Server = (*HttpsServer)(nil)
 )
 
-type HttpOptions struct {
+type HttpsOptions struct {
 	Disabled bool `yaml:"disabled"`
 	// TLS
 	TLSCertFile string `yaml:"tls_cert_file"`
 	TLSKeyFile  string `yaml:"tls_key_file"`
 }
 
-type HttpServer struct {
+type HttpsServer struct {
 	isHttps bool
-	options HttpOptions
-	*DirectServer
+	options HttpsOptions
+	*Director
 }
 
-func NewHttpServer(serverOpts ServerOptions, httpOptions HttpOptions, isHttps bool) *HttpServer {
-	return &HttpServer{
-		isHttps:      isHttps,
-		options:      httpOptions,
-		DirectServer: NewGenericServer(serverOpts),
+func NewHttpsServer(serverOpts Options, httpOptions HttpsOptions, isHttps bool) *HttpsServer {
+	return &HttpsServer{
+		isHttps:  isHttps,
+		options:  httpOptions,
+		Director: NewDirector(serverOpts),
 	}
 }
 
-func (s *HttpServer) Init(ctx context.Context) error {
-	httpListener := http.NewHttpListener(s.isHttps)
+func (s *HttpsServer) Init(ctx context.Context) error {
+	httpListener := https.NewHttpListener(s.isHttps)
 	proxyRouter := router.NewProxyRouter()
 	tcpConnector := socket.NewTcpConnector()
-	hstrConnector := http.NewHrtpConnector()
+	hstrConnector := https.NewHrtpConnector()
 	s.SetServerType(proxy.ServerType_HTTP)
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(NewDNSResolverWith(ctx))
+	s.SetResolver(resolver.NewDNSResolverWith(ctx))
 	s.SetConnectorSelector(func(conn *net.Connection) (proxy.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:
@@ -61,10 +62,10 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	if s.isHttps {
 		serverPort = serverOpts.HttpsPort
 		if len(s.options.TLSCertFile) < 3 {
-			return fmt.Errorf("http.tls_cert_file is required in config")
+			return fmt.Errorf("https.tls_cert_file is required in config")
 		}
 		if len(s.options.TLSKeyFile) < 3 {
-			return fmt.Errorf("http.tls_key_file is required in config")
+			return fmt.Errorf("https.tls_key_file is required in config")
 		}
 	} else {
 		serverPort = serverOpts.HttpPort
@@ -78,7 +79,7 @@ func (s *HttpServer) Init(ctx context.Context) error {
 	})
 }
 
-func (s *HttpServer) Serve(ctx context.Context) error {
-	defer logrus.Infof("http: serve term")
-	return s.DirectServer.Serve(ctx)
+func (s *HttpsServer) Serve(ctx context.Context) error {
+	defer logrus.Infof("https: serve term")
+	return s.Director.ServeListen(ctx)
 }

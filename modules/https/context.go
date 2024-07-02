@@ -1,4 +1,4 @@
-package http
+package https
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	ctxKeyHttpResponseWriter = "http.response-writer"
-	ctxKeyHttpHttpRequest    = "http.response-request"
+	ctxKeyHttpResponseWriter = "https.response-writer"
+	ctxKeyHttpHttpRequest    = "https.response-request"
 )
 
 func setWithUserContext(ctx context.Context, w http.ResponseWriter, r *http.Request) context.Context {
@@ -29,5 +29,5 @@ func requiredHttpRequest(ctx context.Context) *http.Request {
 	if ok {
 		return v
 	}
-	panic("*http.Request not in context")
+	panic("*https.Request not in context")
 }
