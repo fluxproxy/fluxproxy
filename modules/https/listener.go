@@ -115,10 +115,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		},
 	}
 	// Auth
-	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
-		Authenticate:  r.Header.Get("Proxy-Authenticate"),
-		Authorization: r.Header.Get("Proxy-Authorization"),
-	})
+	aErr := dispatchHandler.Auth(connCtx, conn, parseProxyAuthorization(r.Header))
 	if aErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
@@ -189,18 +186,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 		},
 	}
 	// Auth
-	authorization := r.Header.Get("Proxy-Authorization")
-	authenticate := r.Header.Get("Proxy-Authenticate")
-	var username, password = "", ""
-	if strings.HasPrefix(authenticate, "Basic") {
-		username, password, _ = parseBasicAuth(authorization)
-	}
-	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
-		Authenticate:  authenticate,
-		Authorization: authorization,
-		Username:      username,
-		Password:      password,
-	})
+	aErr := dispatchHandler.Auth(connCtx, conn, parseProxyAuthorization(r.Header))
 	if aErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
@@ -214,6 +200,28 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	if hErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
+	}
+}
+
+func parseProxyAuthorization(header http.Header) rocket.ListenerAuthorization {
+	authorization := header.Get("Proxy-Authorization")
+	if strings.HasPrefix(authorization, rocket.AuthenticateBasic) {
+		username, password, _ := parseBasicAuth(authorization)
+		return rocket.ListenerAuthorization{
+			Authenticate:  rocket.AuthenticateBasic,
+			Authorization: username + ":" + password,
+		}
+	} else if strings.HasPrefix(authorization, rocket.AuthenticateBearer) {
+		token, _ := parseBearerAuth(authorization)
+		return rocket.ListenerAuthorization{
+			Authenticate:  rocket.AuthenticateBearer,
+			Authorization: token,
+		}
+	} else {
+		return rocket.ListenerAuthorization{
+			Authenticate:  rocket.AuthenticateToken,
+			Authorization: authorization,
+		}
 	}
 }
 
@@ -250,6 +258,14 @@ func parseBasicAuth(auth string) (username, password string, ok bool) {
 		return "", "", false
 	}
 	return username, password, true
+}
+
+func parseBearerAuth(auth string) (token string, ok bool) {
+	const prefix = "Bearer "
+	if len(auth) < len(prefix) || !helper.ASCIIEqualFold(auth[:len(prefix)], prefix) {
+		return "", false
+	}
+	return auth[len(prefix):], true
 }
 
 func removeHopByHopHeaders(header http.Header) {

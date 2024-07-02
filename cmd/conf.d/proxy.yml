@@ -27,7 +27,7 @@ https:
   # 认证授权
   auth:
     # 启用认证功能，默认关闭
-    enabled: false
+    enabled: true
     # Basic认证机制配置
     basic:
       user1: "rocket-proxy"

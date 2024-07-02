@@ -47,6 +47,13 @@ func NewHttpsServer(serverOpts Options, httpsConfig HttpsConfig) *HttpsServer {
 func (s *HttpsServer) Init(ctx context.Context) error {
 	// 检查参数
 	serverOpts := s.Options()
+	if s.config.Auth.Enabled {
+		if len(s.config.Auth.Basic) == 0 {
+			return fmt.Errorf("no users defined for https auth")
+		} else {
+			logrus.Infof("https: basic auth enabled, users: %d", len(s.config.Auth.Basic))
+		}
+	}
 	var serverPort int
 	if s.config.UseHttps {
 		serverPort = serverOpts.HttpsPort
@@ -70,7 +77,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetAuthorizer(auth.WithUsers(s.config.Auth.Enabled, s.config.Auth.Basic).Authorize)
+	s.SetAuthorizer(auth.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Basic).Authorize)
 	s.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:

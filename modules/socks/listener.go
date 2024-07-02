@@ -148,9 +148,8 @@ func (t *Listener) doAuthHandshake(connCtx context.Context, netConn net.Conn, di
 		Destination: net.DestinationNotset,
 	}
 	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
-		Authenticate: rocket.AuthenticateUserPass,
-		Username:     string(upr.User),
-		Password:     string(upr.Pass),
+		Authenticate:  rocket.AuthenticateBasic,
+		Authorization: string(upr.User) + ":" + string(upr.Pass),
 	})
 	if aErr != nil {
 		if _, fErr := netConn.Write([]byte{v5.UserPassAuthVersion, v5.AuthFailure}); fErr != nil {

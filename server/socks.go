@@ -45,7 +45,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 		if len(s.config.Auth.Users) == 0 {
 			return fmt.Errorf("no users defined for socks auth")
 		} else {
-			logrus.Infof("socks: auth enabled, users: %d", len(s.config.Auth.Users))
+			logrus.Infof("socks: users auth enabled, users: %d", len(s.config.Auth.Users))
 		}
 	}
 	// 构建服务组件
@@ -58,7 +58,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetAuthorizer(auth.WithUsers(s.config.Auth.Enabled, s.config.Auth.Users).Authorize)
+	s.SetAuthorizer(auth.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Users).Authorize)
 	s.SetConnector(connector)
 	// 初始化
 	return socksListener.Init(rocket.ListenerOptions{

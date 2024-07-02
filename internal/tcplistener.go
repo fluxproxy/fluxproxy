@@ -105,7 +105,7 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 	}
 	// Auth
 	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
-		Authenticate:  rocket.AuthenticateSourceAddr, // 源地址校验
+		Authenticate:  rocket.AuthenticateSource, // 源地址校验
 		Authorization: tcpConn.RemoteAddr().String(),
 	})
 	if aErr != nil {

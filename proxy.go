@@ -16,8 +16,10 @@ type ListenerOptions struct {
 }
 
 const (
-	AuthenticateSourceAddr = "Source-Addr"
-	AuthenticateUserPass   = "User-Passkey"
+	AuthenticateSource = "Source"
+	AuthenticateBasic  = "Basic"
+	AuthenticateBearer = "Bearer"
+	AuthenticateToken  = "Token"
 )
 
 type ListenerAuthorization struct {
@@ -25,8 +27,6 @@ type ListenerAuthorization struct {
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authenticate
 	Authenticate  string
 	Authorization string
-	Username      string
-	Password      string
 }
 
 // ListenerAuthorizeFunc 连接授权函数
