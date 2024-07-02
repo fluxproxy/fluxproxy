@@ -24,6 +24,10 @@ https:
   # TLS for https
   tls_cert_file: ""
   tls_key_file: ""
+  # 认证授权
+  auth:
+    # 启用认证功能，默认关闭
+    enabled: false
 
 # Socks5 代理服务配置
 socks:

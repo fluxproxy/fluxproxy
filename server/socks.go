@@ -52,12 +52,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetResolver(resolver.NewResolverWith(ctx))
 	s.SetConnector(connector)
 	// setup
-	s.SetAuthorizer(func(ctx context.Context, conn net.Connection, auth rocket.ListenerAuthorization) error {
-		if !s.options.Auth.Enabled {
-			return s.noAuth(ctx, conn, auth)
-		}
-		return s.doUserAuth(ctx, conn, auth)
-	})
+	s.SetAuthorizer(s.doUserAuth)
 	if s.options.Auth.Enabled {
 		if len(s.options.Auth.Users) == 0 {
 			return fmt.Errorf("no users defined for socks auth")

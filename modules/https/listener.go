@@ -189,7 +189,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 		Authorization: r.Header.Get("Proxy-Authorization"),
 	})
 	if aErr != nil {
-		_, _ = rw.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\n"))
+		_, _ = rw.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
 		return
 	} else {
