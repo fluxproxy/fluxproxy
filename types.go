@@ -49,6 +49,6 @@ func (l *ListenerHandlerAdapter) Handle(ctx context.Context, conn net.Connection
 	return l.Handler(ctx, conn)
 }
 
-func (l *ListenerHandlerAdapter) Auth(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error {
+func (l *ListenerHandlerAdapter) Authorize(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error {
 	return l.Authorizer(ctx, conn, auth)
 }

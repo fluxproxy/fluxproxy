@@ -114,8 +114,8 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 			Port:    port,
 		},
 	}
-	// Auth
-	aErr := dispatchHandler.Auth(connCtx, conn, parseProxyAuthorization(r.Header))
+	// Authorize
+	aErr := dispatchHandler.Authorize(connCtx, conn, parseProxyAuthorization(r.Header))
 	if aErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
@@ -185,8 +185,8 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 			Port:    port,
 		},
 	}
-	// Auth
-	aErr := dispatchHandler.Auth(connCtx, conn, parseProxyAuthorization(r.Header))
+	// Authorize
+	aErr := dispatchHandler.Authorize(connCtx, conn, parseProxyAuthorization(r.Header))
 	if aErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)

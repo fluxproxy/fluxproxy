@@ -38,7 +38,7 @@ type ListenerHandlerFunc func(ctx context.Context, conn net.Connection) error
 // ListenerHandler 监听器的回调处理函数
 type ListenerHandler interface {
 	Handle(ctx context.Context, conn net.Connection) error
-	Auth(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error
+	Authorize(ctx context.Context, conn net.Connection, authorization ListenerAuthorization) error
 }
 
 // Listener 监听器，监听服务端口，完成与客户端的连接握手。
