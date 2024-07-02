@@ -35,10 +35,10 @@ func NewSocksListener(opts Options) *Listener {
 
 func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	return t.TcpListener.Listen(serveCtx, &rocket.ListenerHandlerAdapter{
-		Authorizer: func(_ context.Context, _ net.Connection, _ rocket.ListenerAuthorization) error {
+		Authenticator: func(_ context.Context, _ net.Connection, _ rocket.Authentication) error {
 			return nil // 忽略TCPListener的校验
 		},
-		Handler: func(connCtx context.Context, conn net.Connection) error {
+		Dispatcher: func(connCtx context.Context, conn net.Connection) error {
 			return t.handle(connCtx, conn.TCPConn(), dispatchHandler)
 		},
 	})
@@ -50,7 +50,7 @@ func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandle
 	} else if method.Ver != v5.VersionSocks5 {
 		return v5.ErrNotSupportVersion
 	}
-	// Authorize
+	// Authenticate
 	if t.opts.AuthEnabled {
 		if aErr := t.doAuthHandshake(connCtx, conn, dispatchHandler); aErr != nil {
 			return aErr
@@ -95,7 +95,7 @@ func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Re
 		destAddr = net.IPAddress(r.DstAddr.IP)
 	}
 	// Next
-	hErr := dispatchHandler.Handle(connCtx, net.Connection{
+	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		ReadWriter:  conn.(*net.TCPConn),
@@ -132,7 +132,7 @@ func (t *Listener) noAuthHandshake(connCtx context.Context, conn net.Conn, dispa
 }
 
 func (t *Listener) doAuthHandshake(connCtx context.Context, netConn net.Conn, dispatchHandler rocket.ListenerHandler) error {
-	// Authorize: user + pass
+	// Authenticate: user + pass
 	if _, mErr := netConn.Write([]byte{v5.VersionSocks5, v5.MethodUserPassAuth}); mErr != nil {
 		return fmt.Errorf("socks send reply/up: %w", mErr)
 	}
@@ -147,9 +147,9 @@ func (t *Listener) doAuthHandshake(connCtx context.Context, netConn net.Conn, di
 		UserContext: context.Background(),
 		Destination: net.DestinationNotset,
 	}
-	aErr := dispatchHandler.Authorize(connCtx, conn, rocket.ListenerAuthorization{
-		Authenticate:  rocket.AuthenticateBasic,
-		Authorization: string(upr.User) + ":" + string(upr.Pass),
+	aErr := dispatchHandler.Authenticate(connCtx, conn, rocket.Authentication{
+		Authenticate:   rocket.AuthenticateBasic,
+		Authentication: string(upr.User) + ":" + string(upr.Pass),
 	})
 	if aErr != nil {
 		if _, fErr := netConn.Write([]byte{v5.UserPassAuthVersion, v5.AuthFailure}); fErr != nil {
@@ -157,7 +157,7 @@ func (t *Listener) doAuthHandshake(connCtx context.Context, netConn net.Conn, di
 		}
 		return aErr
 	}
-	// Authorize success
+	// Authenticate success
 	if _, sErr := netConn.Write([]byte{v5.UserPassAuthVersion, v5.AuthSuccess}); sErr != nil {
 		return fmt.Errorf("socks send reply/as, %v", sErr)
 	}

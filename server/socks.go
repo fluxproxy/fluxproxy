@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rocketmanapp/rocket-proxy"
+	"github.com/rocketmanapp/rocket-proxy/modules/authenticator"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
 	"github.com/rocketmanapp/rocket-proxy/modules/socks"
@@ -57,7 +58,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetAuthorizer(authorizer.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Users).Authorize)
+	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Users).Authenticate)
 	s.SetConnector(connector)
 	// 初始化
 	return socksListener.Init(rocket.ListenerOptions{

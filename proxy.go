@@ -15,30 +15,24 @@ type ListenerOptions struct {
 	TLSKeyFile  string
 }
 
-const (
-	AuthenticateSource = "Source"
-	AuthenticateBasic  = "Basic"
-	AuthenticateBearer = "Bearer"
-	AuthenticateToken  = "Token"
-)
-
-type ListenerAuthorization struct {
-	// 授权方式
-	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Proxy-Authenticate
-	Authenticate  string
-	Authorization string
+type Authentication struct {
+	Authenticate   string
+	Authentication string
 }
 
-// ListenerAuthorizeFunc 连接授权函数
-type ListenerAuthorizeFunc func(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error
+// AuthenticateFunc 连接身份验证函数
+type AuthenticateFunc func(context.Context, net.Connection, Authentication) error
 
-// ListenerHandlerFunc 监听器的回调处理函数
-type ListenerHandlerFunc func(ctx context.Context, conn net.Connection) error
+// DispatchFunc 监听器的回调处理函数
+type DispatchFunc func(context.Context, net.Connection) error
 
-// ListenerHandler 监听器的回调处理函数
+// ListenerHandler 监听器处理函数
 type ListenerHandler interface {
-	Handle(ctx context.Context, conn net.Connection) error
-	Authorize(ctx context.Context, conn net.Connection, authorization ListenerAuthorization) error
+	// Authenticate 连接身份验证
+	Authenticate(ctx context.Context, conn net.Connection, authorization Authentication) error
+
+	// Dispatch 连接处理
+	Dispatch(ctx context.Context, conn net.Connection) error
 }
 
 // Listener 监听器，监听服务端口，完成与客户端的连接握手。
@@ -62,8 +56,8 @@ type Server interface {
 	Serve(context.Context) error
 }
 
-// ConnectorSelector 根据连接选择连接至目标地址的Connector
-type ConnectorSelector func(*net.Connection) (Connector, bool)
+// ConnectorSelectFunc 根据连接选择连接至目标地址的Connector
+type ConnectorSelectFunc func(*net.Connection) (Connector, bool)
 
 // Connector 远程地址连接器
 type Connector interface {

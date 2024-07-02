@@ -1,4 +1,4 @@
-package authorizer
+package authenticator
 
 import (
 	"context"
@@ -8,21 +8,25 @@ import (
 	"strings"
 )
 
-type BasicAuthorizer struct {
+var (
+	_ rocket.AuthenticateFunc = new(BasicAuthenticator).Authenticate
+)
+
+type BasicAuthenticator struct {
 	enabled bool
 	users   map[string]string
 }
 
-func WithBasicUsers(enabled bool, users map[string]string) *BasicAuthorizer {
-	return &BasicAuthorizer{enabled: enabled, users: users}
+func WithBasicUsers(enabled bool, users map[string]string) *BasicAuthenticator {
+	return &BasicAuthenticator{enabled: enabled, users: users}
 }
 
-func (u *BasicAuthorizer) Authorize(ctx context.Context, conn net.Connection, auth rocket.ListenerAuthorization) error {
+func (u *BasicAuthenticator) Authenticate(ctx context.Context, conn net.Connection, auth rocket.Authentication) error {
 	if !u.enabled {
 		return nil
 	}
 	//assert.MustTrue(auth.Authenticate == rocket.AuthenticateBasic, "invalid auth type: %s", auth.Authenticate)
-	username, password, ok := strings.Cut(auth.Authorization, ":")
+	username, password, ok := strings.Cut(auth.Authentication, ":")
 	if !ok {
 		return errors.New("invalid username or password")
 	}

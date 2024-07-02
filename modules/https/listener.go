@@ -114,8 +114,8 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 			Port:    port,
 		},
 	}
-	// Authorize
-	aErr := dispatchHandler.Authorize(connCtx, conn, parseProxyAuthorization(r.Header))
+	// Authenticate
+	aErr := dispatchHandler.Authenticate(connCtx, conn, parseProxyAuthorization(r.Header))
 	if aErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
@@ -134,7 +134,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		return nil
 	})
 	// Next
-	hErr := dispatchHandler.Handle(connCtx, conn)
+	hErr := dispatchHandler.Dispatch(connCtx, conn)
 	// Complete
 	if hErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
@@ -185,8 +185,8 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 			Port:    port,
 		},
 	}
-	// Authorize
-	aErr := dispatchHandler.Authorize(connCtx, conn, parseProxyAuthorization(r.Header))
+	// Authenticate
+	aErr := dispatchHandler.Authenticate(connCtx, conn, parseProxyAuthorization(r.Header))
 	if aErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
@@ -195,7 +195,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 		removeHopByHopHeaders(r.Header)
 	}
 	// Next
-	hErr := dispatchHandler.Handle(connCtx, conn)
+	hErr := dispatchHandler.Dispatch(connCtx, conn)
 	// Complete
 	if hErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
@@ -203,24 +203,24 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	}
 }
 
-func parseProxyAuthorization(header http.Header) rocket.ListenerAuthorization {
-	authorization := header.Get("Proxy-Authorization")
-	if strings.HasPrefix(authorization, rocket.AuthenticateBasic) {
-		username, password, _ := parseBasicAuth(authorization)
-		return rocket.ListenerAuthorization{
-			Authenticate:  rocket.AuthenticateBasic,
-			Authorization: username + ":" + password,
+func parseProxyAuthorization(header http.Header) rocket.Authentication {
+	token := header.Get("Proxy-Authorization")
+	if strings.HasPrefix(token, rocket.AuthenticateBasic) {
+		username, password, _ := parseBasicAuthorization(token)
+		return rocket.Authentication{
+			Authenticate:   rocket.AuthenticateBasic,
+			Authentication: username + ":" + password,
 		}
-	} else if strings.HasPrefix(authorization, rocket.AuthenticateBearer) {
-		token, _ := parseBearerAuth(authorization)
-		return rocket.ListenerAuthorization{
-			Authenticate:  rocket.AuthenticateBearer,
-			Authorization: token,
+	} else if strings.HasPrefix(token, rocket.AuthenticateBearer) {
+		token, _ := parseBearerAuthorization(token)
+		return rocket.Authentication{
+			Authenticate:   rocket.AuthenticateBearer,
+			Authentication: token,
 		}
 	} else {
-		return rocket.ListenerAuthorization{
-			Authenticate:  rocket.AuthenticateToken,
-			Authorization: authorization,
+		return rocket.Authentication{
+			Authenticate:   rocket.AuthenticateToken,
+			Authentication: token,
 		}
 	}
 }
@@ -240,15 +240,12 @@ func parseHostToAddress(urlHost string) (addr net.Address, port net.Port, err er
 	return addr, port, nil
 }
 
-// parseBasicAuth parses an HTTP Basic Authentication string.
-// "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" returns ("Aladdin", "open sesame", true).
-func parseBasicAuth(auth string) (username, password string, ok bool) {
+func parseBasicAuthorization(token string) (username, password string, ok bool) {
 	const prefix = "Basic "
-	// Case insensitive prefix match. See Issue 22736.
-	if len(auth) < len(prefix) || !helper.ASCIIEqualFold(auth[:len(prefix)], prefix) {
+	if len(token) < len(prefix) || !helper.ASCIIEqualFold(token[:len(prefix)], prefix) {
 		return "", "", false
 	}
-	c, err := base64.StdEncoding.DecodeString(auth[len(prefix):])
+	c, err := base64.StdEncoding.DecodeString(token[len(prefix):])
 	if err != nil {
 		return "", "", false
 	}
@@ -260,12 +257,12 @@ func parseBasicAuth(auth string) (username, password string, ok bool) {
 	return username, password, true
 }
 
-func parseBearerAuth(auth string) (token string, ok bool) {
+func parseBearerAuthorization(token string) (out string, ok bool) {
 	const prefix = "Bearer "
-	if len(auth) < len(prefix) || !helper.ASCIIEqualFold(auth[:len(prefix)], prefix) {
+	if len(token) < len(prefix) || !helper.ASCIIEqualFold(token[:len(prefix)], prefix) {
 		return "", false
 	}
-	return auth[len(prefix):], true
+	return token[len(prefix):], true
 }
 
 func removeHopByHopHeaders(header http.Header) {

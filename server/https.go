@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rocketmanapp/rocket-proxy"
-	"github.com/rocketmanapp/rocket-proxy/modules/authorizer"
+	"github.com/rocketmanapp/rocket-proxy/modules/authenticator"
 	"github.com/rocketmanapp/rocket-proxy/modules/https"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
@@ -77,7 +77,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetAuthorizer(authorizer.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Basic).Authorize)
+	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Basic).Authenticate)
 	s.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:

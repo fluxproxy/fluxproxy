@@ -12,22 +12,19 @@ import (
 )
 
 type Director struct {
-	serverType rocket.ServerType
-	serverOpts Options
-	listener   rocket.Listener
-	router     rocket.Router
-	resolver   rocket.Resolver
-	selector   rocket.ConnectorSelector
-	authorizer rocket.ListenerAuthorizeFunc
+	serverType        rocket.ServerType
+	serverOpts        Options
+	listener          rocket.Listener
+	router            rocket.Router
+	resolver          rocket.Resolver
+	connectorSelector rocket.ConnectorSelectFunc
+	authenticator     rocket.AuthenticateFunc
 }
 
 func NewDirector(opts Options) *Director {
 	assert.MustNotEmpty(opts.Mode, "server mode is empty")
 	return &Director{
 		serverOpts: opts,
-		authorizer: func(_ context.Context, _ net.Connection, _ rocket.ListenerAuthorization) error {
-			return nil
-		},
 	}
 }
 
@@ -57,13 +54,14 @@ func (d *Director) SetConnector(c rocket.Connector) {
 	})
 }
 
-func (d *Director) SetConnectorSelector(f rocket.ConnectorSelector) {
+func (d *Director) SetConnectorSelector(f rocket.ConnectorSelectFunc) {
 	assert.MustNotNil(f, "connector-selector is nil")
-	d.selector = f
+	d.connectorSelector = f
 }
 
-func (d *Director) SetAuthorizer(f rocket.ListenerAuthorizeFunc) {
-	d.authorizer = f
+func (d *Director) SetAuthenticator(f rocket.AuthenticateFunc) {
+	assert.MustNotNil(f, "authenticator is nil")
+	d.authenticator = f
 }
 
 func (d *Director) SetServerType(serverType rocket.ServerType) {
@@ -74,11 +72,11 @@ func (d *Director) ServeListen(servContext context.Context) error {
 	assert.MustNotNil(d.listener, "server listener is nil")
 	assert.MustNotNil(d.router, "server router is nil")
 	assert.MustNotNil(d.resolver, "server resolver is nil")
-	assert.MustNotNil(d.authorizer, "server authorizer is nil")
-	assert.MustNotNil(d.selector, "server connector-selector is nil")
+	assert.MustNotNil(d.authenticator, "server authenticator is nil")
+	assert.MustNotNil(d.connectorSelector, "server connector-selector is nil")
 	return d.listener.Listen(servContext, &rocket.ListenerHandlerAdapter{
-		Authorizer: d.authorizer,
-		Handler: func(connCtx context.Context, conn net.Connection) error {
+		Authenticator: d.authenticator,
+		Dispatcher: func(connCtx context.Context, conn net.Connection) error {
 			assert.MustTrue(connCtx != servContext, "conn context is the same ref as server context")
 			assert.MustNotNil(conn.UserContext, "user context is nil")
 			assert.MustNotEmpty(rocket.RequiredID(connCtx), "conn id is empty")
@@ -107,11 +105,9 @@ func (d *Director) ServeListen(servContext context.Context) error {
 				routed.Destination.Address = net.IPAddress(ip)
 			}
 
-			connector, ok := d.selector(&routed)
+			connector, ok := d.connectorSelector(&routed)
 			assert.MustTrue(ok, "connector not found, network: %d", destNetwork)
-			if dErr := connector.DialServe(connCtx, &routed); dErr == nil {
-				return nil
-			} else {
+			if dErr := connector.DialServe(connCtx, &routed); dErr != nil {
 				msg := dErr.Error()
 				if strings.Contains(msg, "use of closed network connection") {
 					return nil
@@ -123,6 +119,8 @@ func (d *Director) ServeListen(servContext context.Context) error {
 					return nil
 				}
 				return dErr
+			} else {
+				return nil
 			}
 		},
 	})

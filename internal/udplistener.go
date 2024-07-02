@@ -89,14 +89,14 @@ func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, sr
 		},
 		Destination: net.DestinationNotset,
 	}
-	// Authorize
-	aErr := dispatchHandler.Authorize(connCtx, conn, rocket.ListenerAuthorization{})
+	// Authenticate
+	aErr := dispatchHandler.Authenticate(connCtx, conn, rocket.Authentication{})
 	if aErr != nil {
 		rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
 		return
 	}
 	// Next
-	hErr := dispatchHandler.Handle(connCtx, conn)
+	hErr := dispatchHandler.Dispatch(connCtx, conn)
 	if hErr != nil {
 		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}

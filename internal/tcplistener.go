@@ -103,17 +103,17 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		UserContext: context.Background(),
 		Destination: net.DestinationNotset,
 	}
-	// Authorize
-	aErr := dispatchHandler.Authorize(connCtx, conn, rocket.ListenerAuthorization{
-		Authenticate:  rocket.AuthenticateSource, // 源地址校验
-		Authorization: tcpConn.RemoteAddr().String(),
+	// Authenticate
+	aErr := dispatchHandler.Authenticate(connCtx, conn, rocket.Authentication{
+		Authenticate:   rocket.AuthenticateSource, // 源地址校验
+		Authentication: tcpConn.RemoteAddr().String(),
 	})
 	if aErr != nil {
 		rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
 		return
 	}
 	// Next
-	hErr := dispatchHandler.Handle(connCtx, conn)
+	hErr := dispatchHandler.Dispatch(connCtx, conn)
 	if hErr != nil {
 		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}

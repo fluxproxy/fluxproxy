@@ -30,25 +30,34 @@ func (t ServerType) String() string {
 	return "unknown"
 }
 
+//// Authenticate Types
+
+const (
+	AuthenticateSource = "Source"
+	AuthenticateBasic  = "Basic"
+	AuthenticateBearer = "Bearer"
+	AuthenticateToken  = "Token"
+)
+
 //// Hook func
 
 type HookFunc func(ctx context.Context, conn *net.Connection) error
 
-////
+//// ListenerHandlerAdapter
 
 var (
 	_ ListenerHandler = (*ListenerHandlerAdapter)(nil)
 )
 
 type ListenerHandlerAdapter struct {
-	Authorizer ListenerAuthorizeFunc
-	Handler    ListenerHandlerFunc
+	Authenticator AuthenticateFunc
+	Dispatcher    DispatchFunc
 }
 
-func (l *ListenerHandlerAdapter) Handle(ctx context.Context, conn net.Connection) error {
-	return l.Handler(ctx, conn)
+func (l *ListenerHandlerAdapter) Dispatch(ctx context.Context, conn net.Connection) error {
+	return l.Dispatcher(ctx, conn)
 }
 
-func (l *ListenerHandlerAdapter) Authorize(ctx context.Context, conn net.Connection, auth ListenerAuthorization) error {
-	return l.Authorizer(ctx, conn, auth)
+func (l *ListenerHandlerAdapter) Authenticate(ctx context.Context, conn net.Connection, auth Authentication) error {
+	return l.Authenticator(ctx, conn, auth)
 }
