@@ -39,10 +39,6 @@ const (
 	AuthenticateToken  = "Token"
 )
 
-//// Hook func
-
-type HookFunc func(ctx context.Context, conn *net.Connection) error
-
 //// ListenerHandlerAdapter
 
 var (
@@ -50,7 +46,7 @@ var (
 )
 
 type ListenerHandlerAdapter struct {
-	Authenticator AuthenticateFunc
+	Authenticator Authenticator
 	Dispatcher    DispatchFunc
 }
 
@@ -59,5 +55,17 @@ func (l *ListenerHandlerAdapter) Dispatch(ctx context.Context, conn net.Connecti
 }
 
 func (l *ListenerHandlerAdapter) Authenticate(ctx context.Context, conn net.Connection, auth Authentication) error {
-	return l.Authenticator(ctx, conn, auth)
+	return l.Authenticator.Authenticate(ctx, conn, auth)
+}
+
+//// AuthenticatorFunc
+
+var (
+	_ Authenticator = (AuthenticatorFunc)(nil)
+)
+
+type AuthenticatorFunc func(ctx context.Context, conn net.Connection, auth Authentication) error
+
+func (f AuthenticatorFunc) Authenticate(ctx context.Context, connection net.Connection, authentication Authentication) error {
+	return f(ctx, connection, authentication)
 }

@@ -35,9 +35,9 @@ func NewSocksListener(opts Options) *Listener {
 
 func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	return t.TcpListener.Listen(serveCtx, &rocket.ListenerHandlerAdapter{
-		Authenticator: func(_ context.Context, _ net.Connection, _ rocket.Authentication) error {
+		Authenticator: rocket.AuthenticatorFunc(func(_ context.Context, _ net.Connection, _ rocket.Authentication) error {
 			return nil // 忽略TCPListener的校验
-		},
+		}),
 		Dispatcher: func(connCtx context.Context, conn net.Connection) error {
 			return t.handle(connCtx, conn.TCPConn(), dispatchHandler)
 		},

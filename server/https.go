@@ -77,7 +77,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Basic).Authenticate)
+	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Basic))
 	s.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:

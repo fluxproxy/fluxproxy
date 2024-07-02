@@ -20,8 +20,10 @@ type Authentication struct {
 	Authentication string
 }
 
-// AuthenticateFunc 连接身份验证函数
-type AuthenticateFunc func(context.Context, net.Connection, Authentication) error
+// Authenticator 连接身份验证函数
+type Authenticator interface {
+	Authenticate(context.Context, net.Connection, Authentication) error
+}
 
 // DispatchFunc 监听器的回调处理函数
 type DispatchFunc func(context.Context, net.Connection) error
@@ -75,3 +77,7 @@ type Router interface {
 type Resolver interface {
 	Resolve(ctx context.Context, addr net.Address) (net.IP, error)
 }
+
+//// Hook func
+
+type HookFunc func(ctx context.Context, conn *net.Connection) error

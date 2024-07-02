@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	_ rocket.AuthenticateFunc = new(BasicAuthenticator).Authenticate
+	_ rocket.Authenticator = (*BasicAuthenticator)(nil)
 )
 
 type BasicAuthenticator struct {

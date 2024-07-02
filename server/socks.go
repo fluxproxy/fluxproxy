@@ -58,7 +58,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Users).Authenticate)
+	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Users))
 	s.SetConnector(connector)
 	// 初始化
 	return socksListener.Init(rocket.ListenerOptions{

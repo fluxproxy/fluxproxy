@@ -18,7 +18,7 @@ type Director struct {
 	router            rocket.Router
 	resolver          rocket.Resolver
 	connectorSelector rocket.ConnectorSelectFunc
-	authenticator     rocket.AuthenticateFunc
+	authenticator     rocket.Authenticator
 }
 
 func NewDirector(opts Options) *Director {
@@ -59,7 +59,7 @@ func (d *Director) SetConnectorSelector(f rocket.ConnectorSelectFunc) {
 	d.connectorSelector = f
 }
 
-func (d *Director) SetAuthenticator(f rocket.AuthenticateFunc) {
+func (d *Director) SetAuthenticator(f rocket.Authenticator) {
 	assert.MustNotNil(f, "authenticator is nil")
 	d.authenticator = f
 }
