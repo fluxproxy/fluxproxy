@@ -27,4 +27,12 @@ https:
 
 # Socks5 代理服务配置
 socks:
+  # 禁用Socks代理
   disabled: false
+  # 认证授权
+  auth:
+    # 启用认证功能，默认关闭
+    enabled: false
+    # 认证用户列表
+    users:
+      user1: "rocket-proxy"

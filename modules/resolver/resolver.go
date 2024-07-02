@@ -65,14 +65,14 @@ func (d *CacheResolver) Resolve(ctx context.Context, addr net.Address) (stdnet.I
 		// S1: 通过配置文件实现 resolve/rewrite
 		if ip := configer.String("resolver.hosts." + name); ip != "" {
 			if rsv := net.ParseAddress(ip); rsv.Family().IsIP() {
-				return cache.NewDefault(rsv.IP), nil
+				return cache.NewDefault(rsv.IP()), nil
 			} else {
 				logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, ip)
 			}
 		}
 		// S2: IP地址，直接返回
 		if addr.Family().IsIP() {
-			return cache.NewDefault(addr.IP), nil
+			return cache.NewDefault(addr.IP()), nil
 		}
 		// S3: 尝试解析域名
 		addr, err := stdnet.ResolveIPAddr("ip", name)

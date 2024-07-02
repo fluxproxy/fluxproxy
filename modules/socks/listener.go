@@ -17,14 +17,18 @@ var (
 	_ rocket.Listener = (*Listener)(nil)
 )
 
+type Options struct {
+	AuthEnabled bool
+}
+
 type Listener struct {
-	authEnabled bool
+	opts Options
 	*internal.TcpListener
 }
 
-func NewSocksListener() *Listener {
+func NewSocksListener(opts Options) *Listener {
 	return &Listener{
-		authEnabled: false,
+		opts:        opts,
 		TcpListener: internal.NewTcpListener("socks", net.DefaultTcpOptions()),
 	}
 }
@@ -41,13 +45,12 @@ func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 }
 
 func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandler rocket.ListenerHandler) error {
-	//reader := bufio.NewReader(conn)
 	if method, err := v5.ParseMethodRequest(conn); err != nil {
 		return err
 	} else if method.Ver != v5.VersionSocks5 {
 		return v5.ErrNotSupportVersion
 	}
-	if t.authEnabled {
+	if t.opts.AuthEnabled {
 		if aErr := t.doAuth(connCtx, conn, dispatchHandler); aErr != nil {
 			return aErr
 		}
