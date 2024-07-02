@@ -77,7 +77,7 @@ func (d *Director) ServeListen(servContext context.Context) error {
 		}
 
 		defer func(start time.Time) {
-			rocket.Logger(connCtx).Infof("%d: conn duration: %dms", d.serverType, time.Since(start).Milliseconds())
+			rocket.Logger(connCtx).Infof("%s: conn duration: %dms", d.serverType, time.Since(start).Milliseconds())
 		}(time.Now())
 
 		connCtx = context.WithValue(connCtx, rocket.CtxKeyServerType, d.serverType)
