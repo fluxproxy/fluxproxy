@@ -1,4 +1,4 @@
-package socket
+package stream
 
 import (
 	"github.com/rocketmanapp/rocket-proxy"

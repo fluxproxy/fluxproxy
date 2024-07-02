@@ -25,7 +25,7 @@ type Listener struct {
 	roundTripper http.RoundTripper
 }
 
-func NewHttpListener(isHttps bool) *Listener {
+func NewHttpsListener(isHttps bool) *Listener {
 	return &Listener{
 		isHttps: isHttps,
 		roundTripper: &http.Transport{

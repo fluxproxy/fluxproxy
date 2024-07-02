@@ -7,7 +7,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
-	"github.com/rocketmanapp/rocket-proxy/modules/socket"
+	"github.com/rocketmanapp/rocket-proxy/modules/stream"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 )
@@ -56,14 +56,14 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	}
 	switch network {
 	case net.Network_UDP:
-		listener = socket.NewUdpListener()
+		listener = stream.NewUdpListener()
 		proxyRouter = router.NewStaticRouter(dest)
-		connector = socket.NewUdpConnector()
+		connector = stream.NewUdpConnector()
 		s.SetServerType(rocket.ServerTypeUDP)
 	case net.Network_TCP:
-		listener = socket.NewTcpListener()
+		listener = stream.NewTcpListener()
 		proxyRouter = router.NewStaticRouter(dest)
-		connector = socket.NewTcpConnector()
+		connector = stream.NewTcpConnector()
 		s.SetServerType(rocket.ServerTypeTCP)
 	default:
 		return fmt.Errorf("forward unsupport network: %s", s.options.Network)

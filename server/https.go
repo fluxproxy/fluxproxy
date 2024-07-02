@@ -7,7 +7,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/modules/https"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
-	"github.com/rocketmanapp/rocket-proxy/modules/socket"
+	"github.com/rocketmanapp/rocket-proxy/modules/stream"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 )
@@ -38,9 +38,9 @@ func NewHttpsServer(serverOpts Options, httpOptions HttpsOptions, isHttps bool) 
 }
 
 func (s *HttpsServer) Init(ctx context.Context) error {
-	httpListener := https.NewHttpListener(s.isHttps)
+	httpListener := https.NewHttpsListener(s.isHttps)
 	proxyRouter := router.NewProxyRouter()
-	tcpConnector := socket.NewTcpConnector()
+	tcpConnector := stream.NewTcpConnector()
 	hstrConnector := https.NewHrtpConnector()
 	s.SetServerType(rocket.ServerTypeHTTPS)
 	s.SetListener(httpListener)

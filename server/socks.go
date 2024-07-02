@@ -5,8 +5,8 @@ import (
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
-	"github.com/rocketmanapp/rocket-proxy/modules/socket"
 	"github.com/rocketmanapp/rocket-proxy/modules/socks"
+	"github.com/rocketmanapp/rocket-proxy/modules/stream"
 	"github.com/sirupsen/logrus"
 )
 
@@ -34,7 +34,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	serverOpts := s.Options()
 	socksListener := socks.NewSocksListener()
 	proxyRouter := router.NewProxyRouter()
-	connector := socket.NewTcpConnector()
+	connector := stream.NewTcpConnector()
 	s.SetServerType(rocket.ServerTypeSOCKS)
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
