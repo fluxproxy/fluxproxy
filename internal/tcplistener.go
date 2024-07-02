@@ -104,17 +104,13 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		Destination: net.DestinationNotset,
 	}
 	// Auth
-	if dispatchHandler.Auth != nil {
-		aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
-			Authenticate:  rocket.AuthenticateSourceAddr, // 源地址校验
-			Authorization: tcpConn.RemoteAddr().String(),
-		})
-		if aErr != nil {
-			rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
-			return
-		}
-	} else {
-		// mark: TCPListener应用于Socks协议等场景时，使用协议认证机制，不对源地址认证
+	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
+		Authenticate:  rocket.AuthenticateSourceAddr, // 源地址校验
+		Authorization: tcpConn.RemoteAddr().String(),
+	})
+	if aErr != nil {
+		rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
+		return
 	}
 	// Next
 	hErr := dispatchHandler.Handle(connCtx, conn)

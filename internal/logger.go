@@ -12,9 +12,8 @@ func SetupTcpContextLogger(ctx context.Context, conn *net.TCPConn) context.Conte
 	id, _ := uuid.GenerateUUID()
 	remoteAddr := conn.RemoteAddr()
 	logger := logrus.WithFields(logrus.Fields{
-		"network": "tcp",
-		"address": remoteAddr.String(),
-		"connid":  id,
+		"remote": remoteAddr.String(),
+		"id":     id,
 	})
 	return rocket.SetContextLogger(ctx, id, logger)
 }
@@ -22,9 +21,8 @@ func SetupTcpContextLogger(ctx context.Context, conn *net.TCPConn) context.Conte
 func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Context {
 	id, _ := uuid.GenerateUUID()
 	logger := logrus.WithFields(logrus.Fields{
-		"network": "udp",
-		"address": conn.String(),
-		"connid":  id,
+		"remote": conn.String(),
+		"id":     id,
 	})
 	return rocket.SetContextLogger(ctx, id, logger)
 }

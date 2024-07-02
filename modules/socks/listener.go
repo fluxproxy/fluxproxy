@@ -24,13 +24,16 @@ type Listener struct {
 
 func NewSocksListener() *Listener {
 	return &Listener{
+		authEnabled: false,
 		TcpListener: internal.NewTcpListener("socks", net.DefaultTcpOptions()),
 	}
 }
 
 func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	return t.TcpListener.Listen(serveCtx, &rocket.ListenerHandlerAdapter{
-		Authorizer: nil, // 忽略TCPListener的校验
+		Authorizer: func(_ context.Context, _ net.Connection, _ rocket.ListenerAuthorization) error {
+			return nil // 忽略TCPListener的校验
+		},
 		Handler: func(connCtx context.Context, conn net.Connection) error {
 			return t.handle(connCtx, conn.TCPConn(), dispatchHandler)
 		},
@@ -45,11 +48,11 @@ func (t *Listener) handle(connCtx context.Context, conn net.Conn, dispatchHandle
 		return v5.ErrNotSupportVersion
 	}
 	if t.authEnabled {
-		if aErr := t.noAuth(connCtx, conn, dispatchHandler); aErr != nil {
+		if aErr := t.doAuth(connCtx, conn, dispatchHandler); aErr != nil {
 			return aErr
 		}
 	} else {
-		if aErr := t.doAuth(connCtx, conn, dispatchHandler); aErr != nil {
+		if aErr := t.noAuth(connCtx, conn, dispatchHandler); aErr != nil {
 			return aErr
 		}
 	}
@@ -131,7 +134,7 @@ func (t *Listener) doAuth(connCtx context.Context, conn net.Conn, dispatchHandle
 	}
 	upr, err := v5.ParseUserPassRequest(conn)
 	if err != nil {
-		return fmt.Errorf("failed to authenticate: %w", err)
+		return fmt.Errorf("socks parse user-pass: %w", err)
 	}
 	nConn := net.Connection{
 		Network:     t.Network(),
