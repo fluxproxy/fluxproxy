@@ -30,10 +30,6 @@ func NewTcpListener(tag string, tcpOpts net.TcpOptions) *TcpListener {
 	}
 }
 
-func (t *TcpListener) ServerType() rocket.ServerType {
-	return rocket.ServerTypeTCP
-}
-
 func (t *TcpListener) Network() net.Network {
 	return net.Network_TCP
 }
