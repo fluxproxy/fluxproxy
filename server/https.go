@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/rocketmanapp/rocket-proxy"
+	"github.com/rocketmanapp/rocket-proxy/modules/auth"
 	"github.com/rocketmanapp/rocket-proxy/modules/https"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
@@ -16,29 +17,52 @@ var (
 	_ rocket.Server = (*HttpsServer)(nil)
 )
 
-type HttpsOptions struct {
+type HttpsAuthConfig struct {
+	Enabled bool              `yaml:"enabled"`
+	Basic   map[string]string `yaml:"basic"`
+}
+
+type HttpsConfig struct {
+	UseHttps bool `yaml:"-"`
 	Disabled bool `yaml:"disabled"`
 	// TLS
 	TLSCertFile string `yaml:"tls_cert_file"`
 	TLSKeyFile  string `yaml:"tls_key_file"`
+	// Auth
+	Auth HttpsAuthConfig `yaml:"auth"`
 }
 
 type HttpsServer struct {
-	isHttps bool
-	options HttpsOptions
+	config HttpsConfig
 	*Director
 }
 
-func NewHttpsServer(serverOpts Options, httpsOptions HttpsOptions, isHttps bool) *HttpsServer {
+func NewHttpsServer(serverOpts Options, httpsConfig HttpsConfig) *HttpsServer {
 	return &HttpsServer{
-		isHttps:  isHttps,
-		options:  httpsOptions,
+		config:   httpsConfig,
 		Director: NewDirector(serverOpts),
 	}
 }
 
 func (s *HttpsServer) Init(ctx context.Context) error {
-	httpListener := https.NewHttpsListener(s.isHttps)
+	// 检查参数
+	serverOpts := s.Options()
+	var serverPort int
+	if s.config.UseHttps {
+		serverPort = serverOpts.HttpsPort
+		if len(s.config.TLSCertFile) < 3 {
+			return fmt.Errorf("https.tls_cert_file is required in config")
+		}
+		if len(s.config.TLSKeyFile) < 3 {
+			return fmt.Errorf("https.tls_key_file is required in config")
+		}
+	} else {
+		serverPort = serverOpts.HttpPort
+	}
+	// 构建服务组件
+	httpListener := https.NewHttpsListener(https.Options{
+		UseHttps: s.config.UseHttps,
+	})
 	proxyRouter := router.NewProxyRouter()
 	tcpConnector := stream.NewTcpConnector()
 	hstrConnector := https.NewHrtpConnector()
@@ -46,6 +70,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
+	s.SetAuthorizer(auth.WithUsers(s.config.Auth.Enabled, s.config.Auth.Basic).Authorize)
 	s.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:
@@ -56,26 +81,13 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 			return nil, false
 		}
 	})
-	// Listener init
-	serverOpts := s.Options()
-	var serverPort int
-	if s.isHttps {
-		serverPort = serverOpts.HttpsPort
-		if len(s.options.TLSCertFile) < 3 {
-			return fmt.Errorf("https.tls_cert_file is required in config")
-		}
-		if len(s.options.TLSKeyFile) < 3 {
-			return fmt.Errorf("https.tls_key_file is required in config")
-		}
-	} else {
-		serverPort = serverOpts.HttpPort
-	}
+	// 初始化
 	return httpListener.Init(rocket.ListenerOptions{
 		Address: serverOpts.Bind,
 		Port:    serverPort,
 		// TLS
-		TLSCertFile: s.options.TLSCertFile,
-		TLSKeyFile:  s.options.TLSKeyFile,
+		TLSCertFile: s.config.TLSCertFile,
+		TLSKeyFile:  s.config.TLSKeyFile,
 	})
 }
 

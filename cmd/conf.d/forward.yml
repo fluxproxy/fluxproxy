@@ -27,8 +27,7 @@ forward:
         address: "127.0.0.1"
         port: 8888
 
-    - description: "forward-udp-8888-to-127.0.0.1-1235"
-      network: udp
+    - network: udp
       port: 8887
       disabled: false
       destination:

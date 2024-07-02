@@ -3,6 +3,7 @@ package https
 import (
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
@@ -19,15 +20,19 @@ var (
 	_ rocket.Listener = (*Listener)(nil)
 )
 
+type Options struct {
+	UseHttps bool
+}
+
 type Listener struct {
-	isHttps      bool
+	opts         Options
 	listenerOpts rocket.ListenerOptions
 	roundTripper http.RoundTripper
 }
 
-func NewHttpsListener(isHttps bool) *Listener {
+func NewHttpsListener(opts Options) *Listener {
 	return &Listener{
-		isHttps: isHttps,
+		opts: opts,
 		roundTripper: &http.Transport{
 			TLSClientConfig: &tls.Config{},
 			Proxy:           http.ProxyFromEnvironment,
@@ -46,7 +51,7 @@ func (l *Listener) Init(options rocket.ListenerOptions) error {
 
 func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
-	if l.isHttps {
+	if l.opts.UseHttps {
 		logrus.Infof("https: listen start, HTTPS, address: %s", addr)
 	} else {
 		logrus.Infof("https: listen start, address: %s", addr)
@@ -65,7 +70,7 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 		<-serveCtx.Done()
 		_ = server.Shutdown(serveCtx)
 	}()
-	if l.isHttps {
+	if l.opts.UseHttps {
 		return server.ListenAndServeTLS(l.listenerOpts.TLSCertFile, l.listenerOpts.TLSKeyFile)
 	} else {
 		return server.ListenAndServe()
@@ -115,7 +120,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		Authorization: r.Header.Get("Proxy-Authorization"),
 	})
 	if aErr != nil {
-		_, _ = hijConn.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\n"))
+		_, _ = hijConn.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
 		return
 	} else {
@@ -184,9 +189,17 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 		},
 	}
 	// Auth
+	authorization := r.Header.Get("Proxy-Authorization")
+	authenticate := r.Header.Get("Proxy-Authenticate")
+	var username, password = "", ""
+	if strings.HasPrefix(authenticate, "Basic") {
+		username, password, _ = parseBasicAuth(authorization)
+	}
 	aErr := dispatchHandler.Auth(connCtx, conn, rocket.ListenerAuthorization{
-		Authenticate:  r.Header.Get("Proxy-Authenticate"),
-		Authorization: r.Header.Get("Proxy-Authorization"),
+		Authenticate:  authenticate,
+		Authorization: authorization,
+		Username:      username,
+		Password:      password,
 	})
 	if aErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
@@ -217,6 +230,26 @@ func parseHostToAddress(urlHost string) (addr net.Address, port net.Port, err er
 		port = net.Port(80)
 	}
 	return addr, port, nil
+}
+
+// parseBasicAuth parses an HTTP Basic Authentication string.
+// "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==" returns ("Aladdin", "open sesame", true).
+func parseBasicAuth(auth string) (username, password string, ok bool) {
+	const prefix = "Basic "
+	// Case insensitive prefix match. See Issue 22736.
+	if len(auth) < len(prefix) || !helper.ASCIIEqualFold(auth[:len(prefix)], prefix) {
+		return "", "", false
+	}
+	c, err := base64.StdEncoding.DecodeString(auth[len(prefix):])
+	if err != nil {
+		return "", "", false
+	}
+	cs := string(c)
+	username, password, ok = strings.Cut(cs, ":")
+	if !ok {
+		return "", "", false
+	}
+	return username, password, true
 }
 
 func removeHopByHopHeaders(header http.Header) {

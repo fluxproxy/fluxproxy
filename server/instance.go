@@ -81,7 +81,7 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 }
 
 func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts Options, isRequired bool) error {
-	var forwardOpts ForwardRootOptions
+	var forwardOpts ForwardConfig
 	if err := rocket.ConfigUnmarshalWith(runCtx, "forward", &forwardOpts); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
@@ -102,7 +102,7 @@ func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts Options) 
 	if serverOpts.SocksPort <= 0 {
 		return false, nil
 	}
-	var socksOpts SocksOptions
+	var socksOpts SocksConfig
 	if err := rocket.ConfigUnmarshalWith(runCtx, "socks", &socksOpts); err != nil {
 		return false, fmt.Errorf("unmarshal socks options: %w", err)
 	}
@@ -116,15 +116,16 @@ func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts Options) 
 
 func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts Options) (bool, error) {
 	buildServer := func(serverOpts Options, isHttps bool) error {
-		var httpOpts HttpsOptions
-		if err := rocket.ConfigUnmarshalWith(runCtx, "https", &httpOpts); err != nil {
+		var httpsConfig HttpsConfig
+		if err := rocket.ConfigUnmarshalWith(runCtx, "https", &httpsConfig); err != nil {
 			return fmt.Errorf("unmarshal https options: %w", err)
 		}
-		if httpOpts.Disabled {
+		if httpsConfig.Disabled {
 			logrus.Warnf("inst: https server is disabled")
 			return nil
 		}
-		i.servers = append(i.servers, NewHttpsServer(serverOpts, httpOpts, isHttps))
+		httpsConfig.UseHttps = isHttps
+		i.servers = append(i.servers, NewHttpsServer(serverOpts, httpsConfig))
 		return nil
 	}
 	if serverOpts.HttpPort > 0 {
