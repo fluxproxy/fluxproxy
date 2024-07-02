@@ -83,9 +83,8 @@ func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler rocket.Li
 }
 
 func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, dispatchHandler rocket.ListenerHandler) {
-	connCtx, connCancel := context.WithCancel(serveCtx)
+	connCtx, connCancel := context.WithCancel(SetupTcpContextLogger(serveCtx, tcpConn))
 	defer connCancel()
-	connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
 	defer func() {
 		if rErr := recover(); rErr != nil {
 			rocket.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))

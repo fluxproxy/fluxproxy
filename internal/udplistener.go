@@ -69,9 +69,9 @@ func (t *UdpListener) Listen(serveCtx context.Context, dispatchHandler rocket.Li
 	}
 }
 
-func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, data []byte,
-	dispatchHandler rocket.ListenerHandler) {
-	connCtx := SetupUdpContextLogger(ctx, srcAddr)
+func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, data []byte, dispatchHandler rocket.ListenerHandler) {
+	connCtx, connCancel := context.WithCancel(SetupUdpContextLogger(serveCtx, srcAddr))
+	defer connCancel()
 	defer func() {
 		if rErr := recover(); rErr != nil {
 			rocket.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
@@ -81,7 +81,7 @@ func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr
 		Network:     t.Network(),
 		Address:     net.IPAddress(srcAddr.IP),
 		UserContext: context.Background(),
-		ReadWriter: &wrapper{
+		ReadWriter: &udpConnWrapper{
 			reader: bytes.NewReader(data),
 			writer: func(b []byte) (_ int, _ error) {
 				return listener.WriteToUDP(b, srcAddr)
@@ -95,22 +95,22 @@ func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr
 }
 
 var (
-	_ io.ReadWriter = (*wrapper)(nil)
+	_ io.ReadWriter = (*udpConnWrapper)(nil)
 )
 
-type wrapper struct {
+type udpConnWrapper struct {
 	reader io.Reader
 	writer func(b []byte) (n int, err error)
 }
 
-func (c *wrapper) Read(b []byte) (n int, err error) {
+func (c *udpConnWrapper) Read(b []byte) (n int, err error) {
 	return c.reader.Read(b)
 }
 
-func (c *wrapper) Write(b []byte) (n int, err error) {
+func (c *udpConnWrapper) Write(b []byte) (n int, err error) {
 	return c.writer(b)
 }
 
-func (c *wrapper) Close() error {
+func (c *udpConnWrapper) Close() error {
 	return nil
 }
