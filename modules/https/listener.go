@@ -44,7 +44,7 @@ func (l *Listener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
+func (l *Listener) Listen(serveCtx context.Context, dispatchHandler proxy.ListenerHandler) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.isHttps {
 		logrus.Infof("https: listen start, HTTPS, address: %s", addr)
@@ -53,7 +53,7 @@ func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 	}
 	server := &http.Server{
 		Addr:    addr,
-		Handler: l.newServeHandler(handler),
+		Handler: l.newServeHandler(dispatchHandler),
 		BaseContext: func(l stdnet.Listener) context.Context {
 			return serveCtx
 		},
@@ -72,7 +72,7 @@ func (l *Listener) Listen(serveCtx context.Context, handler proxy.ListenerHandle
 	}
 }
 
-func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFunc {
+func (l *Listener) newServeHandler(dispatchHandler proxy.ListenerHandler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		proxy.Logger(r.Context()).Infof("https: %s %s", r.Method, r.RequestURI)
 
@@ -80,14 +80,14 @@ func (l *Listener) newServeHandler(handler proxy.ListenerHandler) http.HandlerFu
 		removeHopByHopHeaders(r.Header)
 
 		if r.Method == http.MethodConnect {
-			l.handleConnectStream(rw, r, handler)
+			l.handleConnectStream(rw, r, dispatchHandler)
 		} else {
-			l.handlePlainRequest(rw, r, handler)
+			l.handlePlainRequest(rw, r, dispatchHandler)
 		}
 	}
 }
 
-func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, dispatchHandler proxy.ListenerHandler) {
 	connCtx, connCancel := context.WithCancel(r.Context())
 	defer connCancel()
 	// Hijacker
@@ -114,7 +114,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	})
 	// Next
 	addr, port, _ := parseHostToAddress(r.URL.Host)
-	hErr := next(connCtx, net.Connection{
+	hErr := dispatchHandler(connCtx, net.Connection{
 		Network:     l.Network(),
 		Address:     net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		ReadWriter:  hijConn.(*net.TCPConn),
@@ -132,7 +132,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	}
 }
 
-func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, next proxy.ListenerHandler) {
+func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatchHandler proxy.ListenerHandler) {
 	defer helper.Close(r.Body)
 
 	if r.URL.Host == "" || !r.URL.IsAbs() {
@@ -166,7 +166,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, n
 	// Next
 	connCtx := r.Context()
 	addr, port, _ := parseHostToAddress(r.URL.Host)
-	hErr := next(connCtx, net.Connection{
+	hErr := dispatchHandler(connCtx, net.Connection{
 		Network:     l.Network(),
 		Address:     net.ParseAddress(r.RemoteAddr),
 		UserContext: setWithUserContext(context.Background(), rw, r),

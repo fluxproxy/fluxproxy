@@ -22,12 +22,12 @@ func NewProxyRouter() *ProxyRouter {
 }
 
 func (d *ProxyRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
-	proxyType := proxy.RequiredProxyType(ctx)
-	switch proxyType {
-	case proxy.ServerType_SOCKS, proxy.ServerType_HTTP:
+	serverType := proxy.RequiredServerType(ctx)
+	switch serverType {
+	case proxy.ServerTypeSOCKS, proxy.ServerTypeHTTPS:
 		assert.MustTrue(income.Destination.IsValid(), "destination must be valid")
 		return *income, nil
 	default:
-		return *income, fmt.Errorf("unsupported proxy type: %d", proxyType)
+		return *income, fmt.Errorf("unsupported server type: %d", serverType)
 	}
 }

@@ -32,7 +32,7 @@ func NewUdpListener(tag string, udpOpts net.UdpOptions) *UdpListener {
 }
 
 func (t *UdpListener) ServerType() proxy.ServerType {
-	return proxy.ServerType_UDP
+	return proxy.ServerTypeUDP
 }
 
 func (t *UdpListener) Network() net.Network {
@@ -44,7 +44,7 @@ func (t *UdpListener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
+func (t *UdpListener) Listen(serveCtx context.Context, dispatchHandler proxy.ListenerHandler) error {
 	addr := &stdnet.UDPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
 	listener, lErr := stdnet.ListenUDP("udp", addr)
@@ -68,20 +68,20 @@ func (t *UdpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 			}
 		}
 		goes.Go(func() {
-			t.handle(serveCtx, listener, srcAddr, buffer[:n], handler)
+			t.handle(serveCtx, listener, srcAddr, buffer[:n], dispatchHandler)
 		})
 	}
 }
 
 func (t *UdpListener) handle(ctx context.Context, listener *net.UDPConn, srcAddr *net.UDPAddr, data []byte,
-	handler proxy.ListenerHandler) {
+	dispatchHandler proxy.ListenerHandler) {
 	connCtx := SetupUdpContextLogger(ctx, srcAddr)
 	defer func() {
 		if rErr := recover(); rErr != nil {
 			proxy.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 		}
 	}()
-	hErr := handler(connCtx, net.Connection{
+	hErr := dispatchHandler(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress(srcAddr.IP),
 		UserContext: context.Background(),

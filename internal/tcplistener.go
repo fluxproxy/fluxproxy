@@ -31,7 +31,7 @@ func NewTcpListener(tag string, tcpOpts net.TcpOptions) *TcpListener {
 }
 
 func (t *TcpListener) ServerType() proxy.ServerType {
-	return proxy.ServerType_TCP
+	return proxy.ServerTypeTCP
 }
 
 func (t *TcpListener) Network() net.Network {
@@ -43,7 +43,7 @@ func (t *TcpListener) Init(options proxy.ListenerOptions) error {
 	return nil
 }
 
-func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHandler) error {
+func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler proxy.ListenerHandler) error {
 	addr := &stdnet.TCPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
 	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
 	listener, lErr := stdnet.ListenTCP("tcp", addr)
@@ -81,12 +81,12 @@ func (t *TcpListener) Listen(serveCtx context.Context, handler proxy.ListenerHan
 			}
 		}
 		goes.Go(func() {
-			t.handle(serveCtx, conn.(*stdnet.TCPConn), handler)
+			t.handle(serveCtx, conn.(*stdnet.TCPConn), dispatchHandler)
 		})
 	}
 }
 
-func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, handler proxy.ListenerHandler) {
+func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, dispatchHandler proxy.ListenerHandler) {
 	connCtx, connCancel := context.WithCancel(serveCtx)
 	defer connCancel()
 	connCtx = SetupTcpContextLogger(serveCtx, tcpConn)
@@ -102,7 +102,7 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		return
 	}
 	// Next
-	hErr := handler(connCtx, net.Connection{
+	hErr := dispatchHandler(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress((tcpConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		ReadWriter:  tcpConn,

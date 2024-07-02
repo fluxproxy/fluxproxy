@@ -80,7 +80,7 @@ func (d *Director) ServeListen(servContext context.Context) error {
 			proxy.Logger(connCtx).Infof("%d: conn duration: %dms", d.serverType, time.Since(start).Milliseconds())
 		}(time.Now())
 
-		connCtx = context.WithValue(connCtx, proxy.CtxKeyProxyType, d.serverType)
+		connCtx = context.WithValue(connCtx, proxy.CtxKeyServerType, d.serverType)
 		routed, rErr := d.router.Route(connCtx, &conn)
 		if rErr != nil {
 			return fmt.Errorf("server router: %w", rErr)

@@ -59,12 +59,12 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 		listener = socket.NewUdpListener()
 		proxyRouter = router.NewStaticRouter(dest)
 		connector = socket.NewUdpConnector()
-		s.SetServerType(proxy.ServerType_UDP)
+		s.SetServerType(proxy.ServerTypeUDP)
 	case net.Network_TCP:
 		listener = socket.NewTcpListener()
 		proxyRouter = router.NewStaticRouter(dest)
 		connector = socket.NewTcpConnector()
-		s.SetServerType(proxy.ServerType_TCP)
+		s.SetServerType(proxy.ServerTypeTCP)
 	default:
 		return fmt.Errorf("forward unsupport network: %s", s.options.Network)
 	}

@@ -9,7 +9,7 @@ const (
 	CtxKeyID uint32 = iota
 	CtxKeyLogger
 	CtxKeyConfiger
-	CtxKeyProxyType
+	CtxKeyServerType
 	CtxKeyHookDialPhased
 )
 
@@ -24,8 +24,8 @@ func Logger(ctx context.Context) *logrus.Entry {
 	panic("Logger is not in context.")
 }
 
-func RequiredProxyType(ctx context.Context) ServerType {
-	if v, ok := ctx.Value(CtxKeyProxyType).(ServerType); ok {
+func RequiredServerType(ctx context.Context) ServerType {
+	if v, ok := ctx.Value(CtxKeyServerType).(ServerType); ok {
 		return v
 	}
 	panic("ServerType is not in context.")

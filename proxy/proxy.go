@@ -27,7 +27,7 @@ type Listener interface {
 	Init(options ListenerOptions) error
 
 	// Listen 以阻塞态监听服务端，接收客户端连接，完成连接握手，通过 next 函数回调给下一步处理过程。
-	Listen(ctx context.Context, handler ListenerHandler) error
+	Listen(ctx context.Context, dispatchHandler ListenerHandler) error
 }
 
 // Server 代理服务端

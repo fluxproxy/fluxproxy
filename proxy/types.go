@@ -10,21 +10,21 @@ import (
 type ServerType uint8
 
 const (
-	ServerType_TCP ServerType = iota
-	ServerType_UDP
-	ServerType_SOCKS
-	ServerType_HTTP
+	ServerTypeTCP ServerType = iota
+	ServerTypeUDP
+	ServerTypeSOCKS
+	ServerTypeHTTPS
 )
 
 func (t ServerType) String() string {
 	switch t {
-	case ServerType_TCP:
+	case ServerTypeTCP:
 		return "tcp"
-	case ServerType_UDP:
+	case ServerTypeUDP:
 		return "udp"
-	case ServerType_SOCKS:
+	case ServerTypeSOCKS:
 		return "socks"
-	case ServerType_HTTP:
+	case ServerTypeHTTPS:
 		return "https"
 	}
 	return "unknown"
