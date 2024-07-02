@@ -38,7 +38,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetServerType(rocket.ServerTypeSOCKS)
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(resolver.NewDNSResolverWith(ctx))
+	s.SetResolver(resolver.NewResolverWith(ctx))
 	s.SetConnector(connector)
 	return socksListener.Init(rocket.ListenerOptions{
 		Address: serverOpts.Bind,

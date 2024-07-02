@@ -70,7 +70,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	}
 	s.SetListener(listener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(resolver.NewDNSResolverWith(ctx))
+	s.SetResolver(resolver.NewResolverWith(ctx))
 	s.SetConnector(connector)
 	// 初始化
 	assert.MustTrue(network == listener.Network(), "server network is not match listener, was: %s", listener.Network())

@@ -7,8 +7,8 @@ server:
   # 绑定地址，默认： 0.0.0.0
   bind: "0.0.0.0"
 
-# DNS配置
-dns:
+# Resolver 配置
+resolver:
   cache_size: 10000
   cache_ttl: 60
   hosts:

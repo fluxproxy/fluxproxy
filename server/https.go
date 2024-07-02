@@ -45,7 +45,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	s.SetServerType(rocket.ServerTypeHTTPS)
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(resolver.NewDNSResolverWith(ctx))
+	s.SetResolver(resolver.NewResolverWith(ctx))
 	s.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		switch conn.Destination.Network {
 		case net.Network_TCP:

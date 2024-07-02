@@ -12,53 +12,62 @@ import (
 )
 
 var (
-	_ rocket.Resolver = (*DNSResolver)(nil)
+	_ rocket.Resolver = (*CacheResolver)(nil)
 )
 
 var (
 	resolverOnce = sync.Once{}
-	resolverInst *DNSResolver
+	resolverInst *CacheResolver
 )
 
-type DNSOptions struct {
-	CacheSize int `yaml:"cache_size"`
-	CacheTTL  int `yaml:"cache_ttl"`
+type Options struct {
+	CacheSize int               `yaml:"cache_size"`
+	CacheTTL  int               `yaml:"cache_ttl"`
+	Hosts     map[string]string `yaml:"hosts"`
 }
 
-type DNSResolver struct {
+type CacheResolver struct {
 	cached cache.Cache
 }
 
-func NewDNSResolverWith(ctx context.Context) *DNSResolver {
+func NewResolverWith(ctx context.Context) *CacheResolver {
 	resolverOnce.Do(func() {
-		var opts DNSOptions
-		_ = rocket.ConfigUnmarshalWith(ctx, "dns", &opts)
+		var opts Options
+		_ = rocket.ConfigUnmarshalWith(ctx, "resolver", &opts)
 		if opts.CacheSize <= 0 {
 			opts.CacheSize = 1024 * 10
 		}
 		if opts.CacheTTL <= 0 {
 			opts.CacheTTL = 60
 		}
-		resolverInst = &DNSResolver{
+		resolverInst = &CacheResolver{
 			cached: cache.New(opts.CacheSize).
 				LRU().
 				Expiration(time.Minute * time.Duration(opts.CacheTTL)).
 				Build(),
 		}
+		// prepare
+		for name, ip := range opts.Hosts {
+			if rsv := net.ParseAddress(ip); rsv.Family().IsIP() {
+				_ = resolverInst.cached.Set(name, rsv.IP)
+			} else {
+				logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, ip)
+			}
+		}
 	})
 	return resolverInst
 }
 
-func (d *DNSResolver) Resolve(ctx context.Context, addr net.Address) (stdnet.IP, error) {
+func (d *CacheResolver) Resolve(ctx context.Context, addr net.Address) (stdnet.IP, error) {
 	configer := rocket.Configer(ctx)
 	name := addr.String()
 	ipv, err := d.cached.GetOrLoad(name, func(_ interface{}) (cache.Expirable, error) {
 		// S1: 通过配置文件实现 resolve/rewrite
-		if ip := configer.String("dns.hosts." + name); ip != "" {
+		if ip := configer.String("resolver.hosts." + name); ip != "" {
 			if rsv := net.ParseAddress(ip); rsv.Family().IsIP() {
 				return cache.NewDefault(rsv.IP), nil
 			} else {
-				logrus.Warnf("dns.hosts.%s=%s is not ip address", name, ip)
+				logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, ip)
 			}
 		}
 		// S2: IP地址，直接返回
