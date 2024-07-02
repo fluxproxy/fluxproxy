@@ -2,8 +2,6 @@
 server:
   # 服务器模式
   mode: "proxy"
-  # 允许局域网其它地址连接
-  allow_lan: true
   # 绑定地址，默认： 0.0.0.0
   bind: "0.0.0.0"
   # Http代理端口
