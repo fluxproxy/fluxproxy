@@ -102,20 +102,9 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		return
 	}
 	defer helper.Close(hijConn)
-	addr, port, _ := parseHostToAddress(r.URL.Host)
-	conn := net.Connection{
-		Network:     l.Network(),
-		Address:     net.IPAddress((hijConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		ReadWriter:  hijConn.(*net.TCPConn),
-		UserContext: setWithUserContext(context.Background(), rw, r),
-		Destination: net.Destination{
-			Network: net.Network_TCP,
-			Address: addr,
-			Port:    port,
-		},
-	}
+	srcAddr := net.ParseAddress(r.RemoteAddr)
 	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, conn, parseProxyAuthorization(r.Header))
+	aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
 	if aErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
@@ -134,7 +123,18 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		return nil
 	})
 	// Next
-	hErr := dispatchHandler.Dispatch(connCtx, conn)
+	addr, port, _ := parseHostToAddress(r.URL.Host)
+	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+		Network:     l.Network(),
+		Address:     srcAddr,
+		ReadWriter:  hijConn.(*net.TCPConn),
+		UserContext: setWithUserContext(context.Background(), rw, r),
+		Destination: net.Destination{
+			Network: net.Network_TCP,
+			Address: addr,
+			Port:    port,
+		},
+	})
 	// Complete
 	if hErr != nil {
 		_, _ = hijConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
@@ -171,22 +171,11 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	if r.Header.Get("User-Agent") == "" {
 		r.Header.Set("User-Agent", "")
 	}
+	srcAddr := net.ParseAddress(r.RemoteAddr)
 	// Next
 	connCtx := r.Context()
-	addr, port, _ := parseHostToAddress(r.URL.Host)
-	conn := net.Connection{
-		Network:     l.Network(),
-		Address:     net.ParseAddress(r.RemoteAddr),
-		UserContext: setWithUserContext(context.Background(), rw, r),
-		ReadWriter:  nil,
-		Destination: net.Destination{
-			Network: net.Network_HRTP,
-			Address: addr,
-			Port:    port,
-		},
-	}
 	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, conn, parseProxyAuthorization(r.Header))
+	aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
 	if aErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
 		rocket.Logger(connCtx).Errorf("https: conn auth: %s", aErr)
@@ -195,7 +184,18 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 		removeHopByHopHeaders(r.Header)
 	}
 	// Next
-	hErr := dispatchHandler.Dispatch(connCtx, conn)
+	addr, port, _ := parseHostToAddress(r.URL.Host)
+	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+		Network:     l.Network(),
+		Address:     srcAddr,
+		UserContext: setWithUserContext(context.Background(), rw, r),
+		ReadWriter:  nil,
+		Destination: net.Destination{
+			Network: net.Network_HRTP,
+			Address: addr,
+			Port:    port,
+		},
+	})
 	// Complete
 	if hErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
@@ -203,22 +203,25 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	}
 }
 
-func parseProxyAuthorization(header http.Header) rocket.Authentication {
+func parseProxyAuthorization(header http.Header, srcAddr net.Address) rocket.Authentication {
 	token := header.Get("Proxy-Authorization")
 	if strings.HasPrefix(token, rocket.AuthenticateBasic) {
 		username, password, _ := parseBasicAuthorization(token)
 		return rocket.Authentication{
+			Source:         srcAddr,
 			Authenticate:   rocket.AuthenticateBasic,
 			Authentication: username + ":" + password,
 		}
 	} else if strings.HasPrefix(token, rocket.AuthenticateBearer) {
 		token, _ := parseBearerAuthorization(token)
 		return rocket.Authentication{
+			Source:         srcAddr,
 			Authenticate:   rocket.AuthenticateBearer,
 			Authentication: token,
 		}
 	} else {
 		return rocket.Authentication{
+			Source:         srcAddr,
 			Authenticate:   rocket.AuthenticateToken,
 			Authentication: token,
 		}

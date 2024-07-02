@@ -96,15 +96,10 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		rocket.Logger(connCtx).Errorf("%s set conn options: %s", t.tag, oErr)
 		return
 	}
-	conn := net.Connection{
-		Network:     t.Network(),
-		Address:     net.IPAddress((tcpConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		ReadWriter:  tcpConn,
-		UserContext: context.Background(),
-		Destination: net.DestinationNotset,
-	}
+	srcAddr := net.IPAddress((tcpConn.RemoteAddr().(*stdnet.TCPAddr)).IP)
 	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, conn, rocket.Authentication{
+	aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
+		Source:         srcAddr,
 		Authenticate:   rocket.AuthenticateSource, // 源地址校验
 		Authentication: tcpConn.RemoteAddr().String(),
 	})
@@ -113,7 +108,13 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		return
 	}
 	// Next
-	hErr := dispatchHandler.Dispatch(connCtx, conn)
+	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+		Network:     t.Network(),
+		Address:     srcAddr,
+		ReadWriter:  tcpConn,
+		UserContext: context.Background(),
+		Destination: net.DestinationNotset,
+	})
 	if hErr != nil {
 		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}

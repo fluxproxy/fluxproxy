@@ -35,7 +35,7 @@ func NewSocksListener(opts Options) *Listener {
 
 func (t *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	return t.TcpListener.Listen(serveCtx, &rocket.ListenerHandlerAdapter{
-		Authenticator: rocket.AuthenticatorFunc(func(_ context.Context, _ net.Connection, _ rocket.Authentication) error {
+		Authenticator: rocket.AuthenticatorFunc(func(_ context.Context, _ rocket.Authentication) error {
 			return nil // 忽略TCPListener的校验
 		}),
 		Dispatcher: func(connCtx context.Context, conn net.Connection) error {
@@ -140,14 +140,8 @@ func (t *Listener) doAuthHandshake(connCtx context.Context, netConn net.Conn, di
 	if uErr != nil {
 		return fmt.Errorf("socks parse user-pass: %w", uErr)
 	}
-	conn := net.Connection{
-		Network:     t.Network(),
-		Address:     net.IPAddress((netConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
-		ReadWriter:  netConn.(*net.TCPConn),
-		UserContext: context.Background(),
-		Destination: net.DestinationNotset,
-	}
-	aErr := dispatchHandler.Authenticate(connCtx, conn, rocket.Authentication{
+	aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
+		Source:         net.IPAddress((netConn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		Authenticate:   rocket.AuthenticateBasic,
 		Authentication: string(upr.User) + ":" + string(upr.Pass),
 	})

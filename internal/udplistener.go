@@ -77,9 +77,21 @@ func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, sr
 			rocket.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 		}
 	}()
-	conn := net.Connection{
+	srcIPAddr := net.IPAddress(srcAddr.IP)
+	// Authenticate
+	aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
+		Source:         srcIPAddr,
+		Authenticate:   rocket.AuthenticateSource, // 源地址校验
+		Authentication: srcIPAddr.String(),
+	})
+	if aErr != nil {
+		rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
+		return
+	}
+	// Next
+	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
 		Network:     t.Network(),
-		Address:     net.IPAddress(srcAddr.IP),
+		Address:     srcIPAddr,
 		UserContext: context.Background(),
 		ReadWriter: &udpConnWrapper{
 			reader: bytes.NewReader(data),
@@ -88,15 +100,7 @@ func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, sr
 			},
 		},
 		Destination: net.DestinationNotset,
-	}
-	// Authenticate
-	aErr := dispatchHandler.Authenticate(connCtx, conn, rocket.Authentication{})
-	if aErr != nil {
-		rocket.Logger(connCtx).Errorf("%s auth error: %s", t.tag, aErr)
-		return
-	}
-	// Next
-	hErr := dispatchHandler.Dispatch(connCtx, conn)
+	})
 	if hErr != nil {
 		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
 	}

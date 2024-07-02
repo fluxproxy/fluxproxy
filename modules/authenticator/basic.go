@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/rocketmanapp/rocket-proxy"
-	"github.com/rocketmanapp/rocket-proxy/net"
 	"strings"
 )
 
@@ -21,7 +20,7 @@ func WithBasicUsers(enabled bool, users map[string]string) *BasicAuthenticator {
 	return &BasicAuthenticator{enabled: enabled, users: users}
 }
 
-func (u *BasicAuthenticator) Authenticate(ctx context.Context, conn net.Connection, auth rocket.Authentication) error {
+func (u *BasicAuthenticator) Authenticate(ctx context.Context, auth rocket.Authentication) error {
 	if !u.enabled {
 		return nil
 	}

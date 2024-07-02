@@ -16,13 +16,14 @@ type ListenerOptions struct {
 }
 
 type Authentication struct {
+	Source         net.Address
 	Authenticate   string
 	Authentication string
 }
 
 // Authenticator 连接身份验证函数
 type Authenticator interface {
-	Authenticate(context.Context, net.Connection, Authentication) error
+	Authenticate(context.Context, Authentication) error
 }
 
 // DispatchFunc 监听器的回调处理函数
@@ -31,7 +32,7 @@ type DispatchFunc func(context.Context, net.Connection) error
 // ListenerHandler 监听器处理函数
 type ListenerHandler interface {
 	// Authenticate 连接身份验证
-	Authenticate(ctx context.Context, conn net.Connection, authorization Authentication) error
+	Authenticate(ctx context.Context, authorization Authentication) error
 
 	// Dispatch 连接处理
 	Dispatch(ctx context.Context, conn net.Connection) error
