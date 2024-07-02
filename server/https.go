@@ -29,10 +29,10 @@ type HttpsServer struct {
 	*Director
 }
 
-func NewHttpsServer(serverOpts Options, httpOptions HttpsOptions, isHttps bool) *HttpsServer {
+func NewHttpsServer(serverOpts Options, httpsOptions HttpsOptions, isHttps bool) *HttpsServer {
 	return &HttpsServer{
 		isHttps:  isHttps,
-		options:  httpOptions,
+		options:  httpsOptions,
 		Director: NewDirector(serverOpts),
 	}
 }

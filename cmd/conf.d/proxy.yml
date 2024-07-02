@@ -20,8 +20,7 @@ resolver:
     "fake.domain.com": "127.0.0.1"
 
 # Http/https 代理服务配置
-http:
-  disabled: false
+https:
   # TLS for https
   tls_cert_file: ""
   tls_key_file: ""
