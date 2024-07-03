@@ -13,11 +13,7 @@ type Destination struct {
 }
 
 func (d Destination) NetAddr() string {
-	addr := ""
-	if d.Network == NetworkTCP || d.Network == NetworkUDP {
-		addr = net.JoinHostPort(d.Address.String(), d.Port.String())
-	}
-	return addr
+	return net.JoinHostPort(d.Address.String(), d.Port.String())
 }
 
 func (d Destination) String() string {

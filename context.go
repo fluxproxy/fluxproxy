@@ -11,21 +11,22 @@ type contextKey struct {
 
 var (
 	CtxKeyID                 = contextKey{key: "ctx-key-id"}
-	CtxKeyLogger             = contextKey{key: "ctx-key-logger"}
+	CtxKeySource             = contextKey{key: "ctx-key-source"}
 	CtxKeyConfiger           = contextKey{key: "ctx-key-configer"}
 	CtxKeyServerType         = contextKey{key: "ctx-key-server-type"}
 	CtxKeyHookFuncDialPhased = contextKey{key: "ctx-key-hook-func-dial-phased"}
 )
 
-func SetContextLogger(ctx context.Context, id string, logger *logrus.Entry) context.Context {
-	return context.WithValue(context.WithValue(ctx, CtxKeyID, id), CtxKeyLogger, logger)
+func SetContextLogID(ctx context.Context, id string, source string) context.Context {
+	ctx = context.WithValue(ctx, CtxKeyID, id)
+	return context.WithValue(ctx, CtxKeySource, source)
 }
 
 func Logger(ctx context.Context) *logrus.Entry {
-	if v, ok := ctx.Value(CtxKeyLogger).(*logrus.Entry); ok {
-		return v
-	}
-	panic("Logger is not in context.")
+	return logrus.WithFields(logrus.Fields{
+		"source": ctx.Value(CtxKeySource),
+		"id":     ctx.Value(CtxKeyID),
+	})
 }
 
 func RequiredServerType(ctx context.Context) ServerType {

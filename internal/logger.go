@@ -5,24 +5,15 @@ import (
 	"github.com/hashicorp/go-uuid"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/sirupsen/logrus"
 )
 
 func SetupTcpContextLogger(ctx context.Context, conn *net.TCPConn) context.Context {
 	id, _ := uuid.GenerateUUID()
 	remoteAddr := conn.RemoteAddr()
-	logger := logrus.WithFields(logrus.Fields{
-		"remote": remoteAddr.String(),
-		"id":     id,
-	})
-	return rocket.SetContextLogger(ctx, id, logger)
+	return rocket.SetContextLogID(ctx, id, remoteAddr.String())
 }
 
 func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Context {
 	id, _ := uuid.GenerateUUID()
-	logger := logrus.WithFields(logrus.Fields{
-		"remote": conn.String(),
-		"id":     id,
-	})
-	return rocket.SetContextLogger(ctx, id, logger)
+	return rocket.SetContextLogID(ctx, id, conn.String())
 }
