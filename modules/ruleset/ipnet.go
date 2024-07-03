@@ -18,19 +18,11 @@ type IPNet struct {
 	nets      []stdnet.IPNet
 }
 
-func NewSourceIPNet(isAllow bool, nets []stdnet.IPNet) *IPNet {
+func NewIPNet(isAllow bool, useSource bool, nets []stdnet.IPNet) *IPNet {
 	return &IPNet{
 		isAllow:   isAllow,
+		useSource: useSource,
 		nets:      nets,
-		useSource: true,
-	}
-}
-
-func NewDestinationIPNet(isAllow bool, nets []stdnet.IPNet) *IPNet {
-	return &IPNet{
-		isAllow:   isAllow,
-		nets:      nets,
-		useSource: false,
 	}
 }
 

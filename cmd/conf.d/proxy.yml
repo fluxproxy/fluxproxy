@@ -20,20 +20,20 @@ resolver:
     "fake.domain.com": "127.0.0.1"
 
 # 连接访问策略组
-acl:
+ruleset:
   # 顺序：按以下顺序检查访问策略。
   - type: ipnet
+    access: deny
     origin: source
-    address: "192.168.1.0/8"
-    access: deny
+    address:
+      - "192.168.1.0/24"
+      - "192.168.2.0/24"
   - type: ipnet
-    origin: destination
-    address: "192.168.2.0/8"
-    access: deny
-  - type: ipnet
-    origin: destination
-    address: "192.168.3.0/8"
     access: allow
+    origin: destination
+    address:
+      - "10.254.200.0/24"
+      - "10.254.220.0/24"
 
 # Http/https 代理服务配置
 https:

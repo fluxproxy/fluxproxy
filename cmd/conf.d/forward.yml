@@ -15,6 +15,22 @@ resolver:
     #示例 domain: ip
     "fake.domain.com": "127.0.0.1"
 
+# 连接访问策略组
+ruleset:
+  # 顺序：按以下顺序检查访问策略。
+  - type: ipnet
+    access: deny
+    origin: source
+    address:
+      - "192.168.1.0/24"
+      - "192.168.2.0/24"
+  - type: ipnet
+    access: allow
+    origin: destination
+    address:
+      - "10.254.200.0/24"
+      - "10.254.220.0/24"
+
 # 端口转发器
 forward:
   # 转发规则列表

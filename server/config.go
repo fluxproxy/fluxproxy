@@ -53,3 +53,12 @@ type SocksConfig struct {
 	Disabled bool            `yaml:"disabled"`
 	Auth     SocksAuthConfig `yaml:"auth"`
 }
+
+////
+
+type RulesetConfig struct {
+	Type    string   `yaml:"type"`
+	Origin  string   `yaml:"origin"`
+	Access  string   `yaml:"access"`
+	Address []string `yaml:"address"`
+}

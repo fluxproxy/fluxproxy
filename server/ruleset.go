@@ -6,6 +6,9 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/modules/ruleset"
 	"github.com/rocketmanapp/rocket-proxy/net"
+	"github.com/sirupsen/logrus"
+	stdnet "net"
+	"strings"
 	"sync"
 )
 
@@ -16,12 +19,40 @@ var (
 
 func NewCombinedWith(ctx context.Context) *ruleset.Combined {
 	combinedOnce.Do(func() {
-		combinedInst = ruleset.NewCombinedWith([]rocket.Ruleset{
-			// 最高优先级策略：禁止回环访问
+		// 最高优先级：禁止回环访问
+		rulesets := []rocket.Ruleset{
 			ruleset.NewLoopback(loadLocalAddrs(ctx)),
-		})
+		}
+		// 第二优化级：根据配置文件
+		rulesets = append(rulesets, loadRuleset(ctx)...)
+		combinedInst = ruleset.NewCombinedWith(rulesets)
 	})
 	return combinedInst
+}
+
+func loadRuleset(ctx context.Context) []rocket.Ruleset {
+	var rules []RulesetConfig
+	_ = rocket.ConfigUnmarshalWith(ctx, "ruleset", &rules)
+	var rulesets = make([]rocket.Ruleset, 0, len(rules))
+	for _, config := range rules {
+		switch strings.ToLower(config.Type) {
+		case "ipnet":
+			rulesets = append(rulesets, newIPNetRuleset(config))
+		}
+	}
+	return rulesets
+}
+
+func newIPNetRuleset(config RulesetConfig) rocket.Ruleset {
+	nets := make([]stdnet.IPNet, 0, len(config.Address))
+	for _, sAddr := range config.Address {
+		if _, ipNet, err := stdnet.ParseCIDR(sAddr); err == nil {
+			nets = append(nets, *ipNet)
+		} else {
+			logrus.Warnf("invalid ruleset(ipnet) address: %s", sAddr)
+		}
+	}
+	return ruleset.NewIPNet(strings.EqualFold(config.Access, "allow"), strings.EqualFold(config.Origin, "source"), nets)
 }
 
 func loadLocalAddrs(ctx context.Context) []net.Destination {
