@@ -8,7 +8,6 @@ import (
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/sirupsen/logrus"
-	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -151,10 +150,8 @@ func (i *Instance) Serve(runCtx context.Context) error {
 		go func(psrv rocket.Server) {
 			if err := psrv.Serve(runCtx);
 				err == nil ||
-					errors.Is(err, io.EOF) ||
 					errors.Is(err, context.Canceled) ||
-					errors.Is(err, http.ErrServerClosed) ||
-					helper.IsConnectionClosed(err) {
+					errors.Is(err, http.ErrServerClosed) {
 				servErrors <- nil
 			} else {
 				servErrors <- err

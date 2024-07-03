@@ -95,8 +95,7 @@ func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Re
 	} else {
 		destAddr = net.IPAddress(r.DstAddr.IP)
 	}
-	// Next
-	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+	disErr := dispatchHandler.Dispatch(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     net.IPAddress((conn.RemoteAddr().(*stdnet.TCPAddr)).IP),
 		ReadWriter:  conn.(*net.TCPConn),
@@ -108,18 +107,16 @@ func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Re
 		},
 	})
 	// Complete
-	if hErr != nil {
-		msg := hErr.Error()
+	if disErr != nil {
+		msg := disErr.Error()
 		resp := v5.RepHostUnreachable
 		if strings.Contains(msg, "refused") {
 			resp = v5.RepConnectionRefused
 		} else if strings.Contains(msg, "network is unreachable") {
 			resp = v5.RepNetworkUnreachable
 		}
-		if err := send(conn, resp, conn.LocalAddr()); err != nil {
-			return fmt.Errorf("socks send reply/3, %v", err)
-		}
-		return hErr
+		_ = send(conn, resp, conn.LocalAddr())
+		return disErr
 	} else {
 		return nil
 	}

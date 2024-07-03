@@ -7,6 +7,7 @@ import (
 	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
+	"io"
 	stdnet "net"
 	"strings"
 	"time"
@@ -127,17 +128,17 @@ func (d *Director) ServeListen(servContext context.Context) error {
 			if dsErr := connector.DialServe(connCtx, &newConn); dsErr != nil {
 				msg := dsErr.Error()
 				if strings.Contains(msg, "use of closed network connection") {
-					return nil
+					return io.EOF
 				}
 				if strings.Contains(msg, "i/o timeout") {
-					return nil
+					return io.EOF
 				}
 				if strings.Contains(msg, "connection reset by peer") {
-					return nil
+					return io.EOF
 				}
 				return dsErr
 			} else {
-				return nil
+				return io.EOF
 			}
 		},
 	})

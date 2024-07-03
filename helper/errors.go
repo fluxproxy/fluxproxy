@@ -1,6 +1,8 @@
 package helper
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"io"
@@ -26,7 +28,10 @@ func IsConnectionClosed(err error) bool {
 	if err == nil {
 		return false
 	}
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+	if errors.Is(err, context.Canceled) {
 		return true
 	}
 	i := 0

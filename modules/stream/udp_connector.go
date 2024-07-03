@@ -8,7 +8,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"io"
-	stdnet "net"
+	"time"
 )
 
 var (
@@ -28,7 +28,11 @@ func NewUdpConnector() *Connector {
 func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) (err error) {
 	assert.MustTrue(link.Destination.Network == net.NetworkUDP, "dest network is not udp, was: %s", link.Destination.Network)
 	srcRw := link.ReadWriter
-	dstConn, err := stdnet.DialUDP("udp", nil, link.Destination.ToUDPAddr())
+	dialer := &net.Dialer{
+		Timeout:   time.Second * 5,
+		KeepAlive: time.Duration(0),
+	}
+	dstConn, err := dialer.DialContext(srcConnCtx, "udp", link.Destination.NetAddr())
 	if err != nil {
 		return fmt.Errorf("udp-dial: %w", err)
 	}

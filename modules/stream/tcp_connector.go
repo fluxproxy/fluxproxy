@@ -7,7 +7,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	stdnet "net"
+	"time"
 )
 
 var (
@@ -28,7 +28,11 @@ func (c *TcpConnector) DialServe(srcConnCtx context.Context, link *net.Connectio
 	assert.MustTrue(link.Destination.Network == net.NetworkTCP, "dest network is not tcp, was: %s", link.Destination.Network)
 	assert.MustTrue(link.Destination.Address.Family().IsIP(), "dest addr is not an ip, was: %s", link.Destination.Address.String())
 	srcConn := link.TCPConn()
-	dstConn, err := stdnet.DialTCP("tcp", nil, link.Destination.ToTCPAddr())
+	dialer := &net.Dialer{
+		Timeout:   time.Second * 5,
+		KeepAlive: time.Duration(0),
+	}
+	dstConn, err := dialer.DialContext(srcConnCtx, "tcp", link.Destination.NetAddr())
 	if err != nil {
 		return fmt.Errorf("tcp-dial: %w", err)
 	}

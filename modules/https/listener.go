@@ -79,7 +79,10 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 
 func (l *Listener) newServeHandler(dispatchHandler rocket.ListenerHandler) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		rocket.Logger(r.Context()).Infof("https: %s %s", r.Method, r.RequestURI)
+		connCtx, connCancel := context.WithCancel(r.Context())
+		defer connCancel()
+		r = r.WithContext(connCtx)
+		rocket.Logger(connCtx).Infof("https: %s %s", r.Method, r.RequestURI)
 		if r.Method == http.MethodConnect {
 			l.handleConnectStream(rw, r, dispatchHandler)
 		} else {
@@ -89,10 +92,8 @@ func (l *Listener) newServeHandler(dispatchHandler rocket.ListenerHandler) http.
 }
 
 func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, dispatchHandler rocket.ListenerHandler) {
-	connCtx, connCancel := context.WithCancel(r.Context())
-	defer connCancel()
+	connCtx := r.Context()
 	// Hijacker
-	r = r.WithContext(connCtx)
 	hijacker, ok := rw.(http.Hijacker)
 	assert.MustTrue(ok, "https: not support hijack")
 	hijConn, _, hijErr := hijacker.Hijack()
@@ -102,7 +103,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		return
 	}
 	defer helper.Close(hijConn)
-	srcAddr := net.ParseAddress(r.RemoteAddr)
+	srcAddr := parseRemoteAddr(r.RemoteAddr)
 	// Authenticate
 	connCtx, aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
 	if aErr != nil {
@@ -144,6 +145,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 }
 
 func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatchHandler rocket.ListenerHandler) {
+	connCtx := r.Context()
 	defer helper.Close(r.Body)
 
 	if r.URL.Host == "" || !r.URL.IsAbs() {
@@ -172,9 +174,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	if r.Header.Get("User-Agent") == "" {
 		r.Header.Set("User-Agent", "")
 	}
-	srcAddr := net.ParseAddress(r.RemoteAddr)
-	// Next
-	connCtx := r.Context()
+	srcAddr := parseRemoteAddr(r.RemoteAddr)
 	// Authenticate
 	connCtx, aErr := dispatchHandler.Authenticate(connCtx, parseProxyAuthorization(r.Header, srcAddr))
 	if aErr != nil {
@@ -187,7 +187,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 	}
 	// Next
 	addr, port, _ := parseHostToAddress(r.URL.Host)
-	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+	disErr := dispatchHandler.Dispatch(connCtx, net.Connection{
 		Network:     l.Network(),
 		Address:     srcAddr,
 		UserContext: setWithUserContext(context.Background(), rw, r),
@@ -198,11 +198,20 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 			Port:    port,
 		},
 	})
-	// Complete
-	if hErr != nil {
-		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		rocket.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
+	if disErr != nil {
+		if !helper.IsConnectionClosed(disErr) {
+			_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
+			rocket.Logger(connCtx).Errorf("https: conn handle: %s", disErr)
+		}
 	}
+}
+
+func parseRemoteAddr(remoteAddr string) net.Address {
+	rAddr, _, hpErr := stdnet.SplitHostPort(remoteAddr)
+	assert.MustNil(hpErr, "https: parse host port error: %s", hpErr)
+	srcAddr := net.ParseAddress(rAddr)
+	assert.MustTrue(srcAddr.Family().IsIP(), "https: srcAddr is not ip")
+	return srcAddr
 }
 
 func parseProxyAuthorization(header http.Header, srcAddr net.Address) rocket.Authentication {

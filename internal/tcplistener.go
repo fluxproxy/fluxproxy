@@ -111,14 +111,16 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		assert.MustNotNil(connCtx, "authenticated context is nil")
 	}
 	// Next
-	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+	disErr := dispatchHandler.Dispatch(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     srcAddr,
 		ReadWriter:  tcpConn,
 		UserContext: context.Background(),
 		Destination: net.DestinationNotset,
 	})
-	if hErr != nil {
-		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
+	if disErr != nil {
+		if !helper.IsConnectionClosed(disErr) {
+			rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, disErr)
+		}
 	}
 }
