@@ -88,7 +88,7 @@ func runCommandAs(runCtx context.Context, args []string, serverMode string) erro
 		confpath = args[0]
 	}
 	if err := k.Load(file.Provider(confpath), yaml.Parser()); err != nil {
-		return fmt.Errorf("load config: %s, error: %w", confpath, err)
+		return fmt.Errorf("main: load config: %s. %w", confpath, err)
 	}
 	switch k.String("log.format") {
 	case "json":
@@ -107,7 +107,7 @@ func runCommandAs(runCtx context.Context, args []string, serverMode string) erro
 	runCtx = context.WithValue(runCtx, rocket.CtxKeyConfiger, k)
 	inst := server.NewInstance()
 	if err := inst.Init(runCtx, serverMode); err != nil {
-		return fmt.Errorf("main: instance start: %w", err)
+		return fmt.Errorf("main: instance start. %w", err)
 	}
 	return helper.ErrIf(inst.Serve(runCtx), "main: instance serve, %s")
 }

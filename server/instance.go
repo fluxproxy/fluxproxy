@@ -40,7 +40,7 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 	if serverMode == "" {
 		serverConfig.Mode = RunServerModeAuto
 	}
-	logrus.Info("inst: run as server mode: ", serverMode)
+	logrus.Infof("inst: run as %s mode", serverMode)
 	// 检测运行模式
 	assertServerModeValid(serverConfig.Mode)
 	// 启动服务端
@@ -64,16 +64,16 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 			found = ok
 		}
 		if serverConfig.Mode == RunServerModeProxy && !found {
-			return fmt.Errorf("proxy servers not found")
+			return fmt.Errorf("inst: no available servers on proxy mode")
 		}
 	}
 	// 初始化服务
 	if len(i.servers) == 0 {
-		return fmt.Errorf("servers not found")
+		return fmt.Errorf("inst: servers not found")
 	}
 	for _, srv := range i.servers {
 		if err := srv.Init(runCtx); err != nil {
-			return fmt.Errorf("server init error. %w", err)
+			return fmt.Errorf("inst: server init. %w", err)
 		}
 	}
 	return nil
@@ -82,10 +82,10 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 func (i *Instance) buildForwardServer(runCtx context.Context, serverConfig ServerConfig, isRequired bool) error {
 	var forwardConfig ForwardConfig
 	if err := rocket.ConfigUnmarshalWith(runCtx, "forward", &forwardConfig); err != nil {
-		return fmt.Errorf("unmarshal forward options: %w", err)
+		return fmt.Errorf("inst: unmarshal forward config. %w", err)
 	}
 	if len(forwardConfig.Rules) == 0 && isRequired {
-		return fmt.Errorf("forward rules is empty")
+		return fmt.Errorf("inst: empty forward rules")
 	}
 	for _, ruleConfig := range forwardConfig.Rules {
 		if ruleConfig.Disabled {
@@ -103,7 +103,7 @@ func (i *Instance) buildSocksServer(runCtx context.Context, serverConfig ServerC
 	}
 	var socksConfig SocksConfig
 	if err := rocket.ConfigUnmarshalWith(runCtx, "socks", &socksConfig); err != nil {
-		return false, fmt.Errorf("unmarshal socks options: %w", err)
+		return false, fmt.Errorf("inst: unmarshal socks config. %w", err)
 	}
 	if socksConfig.Disabled {
 		logrus.Warnf("inst: socks server is disabled")
@@ -117,7 +117,7 @@ func (i *Instance) buildHttpServer(runCtx context.Context, serverConfig ServerCo
 	buildServer := func(isHttps bool) error {
 		var httpsConfig HttpsConfig
 		if err := rocket.ConfigUnmarshalWith(runCtx, "https", &httpsConfig); err != nil {
-			return fmt.Errorf("unmarshal https options: %w", err)
+			return fmt.Errorf("inst: unmarshal https config. %w", err)
 		}
 		if httpsConfig.Disabled {
 			logrus.Warnf("inst: https server is disabled")
@@ -141,9 +141,6 @@ func (i *Instance) buildHttpServer(runCtx context.Context, serverConfig ServerCo
 }
 
 func (i *Instance) Serve(runCtx context.Context) error {
-	if len(i.servers) == 0 {
-		return fmt.Errorf("servers is required")
-	}
 	servErrors := make(chan error, len(i.servers))
 	for _, srv := range i.servers {
 		i.await.Add(1)

@@ -43,7 +43,7 @@ func (t *UdpListener) Init(options rocket.ListenerOptions) error {
 
 func (t *UdpListener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	addr := &stdnet.UDPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
-	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
+	logrus.Infof("%s: listen: %s", t.tag, addr)
 	listener, lErr := stdnet.ListenUDP("udp", addr)
 	if lErr != nil {
 		return fmt.Errorf("failed to listen udp address %s %w", addr, lErr)
@@ -61,7 +61,7 @@ func (t *UdpListener) Listen(serveCtx context.Context, dispatchHandler rocket.Li
 			case <-serveCtx.Done():
 				return serveCtx.Err()
 			default:
-				return fmt.Errorf("%s listen read: %w", t.tag, aErr)
+				return fmt.Errorf("%s listen read. %w", t.tag, aErr)
 			}
 		}
 		goes.Go(func() {
@@ -92,7 +92,7 @@ func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, sr
 		assert.MustNotNil(connCtx, "authenticated context is nil")
 	}
 	// Next
-	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+	disErr := dispatchHandler.Dispatch(connCtx, net.Connection{
 		Network:     t.Network(),
 		Address:     srcIPAddr,
 		UserContext: context.Background(),
@@ -104,9 +104,7 @@ func (t *UdpListener) handle(serveCtx context.Context, listener *net.UDPConn, sr
 		},
 		Destination: net.DestinationNotset,
 	})
-	if hErr != nil {
-		rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, hErr)
-	}
+	onTailError(connCtx, t.tag, disErr)
 }
 
 var (

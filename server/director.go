@@ -7,9 +7,7 @@ import (
 	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"io"
 	stdnet "net"
-	"strings"
 	"time"
 )
 
@@ -101,14 +99,14 @@ func (d *Director) ServeListen(servContext context.Context) error {
 			connCtx = context.WithValue(connCtx, rocket.CtxKeyServerType, d.serverType)
 			connCtx, newConn, roErr := d.router.Route(connCtx, &conn)
 			if roErr != nil {
-				return fmt.Errorf("server route: %w", roErr)
+				return fmt.Errorf("director: route. %w", roErr)
 			} else {
 				assert.MustTrue(newConn.Destination.IsValid(), "router destination is invalid")
 				assert.MustNotNil(connCtx, "router dest context is nil")
 			}
 
 			if ip, reErr := d.resolver.Resolve(connCtx, newConn.Destination.Address); reErr != nil {
-				return fmt.Errorf("server resolve: %w", reErr)
+				return fmt.Errorf("director: resolve. %w", reErr)
 			} else {
 				newConn.Destination.Address = net.IPAddress(ip)
 			}
@@ -118,25 +116,14 @@ func (d *Director) ServeListen(servContext context.Context) error {
 				Destination: newConn.Destination,
 			})
 			if rsErr != nil && !errors.Is(rsErr, rocket.ErrRulesetNotMatched) {
-				return fmt.Errorf("server ruleset: %w", rsErr)
+				return fmt.Errorf("director: ruleset. %w", rsErr)
 			} else {
 				assert.MustNotNil(connCtx, "ruleset dest context is nil")
 			}
 
 			connector, ok := d.connectorSelector(&newConn)
 			assert.MustTrue(ok, "connector not found, network: %d", newConn.Destination.Network)
-			if dsErr := connector.DialServe(connCtx, &newConn); dsErr != nil {
-				msg := dsErr.Error()
-				if strings.Contains(msg, "i/o timeout") {
-					return io.EOF
-				}
-				if strings.Contains(msg, "connection reset by peer") {
-					return io.EOF
-				}
-				return dsErr
-			} else {
-				return io.EOF
-			}
+			return connector.DialServe(connCtx, &newConn)
 		},
 	})
 }

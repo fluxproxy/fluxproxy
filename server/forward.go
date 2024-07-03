@@ -39,7 +39,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	network := net.ParseNetwork(s.ruleConfig.Network)
 	dest, err := parseDestinationWith(network, s.ruleConfig.Destination)
 	if err != nil {
-		return fmt.Errorf("invalid destination: %v, error: %w", s.ruleConfig.Destination, err)
+		return fmt.Errorf("forward: parse destination: %v. %w", s.ruleConfig.Destination, err)
 	}
 	switch network {
 	case net.NetworkUDP:
@@ -53,7 +53,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 		connector = stream.NewTcpConnector()
 		s.SetServerType(rocket.ServerTypeTCP)
 	default:
-		return fmt.Errorf("forward unsupport network: %s", s.ruleConfig.Network)
+		return fmt.Errorf("forward: unsupport network: %s", s.ruleConfig.Network)
 	}
 	s.SetListener(listener)
 	s.SetRouter(proxyRouter)
@@ -76,7 +76,7 @@ func (s *ForwardServer) Serve(ctx context.Context) error {
 func parseDestinationWith(network net.Network, addr CAddress) (net.Destination, error) {
 	port, err := net.PortFromInt(uint32(addr.Port))
 	if err != nil {
-		return net.DestinationNotset, fmt.Errorf("invalid port: %d, error: %w", addr.Port, err)
+		return net.DestinationNotset, fmt.Errorf("forward: parse port: %d. %w", addr.Port, err)
 	}
 	return net.Destination{
 		Network: network,

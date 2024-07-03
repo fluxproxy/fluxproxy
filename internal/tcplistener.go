@@ -42,10 +42,10 @@ func (t *TcpListener) Init(options rocket.ListenerOptions) error {
 
 func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	addr := &stdnet.TCPAddr{IP: stdnet.ParseIP(t.options.Address), Port: t.options.Port}
-	logrus.Infof("%s: listen start, address: %s", t.tag, addr)
+	logrus.Infof("%s: listen: %s", t.tag, addr)
 	listener, lErr := stdnet.ListenTCP("tcp", addr)
 	if lErr != nil {
-		return fmt.Errorf("failed to listen tcp address %s %w", addr, lErr)
+		return fmt.Errorf("%s: listen %s. %w", t.tag, addr, lErr)
 	}
 	_ = listener.SetDeadline(time.Time{})
 	go func() {
@@ -54,14 +54,14 @@ func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler rocket.Li
 	}()
 	var tempDelay time.Duration
 	for {
-		conn, aErr := listener.Accept()
-		if aErr != nil {
+		conn, acErr := listener.Accept()
+		if acErr != nil {
 			select {
 			case <-serveCtx.Done():
 				return serveCtx.Err()
 			default:
 				var netErr net.Error
-				if errors.As(aErr, &netErr) && netErr.Temporary() {
+				if errors.As(acErr, &netErr) && netErr.Temporary() {
 					if tempDelay == 0 {
 						tempDelay = 5 * time.Millisecond
 					} else {
@@ -70,11 +70,10 @@ func (t *TcpListener) Listen(serveCtx context.Context, dispatchHandler rocket.Li
 					if maxDuration := 1 * time.Second; tempDelay > maxDuration {
 						tempDelay = maxDuration
 					}
-					logrus.Errorf("https: Accept error: %v; retrying in %v", aErr, tempDelay)
 					time.Sleep(tempDelay)
 					continue
 				}
-				return fmt.Errorf("%s listen accept: %w", t.tag, aErr)
+				return fmt.Errorf("%s listen accept. %w", t.tag, acErr)
 			}
 		}
 		goes.Go(func() {
@@ -91,12 +90,7 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 			rocket.Logger(connCtx).Errorf("%s handle conn: %s, trace: %s", t.tag, rErr, string(debug.Stack()))
 		}
 	}()
-	// Set tcp conn options
 	defer helper.Close(tcpConn)
-	if oErr := net.SetTcpConnOptions(tcpConn, t.tcpOpts); oErr != nil {
-		rocket.Logger(connCtx).Errorf("%s set conn options: %s", t.tag, oErr)
-		return
-	}
 	srcAddr := net.IPAddress((tcpConn.RemoteAddr().(*stdnet.TCPAddr)).IP)
 	// Authenticate
 	connCtx, aErr := dispatchHandler.Authenticate(connCtx, rocket.Authentication{
@@ -118,9 +112,5 @@ func (t *TcpListener) handle(serveCtx context.Context, tcpConn *stdnet.TCPConn, 
 		UserContext: context.Background(),
 		Destination: net.DestinationNotset,
 	})
-	if disErr != nil {
-		if !helper.IsConnectionClosed(disErr) {
-			rocket.Logger(connCtx).Errorf("%s conn error: %s", t.tag, disErr)
-		}
-	}
+	onTailError(connCtx, t.tag, disErr)
 }

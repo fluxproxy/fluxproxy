@@ -34,7 +34,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 		if len(s.config.Auth.Basic) == 0 {
 			return fmt.Errorf("no users defined for https auth")
 		} else {
-			logrus.Infof("https: basic auth enabled, users: %d", len(s.config.Auth.Basic))
+			logrus.Infof("https: auth enabled, basic: %d", len(s.config.Auth.Basic))
 		}
 	}
 	serverConfig := s.ServerConfig()

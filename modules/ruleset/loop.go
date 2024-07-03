@@ -26,9 +26,8 @@ func (l *Loopback) Allow(ctx context.Context, permit rocket.Permit) (context.Con
 	for _, local := range l.localAddrs {
 		if local.Address.Equal(permit.Destination.Address) &&
 			local.Port == permit.Destination.Port {
-			return ctx, fmt.Errorf("loopback address %s:%d", local.Address, local.Port)
+			return ctx, fmt.Errorf("loopback: deny: %s:%d", local.Address, local.Port)
 		}
 	}
-	//logrus.Infof("loopback: not matched: %+v", permit)
 	return ctx, rocket.ErrRulesetNotMatched
 }

@@ -25,34 +25,29 @@ func NewUdpConnector() *Connector {
 	}
 }
 
-func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) (err error) {
+func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) error {
 	assert.MustTrue(link.Destination.Network == net.NetworkUDP, "dest network is not udp, was: %s", link.Destination.Network)
 	srcRw := link.ReadWriter
 	dialer := &net.Dialer{
 		Timeout:   time.Second * 5,
 		KeepAlive: time.Duration(0),
 	}
-	dstConn, err := dialer.DialContext(srcConnCtx, "udp", link.Destination.NetAddr())
-	if err != nil {
-		return fmt.Errorf("udp-dial: %w", err)
+	dstConn, dErr := dialer.DialContext(srcConnCtx, "udp", link.Destination.NetAddr())
+	if dErr != nil {
+		return fmt.Errorf("udp-dial. %w", dErr)
 	}
 	defer helper.Close(dstConn)
-	if err := net.SetUdpConnOptions(dstConn, c.opts); err != nil {
-		return fmt.Errorf("udp-dial: set options: %w", err)
-	}
-	dstCtx, dstCancel := context.WithCancel(srcConnCtx)
-	defer dstCancel()
 	// Hook: dail
 	if hook := rocket.LookupHookFunc(srcConnCtx, rocket.CtxHookFuncOnDialer); hook != nil {
-		if err := hook(srcConnCtx, link); err != nil {
-			return err
+		if hkErr := hook(srcConnCtx, link); hkErr != nil {
+			return fmt.Errorf("udp-dail:hook. %w", hkErr)
 		}
 	}
-	errors := make(chan error, 2)
-	copier := func(_ context.Context, name string, from, to io.ReadWriter) {
-		errors <- helper.Copier(from, to)
+	ioErrors := make(chan error, 2)
+	copier := func(name string, from, to io.ReadWriter) {
+		ioErrors <- helper.Copier(from, to)
 	}
-	go copier(dstCtx, "src-to-dest", srcRw, dstConn)
-	go copier(dstCtx, "dest-to-src", dstConn, srcRw)
-	return <-errors
+	go copier("src-to-dest", srcRw, dstConn)
+	go copier("dest-to-src", dstConn, srcRw)
+	return <-ioErrors
 }

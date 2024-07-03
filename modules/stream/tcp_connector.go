@@ -32,27 +32,22 @@ func (c *TcpConnector) DialServe(srcConnCtx context.Context, link *net.Connectio
 		Timeout:   time.Second * 5,
 		KeepAlive: time.Duration(0),
 	}
-	dstConn, err := dialer.DialContext(srcConnCtx, "tcp", link.Destination.NetAddr())
-	if err != nil {
-		return fmt.Errorf("tcp-dial: %w", err)
+	dstConn, dErr := dialer.DialContext(srcConnCtx, "tcp", link.Destination.NetAddr())
+	if dErr != nil {
+		return fmt.Errorf("tcp-dial. %w", dErr)
 	}
 	defer helper.Close(dstConn)
-	if err := net.SetTcpConnOptions(dstConn, c.opts); err != nil {
-		return fmt.Errorf("tcp-dial: set options: %w", err)
-	}
-	dstCtx, dstCancel := context.WithCancel(srcConnCtx)
-	defer dstCancel()
 	// Hook: dail
 	if hook := rocket.LookupHookFunc(srcConnCtx, rocket.CtxHookFuncOnDialer); hook != nil {
-		if err := hook(srcConnCtx, link); err != nil {
-			return err
+		if hkErr := hook(srcConnCtx, link); hkErr != nil {
+			return fmt.Errorf("tcp-dail:hook. %w", hkErr)
 		}
 	}
-	errors := make(chan error, 2)
-	copier := func(_ context.Context, name string, from, to net.Conn) {
-		errors <- helper.Copier(from, to)
+	ioErrors := make(chan error, 2)
+	copier := func(name string, from, to net.Conn) {
+		ioErrors <- helper.Copier(from, to)
 	}
-	go copier(dstCtx, "src-to-dest", srcConn, dstConn)
-	go copier(dstCtx, "dest-to-src", dstConn, srcConn)
-	return <-errors
+	go copier("src-to-dest", srcConn, dstConn)
+	go copier("dest-to-src", dstConn, srcConn)
+	return <-ioErrors
 }

@@ -15,7 +15,7 @@ func Configer(ctx context.Context) *koanf.Koanf {
 
 func ConfigUnmarshalWith(ctx context.Context, path string, out any) error {
 	if err := Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
-		return fmt.Errorf("unmarshal %s config: %w", path, err)
+		return fmt.Errorf("config unmarshal %s. %w", path, err)
 	}
 	return nil
 }

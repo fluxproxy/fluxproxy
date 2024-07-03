@@ -34,7 +34,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 		if len(s.config.Auth.Users) == 0 {
 			return fmt.Errorf("no users defined for socks auth")
 		} else {
-			logrus.Infof("socks: users auth enabled, users: %d", len(s.config.Auth.Users))
+			logrus.Infof("socks: auth enabled, users: %d", len(s.config.Auth.Users))
 		}
 	}
 	// 构建服务组件

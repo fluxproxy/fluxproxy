@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"errors"
 	"io"
 	"net"
 	"time"
@@ -19,5 +20,18 @@ func Copier(from, to io.ReadWriter) error {
 		}()
 	}
 	_, err := io.Copy(to, from)
-	return err
+	if err == nil {
+		return io.EOF
+	}
+	return io.ErrUnexpectedEOF
+}
+
+func IsCopierError(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, io.EOF) {
+		return true
+	}
+	return errors.Is(err, io.ErrUnexpectedEOF)
 }

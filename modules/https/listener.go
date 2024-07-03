@@ -4,12 +4,14 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
+	"fmt"
 	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/helper"
 	"github.com/rocketmanapp/rocket-proxy/internal"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
+	"io"
 	stdnet "net"
 	"net/http"
 	"strconv"
@@ -52,9 +54,9 @@ func (l *Listener) Init(options rocket.ListenerOptions) error {
 func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.ListenerHandler) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.opts.UseHttps {
-		logrus.Infof("https: listen start, HTTPS, address: %s", addr)
+		logrus.Infof("https: listen(https): %s", addr)
 	} else {
-		logrus.Infof("https: listen start, address: %s", addr)
+		logrus.Infof("https: listen: %s", addr)
 	}
 	server := &http.Server{
 		Addr:    addr,
@@ -114,19 +116,14 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		assert.MustNotNil(connCtx, "authenticated context is nil")
 		removeHopByHopHeaders(r.Header)
 	}
-	// Phase hook
-	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialer, func(ctx context.Context, conn *net.Connection) error {
-		if _, hiwErr := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
-			if !helper.IsConnectionClosed(hiwErr) {
-				rocket.Logger(connCtx).Errorf("https: write back ok response: %s", hiwErr)
-			}
-			return hiwErr
-		}
-		return nil
+	// hook: on dialer
+	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialer, func(_ context.Context, _ *net.Connection) error {
+		_, err := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+		return fmt.Errorf("https send response. %w", err)
 	})
 	// Next
 	addr, port, _ := parseHostToAddress(r.URL.Host)
-	hErr := dispatchHandler.Dispatch(connCtx, net.Connection{
+	disErr := dispatchHandler.Dispatch(connCtx, net.Connection{
 		Network:     l.Network(),
 		Address:     srcAddr,
 		ReadWriter:  hijConn.(*net.TCPConn),
@@ -137,11 +134,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 			Port:    port,
 		},
 	})
-	// Complete
-	if hErr != nil {
-		_, _ = hijConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		rocket.Logger(connCtx).Errorf("https: conn handle: %s", hErr)
-	}
+	l.onTailError(connCtx, hijConn, disErr)
 }
 
 func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatchHandler rocket.ListenerHandler) {
@@ -198,11 +191,16 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 			Port:    port,
 		},
 	})
-	if disErr != nil {
-		if !helper.IsConnectionClosed(disErr) {
-			_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-			rocket.Logger(connCtx).Errorf("https: conn handle: %s", disErr)
-		}
+	l.onTailError(connCtx, rw, disErr)
+}
+
+func (l *Listener) onTailError(connCtx context.Context, w io.Writer, disErr error) {
+	if disErr == nil {
+		return
+	}
+	if !helper.IsCopierError(disErr) {
+		_, _ = w.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
+		rocket.Logger(connCtx).Errorf("https: conn handle: %s", disErr)
 	}
 }
 

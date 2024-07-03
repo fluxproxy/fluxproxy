@@ -37,7 +37,7 @@ func (i *IPNet) Allow(ctx context.Context, permit rocket.Permit) (context.Contex
 		if i.isAllow {
 			return ctx, nil
 		} else {
-			return ctx, fmt.Errorf("ipnet deny: %s", target)
+			return ctx, fmt.Errorf("ipnet: deny: %s", target)
 		}
 	} else {
 		return ctx, rocket.ErrRulesetNotMatched
