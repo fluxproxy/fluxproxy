@@ -89,7 +89,7 @@ func (d *Director) ServeListen(servContext context.Context) error {
 			assert.MustNotEmpty(rocket.RequiredID(connCtx), "conn id is empty")
 			if conn.Network == net.NetworkTCP {
 				_, isTcpConn := conn.ReadWriter.(*stdnet.TCPConn)
-				assert.MustNotNil(isTcpConn, "conn read-writer is not type of *net.TCPConn")
+				assert.MustTrue(isTcpConn, "conn read-writer is not type of *net.TCPConn")
 			}
 
 			defer func(start time.Time) {
