@@ -62,3 +62,11 @@ type RulesetConfig struct {
 	Access  string   `yaml:"access"`
 	Address []string `yaml:"address"`
 }
+
+////
+
+type ResolverConfig struct {
+	CacheSize int               `yaml:"cache_size"`
+	CacheTTL  int               `yaml:"cache_ttl"`
+	Hosts     map[string]string `yaml:"hosts"`
+}

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/modules/authenticator"
-	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
 	"github.com/rocketmanapp/rocket-proxy/modules/socks"
 	"github.com/rocketmanapp/rocket-proxy/modules/stream"
@@ -47,8 +46,8 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetServerType(rocket.ServerTypeSOCKS)
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
-	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetRuleset(NewCombinedWith(ctx))
+	s.SetResolver(NewResolverWith(ctx))
+	s.SetRuleset(NewRulesetWith(ctx))
 	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Users))
 	s.SetConnector(connector)
 	// 初始化

@@ -7,7 +7,6 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
-	"sync"
 	"time"
 )
 
@@ -15,47 +14,23 @@ var (
 	_ rocket.Resolver = (*CacheResolver)(nil)
 )
 
-var (
-	resolverOnce = sync.Once{}
-	resolverInst *CacheResolver
-)
-
 type Options struct {
-	CacheSize int               `yaml:"cache_size"`
-	CacheTTL  int               `yaml:"cache_ttl"`
-	Hosts     map[string]string `yaml:"hosts"`
+	CacheSize int
+	CacheTTL  time.Duration
+	Hosts     map[string]string
 }
 
 type CacheResolver struct {
 	cached cache.Cache
 }
 
-func NewResolverWith(ctx context.Context) *CacheResolver {
-	resolverOnce.Do(func() {
-		var opts Options
-		_ = rocket.ConfigUnmarshalWith(ctx, "resolver", &opts)
-		if opts.CacheSize <= 0 {
-			opts.CacheSize = 1024 * 10
-		}
-		if opts.CacheTTL <= 0 {
-			opts.CacheTTL = 60
-		}
-		resolverInst = &CacheResolver{
-			cached: cache.New(opts.CacheSize).
-				LRU().
-				Expiration(time.Minute * time.Duration(opts.CacheTTL)).
-				Build(),
-		}
-		// prepare
-		for name, ip := range opts.Hosts {
-			if rsv := net.ParseAddress(ip); rsv.Family().IsIP() {
-				_ = resolverInst.cached.Set(name, rsv.IP)
-			} else {
-				logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, ip)
-			}
-		}
-	})
-	return resolverInst
+func NewResolverWith(opts Options) *CacheResolver {
+	return &CacheResolver{
+		cached: cache.New(opts.CacheSize).
+			LRU().
+			Expiration(opts.CacheTTL).
+			Build(),
+	}
 }
 
 func (d *CacheResolver) Resolve(ctx context.Context, addr net.Address) (stdnet.IP, error) {
@@ -85,4 +60,8 @@ func (d *CacheResolver) Resolve(ctx context.Context, addr net.Address) (stdnet.I
 		return nil, err
 	}
 	return ipv.(net.IP), nil
+}
+
+func (d *CacheResolver) Set(name string, ip stdnet.IP) {
+	_ = d.cached.Set(name, ip)
 }

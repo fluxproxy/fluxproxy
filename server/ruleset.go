@@ -17,7 +17,7 @@ var (
 	combinedInst *ruleset.Combined
 )
 
-func NewCombinedWith(ctx context.Context) *ruleset.Combined {
+func NewRulesetWith(ctx context.Context) *ruleset.Combined {
 	combinedOnce.Do(func() {
 		// 最高优先级：禁止回环访问
 		rulesets := []rocket.Ruleset{
