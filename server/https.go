@@ -8,6 +8,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/modules/https"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
+	"github.com/rocketmanapp/rocket-proxy/modules/ruleset"
 	"github.com/rocketmanapp/rocket-proxy/modules/stream"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
@@ -62,6 +63,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 	s.SetListener(httpListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
+	s.SetRuleset(ruleset.NewCompiledWith(ctx))
 	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Basic))
 	s.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
 		switch conn.Destination.Network {

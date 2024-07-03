@@ -42,6 +42,7 @@ type Address interface {
 	Domain() string // Domain of this Address
 	Family() AddressFamily
 	String() string
+	Equal(Address) bool
 }
 
 func isAlphaNum(c byte) bool {
@@ -107,6 +108,13 @@ func (ipv4Address) Family() AddressFamily {
 	return AddressFamilyIPv4
 }
 
+func (a ipv4Address) Equal(o Address) bool {
+	if o.Family() != AddressFamilyIPv4 {
+		return false
+	}
+	return bytes.Equal(a.IP(), o.IP())
+}
+
 func (a ipv4Address) String() string {
 	return a.IP().String()
 }
@@ -125,6 +133,13 @@ func (ipv6Address) Family() AddressFamily {
 	return AddressFamilyIPv6
 }
 
+func (a ipv6Address) Equal(o Address) bool {
+	if o.Family() != AddressFamilyIPv6 {
+		return false
+	}
+	return bytes.Equal(a.IP(), o.IP())
+}
+
 func (a ipv6Address) String() string {
 	return "[" + a.IP().String() + "]"
 }
@@ -141,6 +156,13 @@ func (a domainAddress) Domain() string {
 
 func (domainAddress) Family() AddressFamily {
 	return AddressFamilyDomain
+}
+
+func (a domainAddress) Equal(o Address) bool {
+	if o.Family() != AddressFamilyDomain {
+		return false
+	}
+	return strings.EqualFold(a.Domain(), o.Domain())
 }
 
 func (a domainAddress) String() string {

@@ -7,6 +7,7 @@ import (
 	"github.com/rocketmanapp/rocket-proxy/modules/authenticator"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
+	"github.com/rocketmanapp/rocket-proxy/modules/ruleset"
 	"github.com/rocketmanapp/rocket-proxy/modules/socks"
 	"github.com/rocketmanapp/rocket-proxy/modules/stream"
 	"github.com/sirupsen/logrus"
@@ -48,6 +49,7 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetListener(socksListener)
 	s.SetRouter(proxyRouter)
 	s.SetResolver(resolver.NewResolverWith(ctx))
+	s.SetRuleset(ruleset.NewCompiledWith(ctx))
 	s.SetAuthenticator(authenticator.WithBasicUsers(s.config.Auth.Enabled, s.config.Auth.Users))
 	s.SetConnector(connector)
 	// 初始化
