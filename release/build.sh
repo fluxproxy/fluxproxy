@@ -2,6 +2,9 @@
 
 set -e
 
+BUILD_VERSION=$(date +%Y.%m.%d)
+TRIM_PATH=$(pwd)
+
 function build() {
   # check
   GOOS=$1
@@ -19,12 +22,13 @@ function build() {
   rm -rf ./build && mkdir -p ./build
 
   # build
-  echo "building, os: $GOOS, arch: $GOARCH, output: $OUTPUT"
-  GOOS=$1 GOARCH=$2 go build -v -a -ldflags '-s -w' \
-   -gcflags="all=-trimpath=${PWD}" \
-   -asmflags="all=-trimpath=${PWD}" \
-   -o ./build/$OUTPUT \
-   ./cmd/*.go
+  echo "BUILD: version: $BUILD_VERSION, os: $GOOS, arch: $GOARCH, output: $OUTPUT"
+  echo "BUILD: trimpath: $TRIM_PATH"
+  GOOS=$1 GOARCH=$2 go build -v -a -ldflags "-s -w -X 'main.BuildVersion=$BUILD_VERSION'" \
+    -gcflags="all=-trimpath=$TRIM_PATH" \
+    -asmflags="all=-trimpath=$TRIM_PATH" \
+    -o ./build/$OUTPUT \
+    ./cmd/*.go
   # compress
   if [ -x "$(command -v upx)" ]; then
     upx ./build/$OUTPUT
