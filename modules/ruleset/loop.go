@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/net"
-	"github.com/sirupsen/logrus"
 	stdnet "net"
 	"sync"
 )
@@ -49,8 +48,7 @@ func (l *Loopback) Allow(ctx context.Context, permit rocket.Permit) (context.Con
 	for _, local := range l.localAddrs {
 		if local.Address.Equal(permit.Destination.Address) &&
 			local.Port == permit.Destination.Port {
-			logrus.Warnf("loopback: reject %s://%s:%d", local.Network, local.Address, local.Port)
-			return ctx, fmt.Errorf("loopback reject %s:%d", local.Address, local.Port)
+			return ctx, fmt.Errorf("loopback address %s:%d", local.Address, local.Port)
 		}
 	}
 	return ctx, nil
