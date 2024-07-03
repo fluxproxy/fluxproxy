@@ -33,38 +33,38 @@ func NewInstance() *Instance {
 
 func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 	// 解析配置
-	var serverOpts Options
-	if err := rocket.ConfigUnmarshalWith(runCtx, "server", &serverOpts); err != nil {
+	var serverConfig ServerConfig
+	if err := rocket.ConfigUnmarshalWith(runCtx, "server", &serverConfig); err != nil {
 		return err
 	}
 	// 指定运行模式
 	if serverMode == "" {
-		serverOpts.Mode = RunServerModeAuto
+		serverConfig.Mode = RunServerModeAuto
 	}
 	logrus.Info("inst: run as server mode: ", serverMode)
 	// 检测运行模式
-	assertServerModeValid(serverOpts.Mode)
+	assertServerModeValid(serverConfig.Mode)
 	// 启动服务端
-	if helper.ContainsAnyString(serverOpts.Mode, RunServerModeForward, RunServerModeAuto) {
-		if err := i.buildForwardServer(runCtx, serverOpts, serverOpts.Mode == RunServerModeForward); err != nil {
+	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeForward, RunServerModeAuto) {
+		if err := i.buildForwardServer(runCtx, serverConfig, serverConfig.Mode == RunServerModeForward); err != nil {
 			return err
 		}
 	}
-	if helper.ContainsAnyString(serverOpts.Mode, RunServerModeProxy, RunServerModeAuto) {
+	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeProxy, RunServerModeAuto) {
 		var found = false
 		// Socks server
-		if ok, err := i.buildSocksServer(runCtx, serverOpts); err != nil {
+		if ok, err := i.buildSocksServer(runCtx, serverConfig); err != nil {
 			return err
 		} else if ok {
 			found = ok
 		}
 		// Http/Https server
-		if ok, err := i.buildHttpServer(runCtx, serverOpts); err != nil {
+		if ok, err := i.buildHttpServer(runCtx, serverConfig); err != nil {
 			return err
 		} else if ok {
 			found = ok
 		}
-		if serverOpts.Mode == RunServerModeProxy && !found {
+		if serverConfig.Mode == RunServerModeProxy && !found {
 			return fmt.Errorf("proxy servers not found")
 		}
 	}
@@ -80,42 +80,42 @@ func (i *Instance) Init(runCtx context.Context, serverMode string) error {
 	return nil
 }
 
-func (i *Instance) buildForwardServer(runCtx context.Context, serverOpts Options, isRequired bool) error {
-	var forwardOpts ForwardConfig
-	if err := rocket.ConfigUnmarshalWith(runCtx, "forward", &forwardOpts); err != nil {
+func (i *Instance) buildForwardServer(runCtx context.Context, serverConfig ServerConfig, isRequired bool) error {
+	var forwardConfig ForwardConfig
+	if err := rocket.ConfigUnmarshalWith(runCtx, "forward", &forwardConfig); err != nil {
 		return fmt.Errorf("unmarshal forward options: %w", err)
 	}
-	if len(forwardOpts.Rules) == 0 && isRequired {
+	if len(forwardConfig.Rules) == 0 && isRequired {
 		return fmt.Errorf("forward rules is empty")
 	}
-	for _, rule := range forwardOpts.Rules {
-		if rule.Disabled {
-			logrus.Warnf("inst: forward server is disabled: %s", rule.Description)
+	for _, ruleConfig := range forwardConfig.Rules {
+		if ruleConfig.Disabled {
+			logrus.Warnf("inst: forward server is disabled: %s", ruleConfig.Description)
 			continue
 		}
-		i.servers = append(i.servers, NewForwardServer(serverOpts, rule))
+		i.servers = append(i.servers, NewForwardServer(serverConfig, ruleConfig))
 	}
 	return nil
 }
 
-func (i *Instance) buildSocksServer(runCtx context.Context, serverOpts Options) (bool, error) {
-	if serverOpts.SocksPort <= 0 {
+func (i *Instance) buildSocksServer(runCtx context.Context, serverConfig ServerConfig) (bool, error) {
+	if serverConfig.SocksPort <= 0 {
 		return false, nil
 	}
-	var socksOpts SocksConfig
-	if err := rocket.ConfigUnmarshalWith(runCtx, "socks", &socksOpts); err != nil {
+	var socksConfig SocksConfig
+	if err := rocket.ConfigUnmarshalWith(runCtx, "socks", &socksConfig); err != nil {
 		return false, fmt.Errorf("unmarshal socks options: %w", err)
 	}
-	if socksOpts.Disabled {
+	if socksConfig.Disabled {
 		logrus.Warnf("inst: socks server is disabled")
 		return false, nil
 	}
-	i.servers = append(i.servers, NewSocksServer(serverOpts, socksOpts))
+	i.servers = append(i.servers, NewSocksServer(serverConfig, socksConfig))
 	return true, nil
 }
 
-func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts Options) (bool, error) {
-	buildServer := func(serverOpts Options, isHttps bool) error {
+func (i *Instance) buildHttpServer(runCtx context.Context, serverConfig ServerConfig) (bool, error) {
+	buildServer := func(isHttps bool) error {
 		var httpsConfig HttpsConfig
 		if err := rocket.ConfigUnmarshalWith(runCtx, "https", &httpsConfig); err != nil {
 			return fmt.Errorf("unmarshal https options: %w", err)
@@ -125,16 +125,16 @@ func (i *Instance) buildHttpServer(runCtx context.Context, serverOpts Options) (
 			return nil
 		}
 		httpsConfig.UseHttps = isHttps
-		i.servers = append(i.servers, NewHttpsServer(serverOpts, httpsConfig))
+		i.servers = append(i.servers, NewHttpsServer(serverConfig, httpsConfig))
 		return nil
 	}
-	if serverOpts.HttpPort > 0 {
-		if err := buildServer(serverOpts, false); err != nil {
+	if serverConfig.HttpPort > 0 {
+		if err := buildServer(false); err != nil {
 			return false, err
 		}
 	}
-	if serverOpts.HttpsPort > 0 {
-		if err := buildServer(serverOpts, true); err != nil {
+	if serverConfig.HttpsPort > 0 {
+		if err := buildServer(true); err != nil {
 			return false, err
 		}
 	}

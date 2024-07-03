@@ -32,7 +32,7 @@ func NewTcpListener(tag string, tcpOpts net.TcpOptions) *TcpListener {
 }
 
 func (t *TcpListener) Network() net.Network {
-	return net.Network_TCP
+	return net.NetworkTCP
 }
 
 func (t *TcpListener) Init(options rocket.ListenerOptions) error {

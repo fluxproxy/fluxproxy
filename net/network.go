@@ -5,18 +5,20 @@ import "strings"
 type Network int32
 
 const (
-	Network_Unknown Network = 0
-	Network_TCP     Network = 1
-	Network_UDP     Network = 2
-	Network_HRTP    Network = 4 // Http round trip
+	NetworkUnknown Network = 0
+	NetworkTCP     Network = 1
+	NetworkUDP     Network = 2
+	NetworkHRTP    Network = 4 // Http round trip
 )
 
 func (n Network) String() string {
 	switch n {
-	case Network_TCP:
+	case NetworkTCP:
 		return "tcp"
-	case Network_UDP:
+	case NetworkUDP:
 		return "udp"
+	case NetworkHRTP:
+		return "hrtp"
 	default:
 		return "unknown"
 	}
@@ -25,12 +27,12 @@ func (n Network) String() string {
 func ParseNetwork(net string) Network {
 	switch strings.ToLower(net) {
 	case "tcp":
-		return Network_TCP
+		return NetworkTCP
 	case "udp":
-		return Network_UDP
-	case "hsrt":
-		return Network_HRTP
+		return NetworkUDP
+	case "hrtp":
+		return NetworkHRTP
 	default:
-		return Network_Unknown
+		return NetworkUnknown
 	}
 }

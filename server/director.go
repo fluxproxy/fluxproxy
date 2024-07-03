@@ -13,7 +13,7 @@ import (
 
 type Director struct {
 	serverType        rocket.ServerType
-	serverOpts        Options
+	serverConfig      ServerConfig
 	listener          rocket.Listener
 	router            rocket.Router
 	resolver          rocket.Resolver
@@ -21,15 +21,15 @@ type Director struct {
 	authenticator     rocket.Authenticator
 }
 
-func NewDirector(opts Options) *Director {
-	assert.MustNotEmpty(opts.Mode, "server mode is empty")
+func NewDirector(serverConfig ServerConfig) *Director {
+	assert.MustNotEmpty(serverConfig.Mode, "server mode is empty")
 	return &Director{
-		serverOpts: opts,
+		serverConfig: serverConfig,
 	}
 }
 
-func (d *Director) Options() Options {
-	return d.serverOpts
+func (d *Director) ServerConfig() ServerConfig {
+	return d.serverConfig
 }
 
 func (d *Director) SetListener(listener rocket.Listener) {
@@ -80,7 +80,7 @@ func (d *Director) ServeListen(servContext context.Context) error {
 			assert.MustTrue(connCtx != servContext, "conn context is the same ref as server context")
 			assert.MustNotNil(conn.UserContext, "user context is nil")
 			assert.MustNotEmpty(rocket.RequiredID(connCtx), "conn id is empty")
-			if conn.Network == net.Network_TCP {
+			if conn.Network == net.NetworkTCP {
 				_, isTcpConn := conn.ReadWriter.(*stdnet.TCPConn)
 				assert.MustNotNil(isTcpConn, "conn read-writer is not type of *net.TCPConn")
 			}

@@ -33,7 +33,7 @@ func NewUdpListener(tag string, udpOpts net.UdpOptions) *UdpListener {
 }
 
 func (t *UdpListener) Network() net.Network {
-	return net.Network_UDP
+	return net.NetworkUDP
 }
 
 func (t *UdpListener) Init(options rocket.ListenerOptions) error {

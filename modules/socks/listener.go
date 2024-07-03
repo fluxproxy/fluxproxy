@@ -102,7 +102,7 @@ func (t *Listener) handleConnect(connCtx context.Context, conn net.Conn, r v5.Re
 		ReadWriter:  conn.(*net.TCPConn),
 		UserContext: context.Background(),
 		Destination: net.Destination{
-			Network: net.Network_TCP,
+			Network: net.NetworkTCP,
 			Address: destAddr,
 			Port:    net.Port(r.DstAddr.Port),
 		},

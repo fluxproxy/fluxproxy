@@ -16,31 +16,21 @@ var (
 	_ rocket.Server = (*SocksServer)(nil)
 )
 
-type SocksAuthConfig struct {
-	Enabled bool              `yaml:"enabled"`
-	Users   map[string]string `yaml:"users"`
-}
-
-type SocksConfig struct {
-	Disabled bool            `yaml:"disabled"`
-	Auth     SocksAuthConfig `yaml:"auth"`
-}
-
 type SocksServer struct {
 	config SocksConfig
 	*Director
 }
 
-func NewSocksServer(serverOpts Options, socksConfig SocksConfig) *SocksServer {
+func NewSocksServer(serverConfig ServerConfig, socksConfig SocksConfig) *SocksServer {
 	return &SocksServer{
 		config:   socksConfig,
-		Director: NewDirector(serverOpts),
+		Director: NewDirector(serverConfig),
 	}
 }
 
 func (s *SocksServer) Init(ctx context.Context) error {
 	// 检查参数
-	serverOpts := s.Options()
+	serverConfig := s.ServerConfig()
 	if s.config.Auth.Enabled {
 		if len(s.config.Auth.Users) == 0 {
 			return fmt.Errorf("no users defined for socks auth")
@@ -62,8 +52,8 @@ func (s *SocksServer) Init(ctx context.Context) error {
 	s.SetConnector(connector)
 	// 初始化
 	return socksListener.Init(rocket.ListenerOptions{
-		Address: serverOpts.Bind,
-		Port:    serverOpts.SocksPort,
+		Address: serverConfig.Bind,
+		Port:    serverConfig.SocksPort,
 	})
 }
 

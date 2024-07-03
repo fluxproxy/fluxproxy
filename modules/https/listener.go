@@ -41,7 +41,7 @@ func NewHttpsListener(opts Options) *Listener {
 }
 
 func (l *Listener) Network() net.Network {
-	return net.Network_TCP
+	return net.NetworkTCP
 }
 
 func (l *Listener) Init(options rocket.ListenerOptions) error {
@@ -131,7 +131,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		ReadWriter:  hijConn.(*net.TCPConn),
 		UserContext: setWithUserContext(context.Background(), rw, r),
 		Destination: net.Destination{
-			Network: net.Network_TCP,
+			Network: net.NetworkTCP,
 			Address: addr,
 			Port:    port,
 		},
@@ -193,7 +193,7 @@ func (l *Listener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, d
 		UserContext: setWithUserContext(context.Background(), rw, r),
 		ReadWriter:  nil,
 		Destination: net.Destination{
-			Network: net.Network_HRTP,
+			Network: net.NetworkHRTP,
 			Address: addr,
 			Port:    port,
 		},
