@@ -7,7 +7,6 @@ import (
 	"github.com/rocketmanapp/rocket-proxy"
 	"github.com/rocketmanapp/rocket-proxy/modules/resolver"
 	"github.com/rocketmanapp/rocket-proxy/modules/router"
-	"github.com/rocketmanapp/rocket-proxy/modules/ruleset"
 	"github.com/rocketmanapp/rocket-proxy/modules/stream"
 	"github.com/rocketmanapp/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
@@ -61,7 +60,7 @@ func (s *ForwardServer) Init(ctx context.Context) error {
 	s.SetRouter(proxyRouter)
 	s.SetConnector(connector)
 	s.SetResolver(resolver.NewResolverWith(ctx))
-	s.SetRuleset(ruleset.NewCompiledWith(ctx))
+	s.SetRuleset(NewCombinedWith(ctx))
 	// 初始化
 	assert.MustTrue(network == listener.Network(), "server network is not match listener, was: %s", listener.Network())
 	return listener.Init(rocket.ListenerOptions{

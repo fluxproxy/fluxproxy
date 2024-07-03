@@ -1,10 +1,11 @@
 package server
 
 import (
+	"github.com/rocketmanapp/rocket-proxy/net"
 	"strconv"
 )
 
-//// CAddress
+////
 
 type CAddress struct {
 	Address string `yaml:"address"`
@@ -13,4 +14,11 @@ type CAddress struct {
 
 func (c CAddress) String() string {
 	return c.Address + ":" + strconv.Itoa(c.Port)
+}
+
+////
+
+type CNetport struct {
+	Port    int
+	Network net.Network
 }

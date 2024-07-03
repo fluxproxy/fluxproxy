@@ -13,9 +13,8 @@ type Combined struct {
 	rulesets []rocket.Ruleset
 }
 
-func NewCompiledWith(ctx context.Context) *Combined {
-	return (&Combined{}).
-		WithRuleset(NewLoopbackWith(ctx))
+func NewCombinedWith(rulesets []rocket.Ruleset) *Combined {
+	return &Combined{rulesets: rulesets}
 }
 
 func (c *Combined) Allow(ctx context.Context, permit rocket.Permit) (context.Context, error) {
@@ -26,9 +25,4 @@ func (c *Combined) Allow(ctx context.Context, permit rocket.Permit) (context.Con
 		}
 	}
 	return ctx, nil
-}
-
-func (c *Combined) WithRuleset(r rocket.Ruleset) *Combined {
-	c.rulesets = append(c.rulesets, r)
-	return c
 }

@@ -19,6 +19,22 @@ resolver:
     #示例 domain: ip
     "fake.domain.com": "127.0.0.1"
 
+# 连接访问策略组
+acl:
+  # 顺序：按以下顺序检查访问策略。
+  - type: ipnet
+    origin: source
+    address: "192.168.1.0/8"
+    access: deny
+  - type: ipnet
+    origin: destination
+    address: "192.168.2.0/8"
+    access: deny
+  - type: ipnet
+    origin: destination
+    address: "192.168.3.0/8"
+    access: allow
+
 # Http/https 代理服务配置
 https:
   # TLS for https
