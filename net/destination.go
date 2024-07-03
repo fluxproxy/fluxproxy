@@ -27,3 +27,11 @@ func (d Destination) String() string {
 func (d Destination) IsValid() bool {
 	return d.Network != NetworkUnknown
 }
+
+func (d Destination) ToTCPAddr() *net.TCPAddr {
+	return &net.TCPAddr{IP: d.Address.IP(), Port: int(d.Port)}
+}
+
+func (d Destination) ToUDPAddr() *net.UDPAddr {
+	return &net.UDPAddr{IP: d.Address.IP(), Port: int(d.Port)}
+}

@@ -28,7 +28,7 @@ func (c *TcpConnector) DialServe(srcConnCtx context.Context, link *net.Connectio
 	assert.MustTrue(link.Destination.Network == net.NetworkTCP, "dest network is not tcp, was: %s", link.Destination.Network)
 	assert.MustTrue(link.Destination.Address.Family().IsIP(), "dest addr is not an ip, was: %s", link.Destination.Address.String())
 	srcConn := link.TCPConn()
-	dstConn, err := stdnet.DialTCP("tcp", nil, &stdnet.TCPAddr{IP: link.Destination.Address.IP(), Port: int(link.Destination.Port)})
+	dstConn, err := stdnet.DialTCP("tcp", nil, link.Destination.ToTCPAddr())
 	if err != nil {
 		return fmt.Errorf("tcp-dial: %w", err)
 	}
