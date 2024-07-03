@@ -18,6 +18,7 @@ var (
 	lookbackInst *Loopback
 )
 
+// Loopback 禁止回环访问本机本服务的端口
 type Loopback struct {
 	localAddrs []net.Destination
 }
@@ -44,7 +45,6 @@ func NewLoopbackWith(ctx context.Context) *Loopback {
 }
 
 func (l *Loopback) Allow(ctx context.Context, permit rocket.Permit) (context.Context, error) {
-	// 禁止回环访问
 	for _, local := range l.localAddrs {
 		if local.Address.Equal(permit.Destination.Address) &&
 			local.Port == permit.Destination.Port {
