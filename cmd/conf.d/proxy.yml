@@ -42,7 +42,7 @@ https:
   # 认证授权
   auth:
     # 启用认证功能，默认关闭
-    enabled: true
+    enabled: false
     # Basic认证机制配置
     basic:
       user1: "rocket-proxy"
@@ -54,7 +54,7 @@ socks:
   # 认证授权
   auth:
     # 启用认证功能，默认关闭
-    enabled: true
+    enabled: false
     # 认证用户列表
     users:
       user1: "rocket-proxy"
