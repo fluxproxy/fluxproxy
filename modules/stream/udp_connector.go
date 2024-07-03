@@ -39,7 +39,7 @@ func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) 
 	dstCtx, dstCancel := context.WithCancel(srcConnCtx)
 	defer dstCancel()
 	// Hook: dail
-	if hook := rocket.HookFuncDialPhased(srcConnCtx); hook != nil {
+	if hook := rocket.LookupHookFunc(srcConnCtx, rocket.CtxHookFuncOnDialer); hook != nil {
 		if err := hook(srcConnCtx, link); err != nil {
 			return err
 		}

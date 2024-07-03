@@ -10,11 +10,14 @@ type contextKey struct {
 }
 
 var (
-	CtxKeyID                 = contextKey{key: "ctx-key-id"}
-	CtxKeySource             = contextKey{key: "ctx-key-source"}
-	CtxKeyConfiger           = contextKey{key: "ctx-key-configer"}
-	CtxKeyServerType         = contextKey{key: "ctx-key-server-type"}
-	CtxKeyHookFuncDialPhased = contextKey{key: "ctx-key-hook-func-dial-phased"}
+	CtxKeyID         = contextKey{key: "ctx-key-id"}
+	CtxKeySource     = contextKey{key: "ctx-key-source"}
+	CtxKeyConfiger   = contextKey{key: "ctx-key-configer"}
+	CtxKeyServerType = contextKey{key: "ctx-key-server-type"}
+)
+
+var (
+	CtxHookFuncOnDialer = contextKey{key: "ctx:hook-func:on-dialer"}
 )
 
 func SetContextLogID(ctx context.Context, id string, source string) context.Context {
@@ -45,12 +48,12 @@ func RequiredID(ctx context.Context) string {
 
 // Hooks
 
-func ContextWithHookFuncDialPhased(ctx context.Context, v HookFunc) context.Context {
-	return context.WithValue(ctx, CtxKeyHookFuncDialPhased, v)
+func ContextWithHookFunc(ctx context.Context, k any, v HookFunc) context.Context {
+	return context.WithValue(ctx, k, v)
 }
 
-func HookFuncDialPhased(ctx context.Context) HookFunc {
-	if v, ok := ctx.Value(CtxKeyHookFuncDialPhased).(HookFunc); ok {
+func LookupHookFunc(ctx context.Context, k any) HookFunc {
+	if v, ok := ctx.Value(k).(HookFunc); ok {
 		return v
 	}
 	return nil

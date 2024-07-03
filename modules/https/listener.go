@@ -114,7 +114,7 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 		removeHopByHopHeaders(r.Header)
 	}
 	// Phase hook
-	connCtx = rocket.ContextWithHookFuncDialPhased(connCtx, func(ctx context.Context, conn *net.Connection) error {
+	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialer, func(ctx context.Context, conn *net.Connection) error {
 		if _, hiwErr := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n")); hiwErr != nil {
 			if !helper.IsConnectionClosed(hiwErr) {
 				rocket.Logger(connCtx).Errorf("https: write back ok response: %s", hiwErr)
