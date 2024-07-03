@@ -127,9 +127,6 @@ func (d *Director) ServeListen(servContext context.Context) error {
 			assert.MustTrue(ok, "connector not found, network: %d", newConn.Destination.Network)
 			if dsErr := connector.DialServe(connCtx, &newConn); dsErr != nil {
 				msg := dsErr.Error()
-				if strings.Contains(msg, "use of closed network connection") {
-					return io.EOF
-				}
 				if strings.Contains(msg, "i/o timeout") {
 					return io.EOF
 				}
