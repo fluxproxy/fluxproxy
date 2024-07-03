@@ -2,7 +2,12 @@ package rocket
 
 import (
 	"context"
+	"fmt"
 	"github.com/rocketmanapp/rocket-proxy/net"
+)
+
+var (
+	ErrRulesetNotMatched = fmt.Errorf("no-rules-matched")
 )
 
 //// Server Type

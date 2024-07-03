@@ -2,6 +2,7 @@ package ruleset
 
 import (
 	"context"
+	"errors"
 	"github.com/rocketmanapp/rocket-proxy"
 )
 
@@ -21,8 +22,11 @@ func (c *Combined) Allow(ctx context.Context, permit rocket.Permit) (context.Con
 	for _, ruleset := range c.rulesets {
 		ctx, err := ruleset.Allow(ctx, permit)
 		if err != nil {
+			if errors.Is(err, rocket.ErrRulesetNotMatched) {
+				continue
+			}
 			return ctx, err
 		}
 	}
-	return ctx, nil
+	return ctx, rocket.ErrRulesetNotMatched
 }

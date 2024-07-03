@@ -13,7 +13,7 @@ var (
 )
 
 type IPNet struct {
-	useSource bool //
+	useSource bool
 	isAllow   bool
 	nets      []stdnet.IPNet
 }
@@ -33,10 +33,14 @@ func (i *IPNet) Allow(ctx context.Context, permit rocket.Permit) (context.Contex
 	} else {
 		target = permit.Destination.Address
 	}
-	if i.match(target) && i.isAllow {
-		return ctx, nil
+	if i.match(target) {
+		if i.isAllow {
+			return ctx, nil
+		} else {
+			return ctx, fmt.Errorf("ipnet deny: %s", target)
+		}
 	} else {
-		return ctx, fmt.Errorf("%s deny", target)
+		return ctx, rocket.ErrRulesetNotMatched
 	}
 }
 

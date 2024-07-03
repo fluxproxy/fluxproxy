@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy"
@@ -115,7 +116,7 @@ func (d *Director) ServeListen(servContext context.Context) error {
 				Source:      newConn.Address,
 				Destination: newConn.Destination,
 			})
-			if rsErr != nil {
+			if rsErr != nil && !errors.Is(rsErr, rocket.ErrRulesetNotMatched) {
 				return fmt.Errorf("server ruleset: %w", rsErr)
 			} else {
 				assert.MustNotNil(connCtx, "ruleset dest context is nil")

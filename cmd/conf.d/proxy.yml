@@ -23,17 +23,16 @@ resolver:
 ruleset:
   # 顺序：按以下顺序检查访问策略。
   - type: ipnet
-    access: deny
+    access: allow
     origin: source
     address:
-      - "192.168.1.0/24"
-      - "192.168.2.0/24"
+      - "172.254.1.0/24"
+      - "172.254.2.0/24"
   - type: ipnet
-    access: allow
+    access: deny
     origin: destination
     address:
-      - "10.254.200.0/24"
-      - "10.254.220.0/24"
+      - "172.254.161.0/24"
 
 # Http/https 代理服务配置
 https:

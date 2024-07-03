@@ -29,5 +29,6 @@ func (l *Loopback) Allow(ctx context.Context, permit rocket.Permit) (context.Con
 			return ctx, fmt.Errorf("loopback address %s:%d", local.Address, local.Port)
 		}
 	}
-	return ctx, nil
+	//logrus.Infof("loopback: not matched: %+v", permit)
+	return ctx, rocket.ErrRulesetNotMatched
 }
