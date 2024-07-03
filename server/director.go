@@ -17,6 +17,7 @@ type Director struct {
 	listener          rocket.Listener
 	router            rocket.Router
 	resolver          rocket.Resolver
+	ruleset           rocket.Ruleset
 	connectorSelector rocket.ConnectorSelectFunc
 	authenticator     rocket.Authenticator
 }
@@ -47,6 +48,11 @@ func (d *Director) SetResolver(resolver rocket.Resolver) {
 	d.resolver = resolver
 }
 
+func (d *Director) SetRuleset(ruleset rocket.Ruleset) {
+	assert.MustNotNil(ruleset, "ruleset is nil")
+	d.ruleset = ruleset
+}
+
 func (d *Director) SetConnector(c rocket.Connector) {
 	assert.MustNotNil(c, "connector is nil")
 	d.SetConnectorSelector(func(conn *net.Connection) (rocket.Connector, bool) {
@@ -73,6 +79,7 @@ func (d *Director) ServeListen(servContext context.Context) error {
 	assert.MustNotNil(d.router, "server router is nil")
 	assert.MustNotNil(d.resolver, "server resolver is nil")
 	assert.MustNotNil(d.authenticator, "server authenticator is nil")
+	assert.MustNotNil(d.ruleset, "server ruleset is nil")
 	assert.MustNotNil(d.connectorSelector, "server connector-selector is nil")
 	return d.listener.Listen(servContext, &rocket.ListenerHandlerAdapter{
 		Authenticator: d.authenticator,
@@ -90,25 +97,34 @@ func (d *Director) ServeListen(servContext context.Context) error {
 			}(time.Now())
 
 			connCtx = context.WithValue(connCtx, rocket.CtxKeyServerType, d.serverType)
-			routed, rErr := d.router.Route(connCtx, &conn)
-			if rErr != nil {
-				return fmt.Errorf("server router: %w", rErr)
-			}
-			destNetwork := routed.Destination.Network
-			destAddr := routed.Destination.Address
-
-			assert.MustTrue(routed.Destination.IsValid(), "routed destination is invalid")
-
-			if ip, sErr := d.resolver.Resolve(connCtx, destAddr); sErr != nil {
-				return fmt.Errorf("server resolve: %w", sErr)
+			connCtx, newConn, roErr := d.router.Route(connCtx, &conn)
+			if roErr != nil {
+				return fmt.Errorf("server route: %w", roErr)
 			} else {
-				routed.Destination.Address = net.IPAddress(ip)
+				assert.MustTrue(newConn.Destination.IsValid(), "router destination is invalid")
+				assert.MustNotNil(connCtx, "router dest context is nil")
 			}
 
-			connector, ok := d.connectorSelector(&routed)
-			assert.MustTrue(ok, "connector not found, network: %d", destNetwork)
-			if dErr := connector.DialServe(connCtx, &routed); dErr != nil {
-				msg := dErr.Error()
+			if ip, reErr := d.resolver.Resolve(connCtx, newConn.Destination.Address); reErr != nil {
+				return fmt.Errorf("server resolve: %w", reErr)
+			} else {
+				newConn.Destination.Address = net.IPAddress(ip)
+			}
+
+			connCtx, rsErr := d.ruleset.Allow(connCtx, rocket.Permit{
+				Source:      newConn.Address,
+				Destination: newConn.Destination,
+			})
+			if rsErr != nil {
+				return fmt.Errorf("server ruleset: %w", rsErr)
+			} else {
+				assert.MustNotNil(connCtx, "ruleset dest context is nil")
+			}
+
+			connector, ok := d.connectorSelector(&newConn)
+			assert.MustTrue(ok, "connector not found, network: %d", newConn.Destination.Network)
+			if dsErr := connector.DialServe(connCtx, &newConn); dsErr != nil {
+				msg := dsErr.Error()
 				if strings.Contains(msg, "use of closed network connection") {
 					return nil
 				}
@@ -118,7 +134,7 @@ func (d *Director) ServeListen(servContext context.Context) error {
 				if strings.Contains(msg, "connection reset by peer") {
 					return nil
 				}
-				return dErr
+				return dsErr
 			} else {
 				return nil
 			}

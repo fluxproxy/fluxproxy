@@ -17,6 +17,6 @@ func NewStaticRouter(target net.Destination) *StaticRouter {
 	}
 }
 
-func (d *StaticRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
-	return income.WithDestination(d.target), nil
+func (d *StaticRouter) Route(ctx context.Context, income *net.Connection) (_ctx context.Context, target net.Connection, err error) {
+	return ctx, income.WithDestination(d.target), nil
 }

@@ -21,13 +21,13 @@ func NewProxyRouter() *ProxyRouter {
 	return &ProxyRouter{}
 }
 
-func (d *ProxyRouter) Route(ctx context.Context, income *net.Connection) (target net.Connection, err error) {
+func (d *ProxyRouter) Route(ctx context.Context, income *net.Connection) (_ctx context.Context, target net.Connection, err error) {
 	serverType := rocket.RequiredServerType(ctx)
 	switch serverType {
 	case rocket.ServerTypeSOCKS, rocket.ServerTypeHTTPS:
 		assert.MustTrue(income.Destination.IsValid(), "destination must be valid")
-		return *income, nil
+		return ctx, *income, nil
 	default:
-		return *income, fmt.Errorf("unsupported server type: %d", serverType)
+		return ctx, *income, fmt.Errorf("unsupported server type: %d", serverType)
 	}
 }

@@ -71,12 +71,21 @@ type Connector interface {
 // Router 代理路由器
 type Router interface {
 	// Route 根据监听器建立的连接和代理类型，选择代理请求的远程目标地址。
-	Route(ctx context.Context, income *net.Connection) (target net.Connection, err error)
+	Route(context.Context, *net.Connection) (context.Context, net.Connection, error)
 }
 
 // Resolver 域名解析器
 type Resolver interface {
 	Resolve(ctx context.Context, addr net.Address) (net.IP, error)
+}
+
+type Permit struct {
+	Source      net.Address
+	Destination net.Destination
+}
+
+type Ruleset interface {
+	Allow(context.Context, Permit) (context.Context, error)
 }
 
 //// Hook func
