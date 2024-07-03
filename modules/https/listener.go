@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/bytepowered/assert"
 	"github.com/rocketmanapp/rocket-proxy"
@@ -198,9 +199,9 @@ func (l *Listener) onTailError(connCtx context.Context, w io.Writer, disErr erro
 	if disErr == nil {
 		return
 	}
-	if !helper.IsCopierError(disErr) {
+	if !helper.IsCopierError(disErr) && !errors.Is(disErr, context.Canceled) {
 		_, _ = w.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		rocket.Logger(connCtx).Errorf("https: conn handle: %s", disErr)
+		rocket.Logger(connCtx).Errorf("https: handle error: %s", disErr)
 	}
 }
 
