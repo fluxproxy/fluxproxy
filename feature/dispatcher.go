@@ -38,7 +38,7 @@ func (d *Dispatcher) Serve(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			logrus.Infof("direct: context done")
+			logrus.Infof("dispatcher: serve:done")
 			return ctx.Err()
 
 		case server := <-d.tunnels:
@@ -56,11 +56,20 @@ func (d *Dispatcher) Submit(s rocket.Tunnel) {
 func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 	defer helper.Close(local)
 	addr := local.Address()
-	remote, err := d.lookup(addr).Dial(addr)
-	if err != nil {
-		logrus.WithError(err).Error("failed to generate rocket connector")
+	remote, dErr := d.lookup(addr).Dial(addr)
+	if dErr != nil {
+		rocket.Logger(local.Context()).Errorf("dispatcher: dial: %s", dErr)
+		return
 	}
 	defer helper.Close(remote)
+	// call hook
+	if hook, ok := rocket.LookupHookFunc(local.Context(), rocket.CtxHookFuncOnDialer); ok {
+		if hErr := hook(local.Context()); hErr != nil {
+			rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
+			return
+		}
+	}
+	// connect
 	local.Connect(remote)
 }
 

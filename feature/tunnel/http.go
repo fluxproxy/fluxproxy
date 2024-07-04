@@ -79,8 +79,8 @@ func (h *HttpPlain) Close() error {
 	return nil
 }
 
-func (h *HttpPlain) Done() <-chan struct{} {
-	return h.ctx.Done()
+func (h *HttpPlain) Context() context.Context {
+	return h.ctx
 }
 
 ////

@@ -94,7 +94,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	defer helper.Close(stream)
 	dispatcher.Submit(stream)
 
-	<-stream.Done()
+	<-stream.Context().Done()
 }
 
 func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatcher rocket.Dispatcher) {
@@ -111,11 +111,11 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 
 	// Authenticate
 
-	mono := tunnel.NewHttpPlain(rw, r, parseHostToAddress(r.Host))
-	defer helper.Close(mono)
-	dispatcher.Submit(mono)
+	plain := tunnel.NewHttpPlain(rw, r, parseHostToAddress(r.Host))
+	defer helper.Close(plain)
+	dispatcher.Submit(plain)
 
-	<-mono.Done()
+	<-plain.Context().Done()
 }
 
 func parseHostToAddress(host string) (addr net.Address) {

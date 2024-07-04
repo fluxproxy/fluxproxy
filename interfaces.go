@@ -51,8 +51,7 @@ type Tunnel interface {
 	// Close 关闭通道
 	Close() error
 
-	// Done 返回通道结束状态
-	Done() <-chan struct{}
+	Context() context.Context
 }
 
 // Dialer 建立与目标地址的连接

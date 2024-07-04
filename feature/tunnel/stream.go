@@ -53,6 +53,6 @@ func (s *Stream) Close() error {
 	return s.conn.Close()
 }
 
-func (s *Stream) Done() <-chan struct{} {
-	return s.ctx.Done()
+func (s *Stream) Context() context.Context {
+	return s.ctx
 }

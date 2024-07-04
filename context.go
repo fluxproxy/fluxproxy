@@ -56,9 +56,7 @@ func ContextWithHookFunc(ctx context.Context, k any, v HookFunc) context.Context
 	return context.WithValue(ctx, k, v)
 }
 
-func LookupHookFunc(ctx context.Context, k any) HookFunc {
-	if v, ok := ctx.Value(k).(HookFunc); ok {
-		return v
-	}
-	return nil
+func LookupHookFunc(ctx context.Context, k any) (f HookFunc, ok bool) {
+	f, ok = ctx.Value(k).(HookFunc)
+	return
 }
