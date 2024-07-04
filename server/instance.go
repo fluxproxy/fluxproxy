@@ -141,11 +141,12 @@ func (i *Instance) buildHttpServer(runCtx context.Context, serverConfig ServerCo
 }
 
 func (i *Instance) Serve(runCtx context.Context) error {
+	servCtx, servCancel := context.WithCancel(runCtx)
 	servErrors := make(chan error, len(i.servers))
 	for _, srv := range i.servers {
 		i.await.Add(1)
 		go func(psrv rocket.Server) {
-			if err := psrv.Serve(runCtx);
+			if err := psrv.Serve(servCtx);
 				err == nil ||
 					errors.Is(err, context.Canceled) ||
 					errors.Is(err, http.ErrServerClosed) {
@@ -158,8 +159,10 @@ func (i *Instance) Serve(runCtx context.Context) error {
 	}
 	select {
 	case err := <-servErrors:
+		servCancel()
 		return i.term(err)
 	case <-runCtx.Done():
+		servCancel()
 		return i.term(nil)
 	}
 }

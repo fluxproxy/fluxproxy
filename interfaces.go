@@ -11,6 +11,7 @@ type ListenerOptions struct {
 	Address string
 	Port    int
 	// TLS
+	TLSCAFile   string
 	TLSCertFile string
 	TLSKeyFile  string
 }

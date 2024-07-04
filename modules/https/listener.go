@@ -3,6 +3,7 @@ package https
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -15,6 +16,7 @@ import (
 	"io"
 	stdnet "net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 )
@@ -66,7 +68,7 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 			return serveCtx
 		},
 		ConnContext: func(ctx context.Context, conn stdnet.Conn) context.Context {
-			return internal.SetupTcpContextLogger(ctx, conn.(*net.TCPConn))
+			return internal.SetupTcpContextLogger(ctx, conn)
 		},
 	}
 	go func() {
@@ -74,6 +76,22 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 		_ = server.Shutdown(serveCtx)
 	}()
 	if l.opts.UseHttps {
+		var caPool *x509.CertPool = nil
+		if l.listenerOpts.TLSCAFile != "" {
+			caPool = x509.NewCertPool()
+			pem, err := os.ReadFile(l.listenerOpts.TLSCAFile)
+			if err != nil {
+				return fmt.Errorf("https: load tls ca file. %w", err)
+			}
+			if !caPool.AppendCertsFromPEM(pem) {
+				return fmt.Errorf("https: invalid ca file. %w", err)
+			}
+		}
+		server.TLSConfig = &tls.Config{
+			ClientCAs:          caPool,
+			ClientAuth:         tls.RequireAndVerifyClientCert,
+			InsecureSkipVerify: true,
+		}
 		return server.ListenAndServeTLS(l.listenerOpts.TLSCertFile, l.listenerOpts.TLSKeyFile)
 	} else {
 		return server.ListenAndServe()
@@ -120,7 +138,10 @@ func (l *Listener) handleConnectStream(rw http.ResponseWriter, r *http.Request, 
 	// hook: on dialer
 	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialer, func(_ context.Context, _ *net.Connection) error {
 		_, err := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-		return fmt.Errorf("https send response. %w", err)
+		if err != nil {
+			return fmt.Errorf("https send response. %w", err)
+		}
+		return nil
 	})
 	// Next
 	addr, port, _ := parseHostToAddress(r.URL.Host)
@@ -201,7 +222,7 @@ func (l *Listener) onTailError(connCtx context.Context, w io.Writer, disErr erro
 	}
 	if !helper.IsCopierError(disErr) && !errors.Is(disErr, context.Canceled) {
 		_, _ = w.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		rocket.Logger(connCtx).Errorf("https: handle error: %s", disErr)
+		internal.LogTailError(connCtx, "https", disErr)
 	}
 }
 

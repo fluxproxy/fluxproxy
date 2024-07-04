@@ -22,6 +22,7 @@ type HttpsConfig struct {
 	UseHttps bool `yaml:"-"`
 	Disabled bool `yaml:"disabled"`
 	// TLS
+	TLSCAFile   string `yaml:"tls_ca_file"`
 	TLSCertFile string `yaml:"tls_cert_file"`
 	TLSKeyFile  string `yaml:"tls_key_file"`
 	// Auth

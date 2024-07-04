@@ -78,6 +78,7 @@ func (s *HttpsServer) Init(ctx context.Context) error {
 		Address: serverConfig.Bind,
 		Port:    serverPort,
 		// TLS
+		TLSCAFile:   s.config.TLSCAFile,
 		TLSCertFile: s.config.TLSCertFile,
 		TLSKeyFile:  s.config.TLSKeyFile,
 	})

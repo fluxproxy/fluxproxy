@@ -7,7 +7,7 @@ server:
   # Http代理端口
   http_port: 1080
   # Https代理端口
-  https_port: 0
+  https_port: 1082
   # Socks代理端口
   socks_port: 1081
 
@@ -37,8 +37,9 @@ ruleset:
 # Http/https 代理服务配置
 https:
   # TLS for https
-  tls_cert_file: ""
-  tls_key_file: ""
+  tls_ca_file: "./cmd/conf.d/ca.pem"
+  tls_cert_file: "./cmd/conf.d/server.pem"
+  tls_key_file: "./cmd/conf.d/server.key"
   # 认证授权
   auth:
     # 启用认证功能，默认关闭

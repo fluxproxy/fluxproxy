@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-func SetupTcpContextLogger(ctx context.Context, conn *net.TCPConn) context.Context {
+func SetupTcpContextLogger(ctx context.Context, conn net.Conn) context.Context {
 	id, _ := uuid.GenerateUUID()
 	remoteAddr := conn.RemoteAddr()
 	return rocket.SetContextLogID(ctx, id, remoteAddr.String())
@@ -26,13 +26,17 @@ func onTailError(connCtx context.Context, tag string, disErr error) {
 		return
 	}
 	if !helper.IsCopierError(disErr) && !errors.Is(disErr, context.Canceled) {
-		msg := disErr.Error()
-		if strings.Contains(msg, "i/o timeout") {
-			return
-		}
-		if strings.Contains(msg, "connection reset by peer") {
-			return
-		}
-		rocket.Logger(connCtx).Errorf("%s conn error: %s", tag, disErr)
+		LogTailError(connCtx, tag, disErr)
 	}
+}
+
+func LogTailError(connCtx context.Context, tag string, disErr error) {
+	msg := disErr.Error()
+	if strings.Contains(msg, "i/o timeout") {
+		return
+	}
+	if strings.Contains(msg, "connection reset by peer") {
+		return
+	}
+	rocket.Logger(connCtx).Errorf("%s conn error: %s", tag, disErr)
 }
