@@ -1,0 +1,62 @@
+# 网络配置
+server:
+  # 服务器运行模式
+  # - auto 自动代理
+  # - http 仅http代理模式
+  # - socks 仅socks代理模式
+  mode: "auto"
+
+  # Http 代理服务配置
+  http:
+    # 禁用Http代理(默认启用）
+    # disabled: false
+    # Http代理端口
+    bind: "0.0.0.0"
+    port: 1080
+    # 认证授权
+    auth:
+      # 启用认证功能，默认关闭认证。
+      # 如需要启用代理认证，设置为true，并设置代理认证配置。
+      enabled: false
+      # Basic认证机制配置
+      basic:
+        user1: "rocket-proxy"
+
+  # Socks5 代理服务配置
+  socks:
+    # 禁用Socks代理(默认启用）
+    # disabled: false
+    # Socks代理端口
+    bind: "0.0.0.0"
+    port: 1081
+    # 认证授权
+    auth:
+      # 启用认证功能，默认关闭认证。
+      # 如需要启用代理认证，设置为true，并设置代理认证配置。
+      enabled: false
+      # 认证用户列表
+      users:
+        user1: "rocket-proxy"
+
+# Resolver 配置
+resolver:
+  cache_size: 10000
+  cache_ttl: 60
+  hosts:
+    #示例 domain: ip
+    "fake.domain.com": "127.0.0.1"
+
+# 连接访问策略组
+ruleset:
+  # 顺序：按以下顺序检查访问策略。
+  - type: ipnet
+    access: allow
+    origin: source
+    address:
+      - "172.254.1.0/24"
+      - "172.254.2.0/24"
+  - type: ipnet
+    access: deny
+    origin: destination
+    address:
+      - "172.254.161.0/24"
