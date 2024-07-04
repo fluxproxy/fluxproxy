@@ -57,7 +57,7 @@ type Tunnel interface {
 // Dialer 建立与目标地址的连接
 type Dialer interface {
 	Name() string
-	Dial(remote net.Address) (Connection, error)
+	Dial(srcConnCtx context.Context, remoteAddr net.Address) (Connection, error)
 }
 
 //// Hook func

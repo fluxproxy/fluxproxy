@@ -56,14 +56,14 @@ func (d *Dispatcher) Submit(s rocket.Tunnel) {
 func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 	defer helper.Close(local)
 	addr := local.Address()
-	remote, dErr := d.lookup(addr).Dial(addr)
+	remote, dErr := d.lookup(addr).Dial(local.Context(), addr)
 	if dErr != nil {
 		rocket.Logger(local.Context()).Errorf("dispatcher: dial: %s", dErr)
 		return
 	}
 	defer helper.Close(remote)
 	// call hook
-	if hook, ok := rocket.LookupHookFunc(local.Context(), rocket.CtxHookFuncOnDialer); ok {
+	if hook, ok := rocket.LookupHookFunc(local.Context(), rocket.CtxHookFuncOnDialed); ok {
 		if hErr := hook(local.Context()); hErr != nil {
 			rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
 			return

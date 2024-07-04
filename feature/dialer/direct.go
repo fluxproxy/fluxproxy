@@ -1,6 +1,7 @@
 package dialer
 
 import (
+	"context"
 	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	stdnet "net"
@@ -25,8 +26,8 @@ func (d *Direct) Name() string {
 	return DIRECT
 }
 
-func (d *Direct) Dial(address net.Address) (rocket.Connection, error) {
-	conn, err := stdnet.Dial("tcp", address.Addrport())
+func (d *Direct) Dial(srcConnCtx context.Context, remoteAddr net.Address) (rocket.Connection, error) {
+	conn, err := stdnet.Dial("tcp", remoteAddr.Addrport())
 	if err != nil {
 		return nil, err
 	}

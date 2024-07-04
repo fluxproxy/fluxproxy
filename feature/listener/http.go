@@ -81,8 +81,8 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	}
 	// Authenticate
 
-	//hook: on dialer
-	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialer, func(context.Context) error {
+	// hook: when dialed
+	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialed, func(context.Context) error {
 		_, err := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 		if err != nil {
 			return fmt.Errorf("http send response. %w", err)

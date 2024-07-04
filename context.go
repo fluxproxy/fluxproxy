@@ -12,14 +12,13 @@ type contextKey struct {
 }
 
 var (
-	CtxKeyID         = contextKey{key: "ctx-key-id"}
-	CtxKeySource     = contextKey{key: "ctx-key-source"}
-	CtxKeyConfiger   = contextKey{key: "ctx-key-configer"}
-	CtxKeyServerType = contextKey{key: "ctx-key-server-type"}
+	CtxKeyID       = contextKey{key: "ctx-key-id"}
+	CtxKeySource   = contextKey{key: "ctx-key-source"}
+	CtxKeyConfiger = contextKey{key: "ctx-key-configer"}
 )
 
 var (
-	CtxHookFuncOnDialer = contextKey{key: "ctx:hook-func:on-dialer"}
+	CtxHookFuncOnDialed = contextKey{key: "ctx:hook-func:on-dialed"}
 )
 
 func SetContextLogID(ctx context.Context, id string, source string) context.Context {
