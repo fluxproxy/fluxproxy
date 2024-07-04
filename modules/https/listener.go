@@ -76,21 +76,25 @@ func (l *Listener) Listen(serveCtx context.Context, dispatchHandler rocket.Liste
 		_ = server.Shutdown(serveCtx)
 	}()
 	if l.opts.UseHttps {
-		var caPool *x509.CertPool = nil
+		root, caErr := x509.SystemCertPool()
+		if caErr != nil {
+			return fmt.Errorf("https: system ca. %w", caErr)
+		}
 		if l.listenerOpts.TLSCAFile != "" {
-			caPool = x509.NewCertPool()
-			pem, err := os.ReadFile(l.listenerOpts.TLSCAFile)
+			capem, err := os.ReadFile(l.listenerOpts.TLSCAFile)
 			if err != nil {
-				return fmt.Errorf("https: load tls ca file. %w", err)
+				return fmt.Errorf("https: load ca file. %w", err)
 			}
-			if !caPool.AppendCertsFromPEM(pem) {
-				return fmt.Errorf("https: invalid ca file. %w", err)
+			if !root.AppendCertsFromPEM(capem) {
+				return fmt.Errorf("https: append ca to root. %w", err)
 			}
 		}
 		server.TLSConfig = &tls.Config{
-			ClientCAs:          caPool,
-			ClientAuth:         tls.RequireAndVerifyClientCert,
-			InsecureSkipVerify: true,
+			RootCAs:                root,
+			ClientAuth:             tls.RequireAndVerifyClientCert,
+			InsecureSkipVerify:     l.listenerOpts.TLSAllowInsecure,
+			NextProtos:             []string{"h2", "http/1.1"},
+			SessionTicketsDisabled: true,
 		}
 		return server.ListenAndServeTLS(l.listenerOpts.TLSCertFile, l.listenerOpts.TLSKeyFile)
 	} else {
