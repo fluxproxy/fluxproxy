@@ -18,6 +18,7 @@ var (
 )
 
 type HttpPlain struct {
+	hook rocket.TunnelHook
 	auth rocket.Authentication
 	ctx  context.Context
 	done context.CancelFunc
@@ -26,9 +27,14 @@ type HttpPlain struct {
 	w    http.ResponseWriter
 }
 
-func NewHttpPlain(w http.ResponseWriter, r *http.Request, dest net.Address, auth rocket.Authentication) *HttpPlain {
+func NewHttpPlain(
+	w http.ResponseWriter, r *http.Request, dest net.Address,
+	auth rocket.Authentication,
+	hook rocket.TunnelHook,
+) *HttpPlain {
 	ctx, cancel := context.WithCancel(r.Context())
 	return &HttpPlain{
+		hook: hook,
 		auth: auth,
 		dest: dest,
 		r:    r,
@@ -36,14 +42,6 @@ func NewHttpPlain(w http.ResponseWriter, r *http.Request, dest net.Address, auth
 		ctx:  ctx,
 		done: cancel,
 	}
-}
-
-func (h *HttpPlain) Destination() net.Address {
-	return h.dest
-}
-
-func (h *HttpPlain) Authentication() rocket.Authentication {
-	return h.auth
 }
 
 func (h *HttpPlain) Connect(connector rocket.Connection) {
@@ -87,6 +85,18 @@ func (h *HttpPlain) Close() error {
 
 func (h *HttpPlain) Context() context.Context {
 	return h.ctx
+}
+
+func (h *HttpPlain) Destination() net.Address {
+	return h.dest
+}
+
+func (h *HttpPlain) Authentication() rocket.Authentication {
+	return h.auth
+}
+
+func (h *HttpPlain) Hook() rocket.TunnelHook {
+	return h.hook
 }
 
 ////

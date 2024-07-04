@@ -82,22 +82,26 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	}
 	defer helper.Close(hiConn)
 
-	// hook: when dialed
-	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialed, func(context.Context) error {
-		_, err := hiConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-		if err != nil {
-			return fmt.Errorf("http send response. %w", err)
-		}
-		return nil
-	})
-
 	srcAddr := parseRemoteToSrcAddress(r.RemoteAddr)
 	destAddr := parseHostToDestAddress(r.Host)
 	auth := parseProxyAuthorization(r.Header, srcAddr)
 
 	removeHopByHopHeaders(r.Header)
 
-	stream := tunnel.NewConnStream(connCtx, hiConn, destAddr, auth)
+	hook := rocket.TunnelHook{
+		OnAuth: func(ctx context.Context, err error) error {
+			return nil
+		},
+		OnDial: func(context.Context) error {
+			_, err := hiConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+			if err != nil {
+				return fmt.Errorf("http send response. %w", err)
+			}
+			return nil
+		},
+	}
+
+	stream := tunnel.NewConnStream(connCtx, hiConn, destAddr, auth, hook)
 	defer helper.Close(stream)
 	dispatcher.Submit(stream)
 
@@ -117,22 +121,26 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 		r.Header.Set("User-Agent", "")
 	}
 
-	// hook: when dialed
-	rocket.ContextWithHookFunc(r.Context(), rocket.CtxHookFuncOnDialed, func(context.Context) error {
-		_, err := rw.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-		if err != nil {
-			return fmt.Errorf("http send response. %w", err)
-		}
-		return nil
-	})
-
 	srcAddr := parseRemoteToSrcAddress(r.RemoteAddr)
 	destAddr := parseHostToDestAddress(r.Host)
 	auth := parseProxyAuthorization(r.Header, srcAddr)
 
 	removeHopByHopHeaders(r.Header)
 
-	plain := tunnel.NewHttpPlain(rw, r, destAddr, auth)
+	hook := rocket.TunnelHook{
+		OnAuth: func(ctx context.Context, err error) error {
+			return nil
+		},
+		OnDial: func(context.Context) error {
+			_, err := rw.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+			if err != nil {
+				return fmt.Errorf("http send response. %w", err)
+			}
+			return nil
+		},
+	}
+
+	plain := tunnel.NewHttpPlain(rw, r, destAddr, auth, hook)
 	defer helper.Close(plain)
 	dispatcher.Submit(plain)
 

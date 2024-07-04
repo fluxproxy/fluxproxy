@@ -15,6 +15,7 @@ var (
 )
 
 type ConnStream struct {
+	hook rocket.TunnelHook
 	auth rocket.Authentication
 	dest net.Address
 	conn stdnet.Conn
@@ -22,21 +23,18 @@ type ConnStream struct {
 	done context.CancelFunc
 }
 
-func NewConnStream(ctx context.Context, conn stdnet.Conn, dest net.Address, auth rocket.Authentication) *ConnStream {
+func NewConnStream(
+	ctx context.Context, conn stdnet.Conn, dest net.Address,
+	auth rocket.Authentication,
+	hooks rocket.TunnelHook,
+) *ConnStream {
 	return &ConnStream{
 		auth: auth,
 		ctx:  ctx,
 		dest: dest,
 		conn: conn,
+		hook: hooks,
 	}
-}
-
-func (s *ConnStream) Destination() net.Address {
-	return s.dest
-}
-
-func (s *ConnStream) Authentication() rocket.Authentication {
-	return s.auth
 }
 
 func (s *ConnStream) Connect(connector rocket.Connection) {
@@ -61,4 +59,16 @@ func (s *ConnStream) Close() error {
 
 func (s *ConnStream) Context() context.Context {
 	return s.ctx
+}
+
+func (s *ConnStream) Destination() net.Address {
+	return s.dest
+}
+
+func (s *ConnStream) Authentication() rocket.Authentication {
+	return s.auth
+}
+
+func (s *ConnStream) Hook() rocket.TunnelHook {
+	return s.hook
 }

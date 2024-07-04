@@ -63,13 +63,13 @@ func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 		return
 	}
 	defer helper.Close(remote)
+
 	// call hook
-	if hook, ok := rocket.LookupHookFunc(local.Context(), rocket.CtxHookFuncOnDialed); ok {
-		if hErr := hook(local.Context()); hErr != nil {
-			rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
-			return
-		}
+	if hErr := local.Hook().OnDial(local.Context()); hErr != nil {
+		rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
+		return
 	}
+
 	// connect
 	local.Connect(remote)
 }

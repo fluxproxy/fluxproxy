@@ -47,6 +47,11 @@ type Connection interface {
 	Close() error
 }
 
+type TunnelHook struct {
+	OnDial func(ctx context.Context) error
+	OnAuth func(ctx context.Context, err error) error
+}
+
 // Tunnel 连接源客户端与目标服务器的通道
 type Tunnel interface {
 	// Destination 返回目标服务器的地址
@@ -58,11 +63,14 @@ type Tunnel interface {
 	// Connect 连接到目标服务器
 	Connect(remote Connection)
 
-	// Close 关闭通道
-	Close() error
+	// Hook 返回通道Hook函数
+	Hook() TunnelHook
 
 	// Context 返回通道的 Context
 	Context() context.Context
+
+	// Close 关闭通道
+	Close() error
 }
 
 // Dialer 建立与目标地址的连接
