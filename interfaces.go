@@ -7,6 +7,13 @@ import (
 	stdnet "net"
 )
 
+// Authentication 身份认证信息
+type Authentication struct {
+	Source         net.Address
+	Authenticate   string
+	Authentication string
+}
+
 // Listener 监听器，监听服务端口，完成与客户端的连接握手。
 type Listener interface {
 	// Init 执行初始化操作
@@ -42,8 +49,11 @@ type Connection interface {
 
 // Tunnel 连接源客户端与目标服务器的通道
 type Tunnel interface {
-	// Address 源客户端地址
-	Address() net.Address
+	// Destination 返回目标服务器的地址
+	Destination() net.Address
+
+	// Authentication 返回源客户端的身份认证信息
+	Authentication() Authentication
 
 	// Connect 连接到目标服务器
 	Connect(remote Connection)
@@ -51,6 +61,7 @@ type Tunnel interface {
 	// Close 关闭通道
 	Close() error
 
+	// Context 返回通道的 Context
 	Context() context.Context
 }
 
@@ -58,6 +69,11 @@ type Tunnel interface {
 type Dialer interface {
 	Name() string
 	Dial(srcConnCtx context.Context, remoteAddr net.Address) (Connection, error)
+}
+
+// Authenticator 身份认证
+type Authenticator interface {
+	Authenticate(context.Context, Authentication) (context.Context, error)
 }
 
 //// Hook func

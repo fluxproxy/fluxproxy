@@ -11,29 +11,35 @@ import (
 )
 
 var (
-	_ rocket.Tunnel = (*Stream)(nil)
+	_ rocket.Tunnel = (*ConnStream)(nil)
 )
 
-type Stream struct {
-	addr net.Address
+type ConnStream struct {
+	auth rocket.Authentication
+	dest net.Address
 	conn stdnet.Conn
 	ctx  context.Context
 	done context.CancelFunc
 }
 
-func NewStream(ctx context.Context, conn stdnet.Conn, addr net.Address) *Stream {
-	return &Stream{
+func NewConnStream(ctx context.Context, conn stdnet.Conn, dest net.Address, auth rocket.Authentication) *ConnStream {
+	return &ConnStream{
+		auth: auth,
 		ctx:  ctx,
-		addr: addr,
+		dest: dest,
 		conn: conn,
 	}
 }
 
-func (s *Stream) Address() net.Address {
-	return s.addr
+func (s *ConnStream) Destination() net.Address {
+	return s.dest
 }
 
-func (s *Stream) Connect(connector rocket.Connection) {
+func (s *ConnStream) Authentication() rocket.Authentication {
+	return s.auth
+}
+
+func (s *ConnStream) Connect(connector rocket.Connection) {
 	s.ctx, s.done = context.WithCancel(s.ctx)
 	defer s.done()
 	ioErrors := make(chan error, 2)
@@ -48,11 +54,11 @@ func (s *Stream) Connect(connector rocket.Connection) {
 	}
 }
 
-func (s *Stream) Close() error {
+func (s *ConnStream) Close() error {
 	s.done()
 	return s.conn.Close()
 }
 
-func (s *Stream) Context() context.Context {
+func (s *ConnStream) Context() context.Context {
 	return s.ctx
 }

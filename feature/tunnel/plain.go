@@ -18,17 +18,19 @@ var (
 )
 
 type HttpPlain struct {
+	auth rocket.Authentication
 	ctx  context.Context
 	done context.CancelFunc
-	addr net.Address
+	dest net.Address
 	r    *http.Request
 	w    http.ResponseWriter
 }
 
-func NewHttpPlain(w http.ResponseWriter, r *http.Request, addr net.Address) *HttpPlain {
+func NewHttpPlain(w http.ResponseWriter, r *http.Request, dest net.Address, auth rocket.Authentication) *HttpPlain {
 	ctx, cancel := context.WithCancel(r.Context())
 	return &HttpPlain{
-		addr: addr,
+		auth: auth,
+		dest: dest,
 		r:    r,
 		w:    w,
 		ctx:  ctx,
@@ -36,8 +38,12 @@ func NewHttpPlain(w http.ResponseWriter, r *http.Request, addr net.Address) *Htt
 	}
 }
 
-func (h *HttpPlain) Address() net.Address {
-	return h.addr
+func (h *HttpPlain) Destination() net.Address {
+	return h.dest
+}
+
+func (h *HttpPlain) Authentication() rocket.Authentication {
+	return h.auth
 }
 
 func (h *HttpPlain) Connect(connector rocket.Connection) {

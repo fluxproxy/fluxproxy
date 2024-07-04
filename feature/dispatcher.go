@@ -55,8 +55,9 @@ func (d *Dispatcher) Submit(s rocket.Tunnel) {
 
 func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 	defer helper.Close(local)
-	addr := local.Address()
-	remote, dErr := d.lookup(addr).Dial(local.Context(), addr)
+	destAddr := local.Destination()
+	// TODO 身份认证
+	remote, dErr := d.lookup(destAddr).Dial(local.Context(), destAddr)
 	if dErr != nil {
 		rocket.Logger(local.Context()).Errorf("dispatcher: dial: %s", dErr)
 		return
