@@ -73,24 +73,26 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	// Hijacker
 	hijacker, ok := rw.(http.Hijacker)
 	assert.MustTrue(ok, "http: not support hijack")
-	hijConn, _, hijErr := hijacker.Hijack()
+	hiConn, _, hijErr := hijacker.Hijack()
 	if hijErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		rocket.Logger(connCtx).Error("http: not support hijack")
 		return
 	}
-	// Authenticate
+	defer helper.Close(hiConn)
 
 	// hook: when dialed
 	connCtx = rocket.ContextWithHookFunc(connCtx, rocket.CtxHookFuncOnDialed, func(context.Context) error {
-		_, err := hijConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+		_, err := hiConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 		if err != nil {
 			return fmt.Errorf("http send response. %w", err)
 		}
 		return nil
 	})
 
-	stream := tunnel.NewHttpStream(connCtx, hijConn, parseHostToAddress(r.URL.Host))
+	// Authenticate
+
+	stream := tunnel.NewHttpStream(connCtx, hiConn, parseHostToAddress(r.URL.Host))
 	defer helper.Close(stream)
 	dispatcher.Submit(stream)
 
@@ -103,6 +105,7 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 		_, _ = rw.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
 		return
 	}
+	defer helper.Close(r.Body)
 
 	// Prevent UA from being set to golang's default ones
 	if r.Header.Get("User-Agent") == "" {
