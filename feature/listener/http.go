@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"github.com/bytepowered/assert"
 	"github.com/rocket-proxy/rocket-proxy"
+	"github.com/rocket-proxy/rocket-proxy/feature/tunnel"
 	"github.com/rocket-proxy/rocket-proxy/helper"
 	"github.com/rocket-proxy/rocket-proxy/internal"
-	"github.com/rocket-proxy/rocket-proxy/modules/server"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
@@ -90,7 +90,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 		return nil
 	})
 
-	stream := server.NewHttpStream(connCtx, hijConn, parseHostToAddress(r.URL.Host))
+	stream := tunnel.NewHttpStream(connCtx, hijConn, parseHostToAddress(r.URL.Host))
 	defer helper.Close(stream)
 	dispatcher.Submit(stream)
 
@@ -111,7 +111,7 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 
 	// Authenticate
 
-	mono := server.NewHttpMono(rw, r, parseHostToAddress(r.Host))
+	mono := tunnel.NewHttpPlain(rw, r, parseHostToAddress(r.Host))
 	defer helper.Close(mono)
 	dispatcher.Submit(mono)
 

@@ -1,13 +1,12 @@
-package proxy
+package dialer
 
 import (
 	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/modules/connector"
 	"github.com/rocket-proxy/rocket-proxy/net"
 )
 
 var (
-	_ rocket.Proxy = (*Reject)(nil)
+	_ rocket.Dialer = (*Reject)(nil)
 )
 
 const (
@@ -25,6 +24,6 @@ func (r *Reject) Name() string {
 	return REJECT
 }
 
-func (r *Reject) Generate(address net.Address) (rocket.Connector, error) {
-	return connector.NewReject(), nil
+func (r *Reject) Dial(address net.Address) (rocket.Connection, error) {
+	return rocket.NewRejectConnection(), nil
 }

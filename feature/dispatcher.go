@@ -1,11 +1,11 @@
-package app
+package feature
 
 import (
 	"context"
 	"github.com/bytepowered/goes"
 	"github.com/rocket-proxy/rocket-proxy"
+	"github.com/rocket-proxy/rocket-proxy/feature/dialer"
 	"github.com/rocket-proxy/rocket-proxy/helper"
-	"github.com/rocket-proxy/rocket-proxy/modules/proxy"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -16,20 +16,20 @@ var (
 )
 
 type Dispatcher struct {
-	queued   chan rocket.Server
-	proxiers map[string]rocket.Proxy
+	tunnels chan rocket.Tunnel
+	dialer  map[string]rocket.Dialer
 }
 
 func NewDispatcher() *Dispatcher {
 	return &Dispatcher{
-		queued: make(chan rocket.Server, math.MaxInt32),
+		tunnels: make(chan rocket.Tunnel, math.MaxInt32),
 	}
 }
 
 func (d *Dispatcher) Init(ctx context.Context) error {
-	d.proxiers = map[string]rocket.Proxy{
-		proxy.DIRECT: proxy.NewDirect(),
-		proxy.REJECT: proxy.NewReject(),
+	d.dialer = map[string]rocket.Dialer{
+		dialer.DIRECT: dialer.NewDirect(),
+		dialer.REJECT: dialer.NewReject(),
 	}
 	return nil
 }
@@ -41,7 +41,7 @@ func (d *Dispatcher) Serve(ctx context.Context) error {
 			logrus.Infof("direct: context done")
 			return ctx.Err()
 
-		case server := <-d.queued:
+		case server := <-d.tunnels:
 			goes.Go(func() {
 				d.handleServer(server)
 			})
@@ -49,14 +49,14 @@ func (d *Dispatcher) Serve(ctx context.Context) error {
 	}
 }
 
-func (d *Dispatcher) Submit(s rocket.Server) {
-	d.queued <- s
+func (d *Dispatcher) Submit(s rocket.Tunnel) {
+	d.tunnels <- s
 }
 
-func (d *Dispatcher) handleServer(local rocket.Server) {
+func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 	defer helper.Close(local)
 	addr := local.Address()
-	remote, err := d.lookup(addr).Generate(addr)
+	remote, err := d.lookup(addr).Dial(addr)
 	if err != nil {
 		logrus.WithError(err).Error("failed to generate rocket connector")
 	}
@@ -64,6 +64,6 @@ func (d *Dispatcher) handleServer(local rocket.Server) {
 	local.Connect(remote)
 }
 
-func (d *Dispatcher) lookup(addr net.Address) rocket.Proxy {
-	return d.proxiers[proxy.DIRECT]
+func (d *Dispatcher) lookup(addr net.Address) rocket.Dialer {
+	return d.dialer[dialer.DIRECT]
 }

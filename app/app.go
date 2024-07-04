@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rocket-proxy/rocket-proxy"
+	"github.com/rocket-proxy/rocket-proxy/feature"
+	"github.com/rocket-proxy/rocket-proxy/feature/listener"
 	"github.com/rocket-proxy/rocket-proxy/helper"
-	"github.com/rocket-proxy/rocket-proxy/modules/listener"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
@@ -19,19 +20,19 @@ const (
 	RunServerModeSocks string = "socks"
 )
 
-type Instance struct {
+type App struct {
 	listeners  []rocket.Listener
 	dispatcher rocket.Dispatcher
 	await      sync.WaitGroup
 }
 
-func NewInstance() *Instance {
-	return &Instance{
+func NewApp() *App {
+	return &App{
 		await: sync.WaitGroup{},
 	}
 }
 
-func (i *Instance) Init(runCtx context.Context, cmdMode string) error {
+func (i *App) Init(runCtx context.Context, cmdMode string) error {
 	// Server mode
 	var serverConfig ServerConfig
 	if err := rocket.ConfigerUnmarshal(runCtx, configPathServer, &serverConfig); err != nil {
@@ -51,7 +52,7 @@ func (i *Instance) Init(runCtx context.Context, cmdMode string) error {
 		logrus.Infof("inst: server mode: %s", serverConfig.Mode)
 	}
 	// Dispatcher
-	i.dispatcher = NewDispatcher()
+	i.dispatcher = feature.NewDispatcher()
 	if err := i.dispatcher.Init(runCtx); err != nil {
 		return fmt.Errorf("inst: dispacher: %w", err)
 	}
@@ -70,7 +71,7 @@ func (i *Instance) Init(runCtx context.Context, cmdMode string) error {
 	return nil
 }
 
-func (i *Instance) Serve(runCtx context.Context) error {
+func (i *App) Serve(runCtx context.Context) error {
 	servCtx, servCancel := context.WithCancel(runCtx)
 	defer servCancel()
 
@@ -104,12 +105,12 @@ func (i *Instance) Serve(runCtx context.Context) error {
 	}
 }
 
-func (i *Instance) term(err error) error {
+func (i *App) term(err error) error {
 	i.await.Wait()
 	return err
 }
 
-func (i *Instance) initHttpListener(runCtx context.Context) error {
+func (i *App) initHttpListener(runCtx context.Context) error {
 	var httpConfig HttpConfig
 	if err := rocket.ConfigerUnmarshal(runCtx, configPathHttp, &httpConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal http config. %w", err)
@@ -126,7 +127,7 @@ func (i *Instance) initHttpListener(runCtx context.Context) error {
 	return inst.Init(runCtx)
 }
 
-func (i *Instance) checkServerMode(mode string) error {
+func (i *App) checkServerMode(mode string) error {
 	switch strings.ToLower(mode) {
 	case RunServerModeAuto, RunServerModeHttp, RunServerModeSocks:
 		return nil

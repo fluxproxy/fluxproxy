@@ -1,4 +1,4 @@
-package server
+package tunnel
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	_ rocket.Server = (*HttpStream)(nil)
+	_ rocket.Tunnel = (*HttpStream)(nil)
 )
 
 type HttpStream struct {

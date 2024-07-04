@@ -1,4 +1,4 @@
-package server
+package tunnel
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	_ rocket.Server = (*Stream)(nil)
+	_ rocket.Tunnel = (*Stream)(nil)
 )
 
 type Stream struct {
@@ -33,7 +33,7 @@ func (s *Stream) Address() net.Address {
 	return s.addr
 }
 
-func (s *Stream) Connect(connector rocket.Connector) {
+func (s *Stream) Connect(connector rocket.Connection) {
 	s.ctx, s.done = context.WithCancel(s.ctx)
 	defer s.done()
 	ioErrors := make(chan error, 2)

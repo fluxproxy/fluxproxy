@@ -1,4 +1,4 @@
-package server
+package tunnel
 
 import (
 	"context"
@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	_ rocket.Server = (*HttpMono)(nil)
+	_ rocket.Tunnel = (*HttpPlain)(nil)
 )
 
-type HttpMono struct {
+type HttpPlain struct {
 	ctx  context.Context
 	done context.CancelFunc
 	addr net.Address
@@ -25,9 +25,9 @@ type HttpMono struct {
 	w    http.ResponseWriter
 }
 
-func NewHttpMono(w http.ResponseWriter, r *http.Request, addr net.Address) *HttpMono {
+func NewHttpPlain(w http.ResponseWriter, r *http.Request, addr net.Address) *HttpPlain {
 	ctx, cancel := context.WithCancel(r.Context())
-	return &HttpMono{
+	return &HttpPlain{
 		addr: addr,
 		r:    r,
 		w:    w,
@@ -36,11 +36,11 @@ func NewHttpMono(w http.ResponseWriter, r *http.Request, addr net.Address) *Http
 	}
 }
 
-func (h *HttpMono) Address() net.Address {
+func (h *HttpPlain) Address() net.Address {
 	return h.addr
 }
 
-func (h *HttpMono) Connect(connector rocket.Connector) {
+func (h *HttpPlain) Connect(connector rocket.Connection) {
 	transport := http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (stdnet.Conn, error) {
 			return connector.Conn(), nil
@@ -74,12 +74,12 @@ func (h *HttpMono) Connect(connector rocket.Connector) {
 	}
 }
 
-func (h *HttpMono) Close() error {
+func (h *HttpPlain) Close() error {
 	h.done()
 	return nil
 }
 
-func (h *HttpMono) Done() <-chan struct{} {
+func (h *HttpPlain) Done() <-chan struct{} {
 	return h.ctx.Done()
 }
 

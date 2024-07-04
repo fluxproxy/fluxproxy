@@ -45,9 +45,9 @@ func RunAsMode(runCtx context.Context, args []string, cmdMode string) error {
 	}
 	logrus.SetReportCaller(false)
 	logrus.Infof("main: load: %s", confpath)
-	// Instance
+	// App
 	runCtx = context.WithValue(runCtx, rocket.CtxKeyConfiger, k)
-	inst := NewInstance()
+	inst := NewApp()
 	if err := inst.Init(runCtx, cmdMode); err != nil {
 		return fmt.Errorf("main: instance start. %w", err)
 	}

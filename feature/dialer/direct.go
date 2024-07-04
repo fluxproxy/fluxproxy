@@ -1,8 +1,7 @@
-package proxy
+package dialer
 
 import (
 	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/modules/connector"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	stdnet "net"
 )
@@ -12,7 +11,7 @@ const (
 )
 
 var (
-	_ rocket.Proxy = (*Direct)(nil)
+	_ rocket.Dialer = (*Direct)(nil)
 )
 
 type Direct struct {
@@ -26,11 +25,11 @@ func (d *Direct) Name() string {
 	return DIRECT
 }
 
-func (d *Direct) Generate(address net.Address) (rocket.Connector, error) {
+func (d *Direct) Dial(address net.Address) (rocket.Connection, error) {
 	conn, err := stdnet.Dial("tcp", address.Addrport())
 	if err != nil {
 		return nil, err
 	}
 	_ = (conn.(*stdnet.TCPConn)).SetKeepAlive(true)
-	return connector.NewDirect(conn), nil
+	return rocket.NewDirectConnection(conn), nil
 }
