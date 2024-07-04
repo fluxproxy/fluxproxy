@@ -27,7 +27,7 @@ func (d *Direct) Name() string {
 }
 
 func (d *Direct) Generate(address net.Address) (rocket.Connector, error) {
-	conn, err := stdnet.Dial("tcp", address.String())
+	conn, err := stdnet.Dial("tcp", address.Addrport())
 	if err != nil {
 		return nil, err
 	}

@@ -50,6 +50,11 @@ func (i *Instance) Init(runCtx context.Context, cmdMode string) error {
 	} else {
 		logrus.Infof("inst: server mode: %s", serverConfig.Mode)
 	}
+	// Dispatcher
+	i.dispatcher = NewDispatcher()
+	if err := i.dispatcher.Init(runCtx); err != nil {
+		return fmt.Errorf("inst: dispacher: %w", err)
+	}
 	// Http listener
 	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
 		if err := i.initHttpListener(runCtx); err != nil {
@@ -62,13 +67,19 @@ func (i *Instance) Init(runCtx context.Context, cmdMode string) error {
 	if len(i.listeners) == 0 {
 		return fmt.Errorf("inst: no available listeners")
 	}
-	i.dispatcher = NewDispatcher()
 	return nil
 }
 
 func (i *Instance) Serve(runCtx context.Context) error {
 	servCtx, servCancel := context.WithCancel(runCtx)
-	servErrors := make(chan error, len(i.listeners))
+	defer servCancel()
+
+	servErrors := make(chan error, len(i.listeners)+1)
+	// Dispatcher
+	go func() {
+		servErrors <- i.dispatcher.Serve(servCtx)
+	}()
+	// Listeners
 	for _, srv := range i.listeners {
 		i.await.Add(1)
 		go func(lis rocket.Listener) {
@@ -106,9 +117,6 @@ func (i *Instance) initHttpListener(runCtx context.Context) error {
 	if httpConfig.Disabled {
 		logrus.Warnf("inst: http server is disabled")
 		return nil
-	}
-	if httpConfig.Port <= 0 {
-		return fmt.Errorf("inst: invalid http port: %d", httpConfig.Port)
 	}
 	inst := listener.NewHttpListener(rocket.ListenerOptions{
 		Address: httpConfig.Bind,

@@ -31,6 +31,9 @@ func NewHttpListener(opts rocket.ListenerOptions) *HttpListener {
 }
 
 func (l *HttpListener) Init(ctx context.Context) error {
+	if l.listenerOpts.Port <= 0 {
+		return fmt.Errorf("http: invalid port: %d", l.listenerOpts.Port)
+	}
 	return nil
 }
 

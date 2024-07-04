@@ -12,21 +12,21 @@ import (
 )
 
 var (
-	_ rocket.Dispatcher = (*RulebasedDispatcher)(nil)
+	_ rocket.Dispatcher = (*Dispatcher)(nil)
 )
 
-type RulebasedDispatcher struct {
+type Dispatcher struct {
 	queued   chan rocket.Server
 	proxiers map[string]rocket.Proxy
 }
 
-func NewDispatcher() *RulebasedDispatcher {
-	return &RulebasedDispatcher{
+func NewDispatcher() *Dispatcher {
+	return &Dispatcher{
 		queued: make(chan rocket.Server, math.MaxInt32),
 	}
 }
 
-func (d *RulebasedDispatcher) Init(ctx context.Context) error {
+func (d *Dispatcher) Init(ctx context.Context) error {
 	d.proxiers = map[string]rocket.Proxy{
 		proxy.DIRECT: proxy.NewDirect(),
 		proxy.REJECT: proxy.NewReject(),
@@ -34,7 +34,7 @@ func (d *RulebasedDispatcher) Init(ctx context.Context) error {
 	return nil
 }
 
-func (d *RulebasedDispatcher) Serve(ctx context.Context) error {
+func (d *Dispatcher) Serve(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -49,11 +49,11 @@ func (d *RulebasedDispatcher) Serve(ctx context.Context) error {
 	}
 }
 
-func (d *RulebasedDispatcher) Submit(s rocket.Server) {
+func (d *Dispatcher) Submit(s rocket.Server) {
 	d.queued <- s
 }
 
-func (d *RulebasedDispatcher) handleServer(local rocket.Server) {
+func (d *Dispatcher) handleServer(local rocket.Server) {
 	defer helper.Close(local)
 	addr := local.Address()
 	remote, err := d.lookup(addr).Generate(addr)
@@ -64,6 +64,6 @@ func (d *RulebasedDispatcher) handleServer(local rocket.Server) {
 	local.Connect(remote)
 }
 
-func (d *RulebasedDispatcher) lookup(addr net.Address) rocket.Proxy {
+func (d *Dispatcher) lookup(addr net.Address) rocket.Proxy {
 	return d.proxiers[proxy.DIRECT]
 }
