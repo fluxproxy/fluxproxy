@@ -12,20 +12,20 @@ import (
 )
 
 var (
-	_ rocket.Connector = (*Connector)(nil)
+	_ rocket.Connector = (*UdpConnector)(nil)
 )
 
-type Connector struct {
+type UdpConnector struct {
 	opts net.UdpOptions
 }
 
-func NewUdpConnector() *Connector {
-	return &Connector{
+func NewUdpConnector() *UdpConnector {
+	return &UdpConnector{
 		opts: net.DefaultUdpOptions(),
 	}
 }
 
-func (c *Connector) DialServe(srcConnCtx context.Context, link *net.Connection) error {
+func (c *UdpConnector) DialServe(srcConnCtx context.Context, link *net.Connection) error {
 	assert.MustTrue(link.Destination.Network == net.NetworkUDP, "dest network is not udp, was: %s", link.Destination.Network)
 	srcRw := link.ReadWriter
 	dialer := &net.Dialer{

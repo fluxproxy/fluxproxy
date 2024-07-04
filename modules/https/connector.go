@@ -55,8 +55,7 @@ func (c *HrtpConnector) httpRoundTrip(ctx context.Context, rw http.ResponseWrite
 		writer = httpChunkWriter{Writer: rw}
 	}
 	if resp.Body != nil {
-		_, err := io.Copy(writer, resp.Body)
-		return err
+		return helper.Copier(resp.Body, writer)
 	} else {
 		return nil
 	}

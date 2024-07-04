@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func Copier(from, to io.ReadWriter) error {
+func Copier(from io.Reader, to io.Writer) error {
 	fromConn, fromConnOK := from.(net.Conn)
 	if fromConnOK {
 		_ = fromConn.SetReadDeadline(time.Time{})
