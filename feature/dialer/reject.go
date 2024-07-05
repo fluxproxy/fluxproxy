@@ -2,12 +2,11 @@ package dialer
 
 import (
 	"context"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 )
 
 var (
-	_ rocket.Dialer = (*Reject)(nil)
+	_ proxy.Dialer = (*Reject)(nil)
 )
 
 const (
@@ -25,6 +24,6 @@ func (r *Reject) Name() string {
 	return REJECT
 }
 
-func (r *Reject) Dial(srcConnCtx context.Context, address net.Address) (rocket.Connection, error) {
-	return rocket.NewRejectConnection(), nil
+func (r *Reject) Dial(srcConnCtx context.Context, address net.Address) (proxy.Connection, error) {
+	return proxy.NewRejectConnection(), nil
 }

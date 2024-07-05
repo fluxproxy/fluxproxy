@@ -4,8 +4,7 @@ import (
 	"context"
 	"github.com/bytepowered/assert"
 	"github.com/bytepowered/cache"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
 	"sync"
@@ -13,7 +12,7 @@ import (
 )
 
 var (
-	_ rocket.Resolver = (*CacheResolver)(nil)
+	_ proxy.Resolver = (*CacheResolver)(nil)
 )
 
 var (
@@ -32,7 +31,7 @@ type CacheResolver struct {
 }
 
 func (d *CacheResolver) Resolve(ctx context.Context, addr net.Address) (stdnet.IP, error) {
-	configer := rocket.Configer(ctx)
+	configer := proxy.Configer(ctx)
 	name := addr.Addr()
 	ipv, err := d.cached.GetOrLoad(name, func(_ interface{}) (cache.Expirable, error) {
 		// S1: 通过配置文件实现 resolve/rewrite

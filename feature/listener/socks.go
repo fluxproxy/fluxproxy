@@ -4,11 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/feature/tunnel"
-	"github.com/rocket-proxy/rocket-proxy/internal"
-	"github.com/rocket-proxy/rocket-proxy/net"
-	"github.com/rocket-proxy/rocket-proxy/statute/socks"
+	"github.com/fluxproxy/fluxproxy/feature/tunnel"
+	"github.com/fluxproxy/fluxproxy/internal"
+	"github.com/fluxproxy/fluxproxy/net"
+	"github.com/fluxproxy/fluxproxy/statute/socks"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
 	"strconv"
@@ -16,7 +15,7 @@ import (
 )
 
 var (
-	_ rocket.Listener = (*SocksListener)(nil)
+	_ proxy.Listener = (*SocksListener)(nil)
 )
 
 type SocksOptions struct {
@@ -24,10 +23,10 @@ type SocksOptions struct {
 
 type SocksListener struct {
 	opts         SocksOptions
-	listenerOpts rocket.ListenerOptions
+	listenerOpts proxy.ListenerOptions
 }
 
-func NewSocksListener(listenerOpts rocket.ListenerOptions, socksOpts SocksOptions) *SocksListener {
+func NewSocksListener(listenerOpts proxy.ListenerOptions, socksOpts SocksOptions) *SocksListener {
 	return &SocksListener{
 		listenerOpts: listenerOpts,
 		opts:         socksOpts,
@@ -41,7 +40,7 @@ func (l *SocksListener) Init(ctx context.Context) error {
 	return nil
 }
 
-func (l *SocksListener) Listen(serveCtx context.Context, dispatcher rocket.Dispatcher) error {
+func (l *SocksListener) Listen(serveCtx context.Context, dispatcher proxy.Dispatcher) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.listenerOpts.Auth {
 		logrus.Infof("socks: listen: %s", addr)
@@ -52,7 +51,7 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher rocket.Dispa
 		connCtx := internal.SetupTcpContextLogger(serveCtx, tcpConn)
 		if err := l.handshakeHeader(connCtx, tcpConn); err != nil {
 			_ = l.send(tcpConn, socks.RepConnectionRefused)
-			rocket.Logger(connCtx).Errorf("socks: header: %s", err)
+			proxy.Logger(connCtx).Errorf("socks: header: %s", err)
 			return
 		}
 		srcAddr := parseRemoteAddress(tcpConn.RemoteAddr().String())
@@ -60,12 +59,12 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher rocket.Dispa
 		// Authenticate
 		if l.listenerOpts.Auth {
 			if err := l.handshakeUserAuth(connCtx, tcpConn, dispatcher); err != nil {
-				rocket.Logger(connCtx).Errorf("socks: auth(user): %s", err)
+				proxy.Logger(connCtx).Errorf("socks: auth(user): %s", err)
 				return
 			}
 		} else {
 			if err := l.handshakeSkipAuth(connCtx, tcpConn, dispatcher); err != nil {
-				rocket.Logger(connCtx).Errorf("socks: auth(skip): %s", err)
+				proxy.Logger(connCtx).Errorf("socks: auth(skip): %s", err)
 				return
 			}
 		}
@@ -74,7 +73,7 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher rocket.Dispa
 		request, prErr := socks.ParseRequest(tcpConn)
 		if prErr != nil {
 			_ = l.send(tcpConn, socks.RepAddrTypeNotSupported)
-			rocket.Logger(connCtx).Errorf("socks: auth(skip): %s", prErr)
+			proxy.Logger(connCtx).Errorf("socks: auth(skip): %s", prErr)
 			return
 		}
 		if request.Command != socks.CommandConnect {
@@ -90,7 +89,7 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher rocket.Dispa
 		destAddr.Port = request.DstAddr.Port
 
 		// Submit
-		connCtx = internal.ContextWithHooks(connCtx, map[any]rocket.HookFunc{
+		connCtx = internal.ContextWithHooks(connCtx, map[any]proxy.HookFunc{
 			internal.CtxHookAfterRuleset: l.withRulesetHook(tcpConn),
 			internal.CtxHookAfterDialed:  l.withDialedHook(tcpConn),
 		})
@@ -98,7 +97,7 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher rocket.Dispa
 		dispatcher.Submit(stream)
 
 		if l.listenerOpts.Verbose {
-			rocket.Logger(connCtx).WithField("dest", request.DstAddr.String()).Infof("socks: CONN")
+			proxy.Logger(connCtx).WithField("dest", request.DstAddr.String()).Infof("socks: CONN")
 		}
 
 	})
@@ -113,12 +112,12 @@ func (l *SocksListener) handshakeHeader(ctx context.Context, conn stdnet.Conn) e
 	return nil
 }
 
-func (l *SocksListener) handshakeSkipAuth(ctx context.Context, conn stdnet.Conn, dispatcher rocket.Dispatcher) error {
+func (l *SocksListener) handshakeSkipAuth(ctx context.Context, conn stdnet.Conn, dispatcher proxy.Dispatcher) error {
 	_, err := conn.Write([]byte{socks.VersionSocks5, socks.MethodNoAuth})
 	return err
 }
 
-func (l *SocksListener) handshakeUserAuth(ctx context.Context, conn stdnet.Conn, dispatcher rocket.Dispatcher) error {
+func (l *SocksListener) handshakeUserAuth(ctx context.Context, conn stdnet.Conn, dispatcher proxy.Dispatcher) error {
 	if _, err := conn.Write([]byte{socks.VersionSocks5, socks.MethodUserPassAuth}); err != nil {
 		return fmt.Errorf("send auth request. %w", err)
 	}
@@ -126,9 +125,9 @@ func (l *SocksListener) handshakeUserAuth(ctx context.Context, conn stdnet.Conn,
 	if upErr != nil {
 		return fmt.Errorf("parse auth request. %w", upErr)
 	}
-	auErr := dispatcher.Authenticate(ctx, rocket.Authentication{
+	auErr := dispatcher.Authenticate(ctx, proxy.Authentication{
 		Source:         parseRemoteAddress(conn.RemoteAddr().String()),
-		Authenticate:   rocket.AuthenticateBasic,
+		Authenticate:   proxy.AuthenticateBasic,
 		Authentication: string(request.User) + ":" + string(request.Pass),
 	})
 	if auErr != nil {
@@ -143,7 +142,7 @@ func (l *SocksListener) handshakeUserAuth(ctx context.Context, conn stdnet.Conn,
 	return auErr
 }
 
-func (l *SocksListener) withAuthorizedHook(conn stdnet.Conn) rocket.HookFunc {
+func (l *SocksListener) withAuthorizedHook(conn stdnet.Conn) proxy.HookFunc {
 	return func(ctx context.Context, state error, v ...any) error {
 		var status byte
 		if state == nil {
@@ -156,16 +155,16 @@ func (l *SocksListener) withAuthorizedHook(conn stdnet.Conn) rocket.HookFunc {
 	}
 }
 
-func (l *SocksListener) withRulesetHook(conn stdnet.Conn) rocket.HookFunc {
+func (l *SocksListener) withRulesetHook(conn stdnet.Conn) proxy.HookFunc {
 	return func(ctx context.Context, state error, v ...any) error {
-		if state == nil || errors.Is(state, rocket.ErrNoRulesetMatched) {
+		if state == nil || errors.Is(state, proxy.ErrNoRulesetMatched) {
 			return nil
 		}
 		return l.send(conn, socks.RepRuleFailure)
 	}
 }
 
-func (l *SocksListener) withDialedHook(conn stdnet.Conn) rocket.HookFunc {
+func (l *SocksListener) withDialedHook(conn stdnet.Conn) proxy.HookFunc {
 	return func(_ context.Context, state error, _ ...any) error {
 		if state == nil {
 			return l.send(conn, socks.RepSuccess)

@@ -2,7 +2,7 @@ package app
 
 import (
 	"context"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 	stdnet "net"
 )
 

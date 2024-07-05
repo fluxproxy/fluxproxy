@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"github.com/cristalhq/acmd"
-	"github.com/rocket-proxy/rocket-proxy/app"
+	"github.com/fluxproxy/fluxproxy/app"
 	"github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
@@ -38,7 +38,7 @@ func main() {
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, os.Interrupt, os.Kill, syscall.SIGHUP, syscall.SIGQUIT, syscall.SIGTERM, syscall.SIGINT)
 	r := acmd.RunnerOf(cmds, acmd.Config{
-		AppName: "rocket-proxy",
+		AppName: "Flux proxy",
 		Version: BuildVersion,
 		Context: cmdCtx,
 	})

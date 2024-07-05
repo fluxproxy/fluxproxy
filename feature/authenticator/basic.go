@@ -3,12 +3,11 @@ package authenticator
 import (
 	"context"
 	"errors"
-	"github.com/rocket-proxy/rocket-proxy"
 	"strings"
 )
 
 var (
-	_ rocket.Authenticator = (*BasicAuthenticator)(nil)
+	_ proxy.Authenticator = (*BasicAuthenticator)(nil)
 )
 
 var (
@@ -24,7 +23,7 @@ func NewUsersAuthenticator(users map[string]string) *BasicAuthenticator {
 	return &BasicAuthenticator{users: users}
 }
 
-func (u *BasicAuthenticator) Authenticate(ctx context.Context, auth rocket.Authentication) error {
+func (u *BasicAuthenticator) Authenticate(ctx context.Context, auth proxy.Authentication) error {
 	username, password, ok := strings.Cut(auth.Authentication, ":")
 	if !ok {
 		return ErrUPInvalidUsernameOrPassword

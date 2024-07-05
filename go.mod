@@ -1,4 +1,4 @@
-module github.com/rocket-proxy/rocket-proxy
+module github.com/fluxproxy/fluxproxy
 
 go 1.22
 

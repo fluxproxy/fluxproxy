@@ -3,9 +3,8 @@ package tunnel
 import (
 	"context"
 	"fmt"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/helper"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/helper"
+	"github.com/fluxproxy/fluxproxy/net"
 	"io"
 	stdnet "net"
 	"net/http"
@@ -14,7 +13,7 @@ import (
 )
 
 var (
-	_ rocket.Tunnel = (*HttpPlainTunnel)(nil)
+	_ proxy.Tunnel = (*HttpPlainTunnel)(nil)
 )
 
 type HttpPlainTunnel struct {
@@ -43,7 +42,7 @@ func NewHttpPlain(
 	}
 }
 
-func (h *HttpPlainTunnel) Connect(connection rocket.Connection) error {
+func (h *HttpPlainTunnel) Connect(connection proxy.Connection) error {
 	defer h.cancelFunc()
 	transport := http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (stdnet.Conn, error) {

@@ -5,12 +5,11 @@ import (
 	"errors"
 	"github.com/bytepowered/assert"
 	"github.com/bytepowered/goes"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/feature/authenticator"
-	"github.com/rocket-proxy/rocket-proxy/feature/dialer"
-	"github.com/rocket-proxy/rocket-proxy/helper"
-	"github.com/rocket-proxy/rocket-proxy/internal"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/feature/authenticator"
+	"github.com/fluxproxy/fluxproxy/feature/dialer"
+	"github.com/fluxproxy/fluxproxy/helper"
+	"github.com/fluxproxy/fluxproxy/internal"
+	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/sirupsen/logrus"
 	"math"
 	"strings"
@@ -18,7 +17,7 @@ import (
 )
 
 var (
-	_ rocket.Dispatcher = (*Dispatcher)(nil)
+	_ proxy.Dispatcher = (*Dispatcher)(nil)
 )
 
 type DispatcherOptions struct {
@@ -27,28 +26,28 @@ type DispatcherOptions struct {
 
 type Dispatcher struct {
 	opts          DispatcherOptions
-	tunnels       chan rocket.Tunnel
-	dialer        map[string]rocket.Dialer
-	authenticator map[string]rocket.Authenticator
+	tunnels       chan proxy.Tunnel
+	dialer        map[string]proxy.Dialer
+	authenticator map[string]proxy.Authenticator
 }
 
 func NewDispatcher(opts DispatcherOptions) *Dispatcher {
 	return &Dispatcher{
 		opts:    opts,
-		tunnels: make(chan rocket.Tunnel, math.MaxInt32),
+		tunnels: make(chan proxy.Tunnel, math.MaxInt32),
 	}
 }
 
 func (d *Dispatcher) Init(ctx context.Context) error {
-	d.dialer = map[string]rocket.Dialer{
+	d.dialer = map[string]proxy.Dialer{
 		dialer.DIRECT: dialer.NewTcpDirectDialer(),
 		dialer.REJECT: dialer.NewRejectDialer(),
 	}
-	d.authenticator = map[string]rocket.Authenticator{
-		rocket.AuthenticateAllow:  authenticator.NewAllowAuthenticator(),
-		rocket.AuthenticateBearer: authenticator.NewDenyAuthenticator(),
-		rocket.AuthenticateSource: authenticator.NewDenyAuthenticator(),
-		rocket.AuthenticateToken:  authenticator.NewDenyAuthenticator(),
+	d.authenticator = map[string]proxy.Authenticator{
+		proxy.AuthenticateAllow:  authenticator.NewAllowAuthenticator(),
+		proxy.AuthenticateBearer: authenticator.NewDenyAuthenticator(),
+		proxy.AuthenticateSource: authenticator.NewDenyAuthenticator(),
+		proxy.AuthenticateToken:  authenticator.NewDenyAuthenticator(),
 	}
 	return nil
 }
@@ -68,23 +67,23 @@ func (d *Dispatcher) Serve(ctx context.Context) error {
 	}
 }
 
-func (d *Dispatcher) Submit(s rocket.Tunnel) {
+func (d *Dispatcher) Submit(s proxy.Tunnel) {
 	d.tunnels <- s
 }
 
-func (d *Dispatcher) Authenticate(ctx context.Context, authentication rocket.Authentication) error {
-	assert.MustTrue(authentication.Authenticate != rocket.AuthenticateAllow, "authenticate is invalid")
+func (d *Dispatcher) Authenticate(ctx context.Context, authentication proxy.Authentication) error {
+	assert.MustTrue(authentication.Authenticate != proxy.AuthenticateAllow, "authenticate is invalid")
 	auErr := d.lookupAuthenticator(authentication).Authenticate(ctx, authentication)
 	if auErr != nil {
-		rocket.Logger(ctx).Errorf("dispatcher: authenticate: %s", auErr)
+		proxy.Logger(ctx).Errorf("dispatcher: authenticate: %s", auErr)
 	}
 	return auErr
 }
 
-func (d *Dispatcher) RegisterAuthenticator(name string, authenticator rocket.Authenticator) {
+func (d *Dispatcher) RegisterAuthenticator(name string, authenticator proxy.Authenticator) {
 	assert.MustNotEmpty(name, "authenticator name")
 	name = strings.ToUpper(name)
-	assert.MustFalse(strings.EqualFold(name, rocket.AuthenticateAllow), "authenticator name is invalid")
+	assert.MustFalse(strings.EqualFold(name, proxy.AuthenticateAllow), "authenticator name is invalid")
 	assert.MustNotNil(authenticator, "authenticator is nil")
 	_, exists := d.authenticator[name]
 	assert.MustFalse(exists, "authenticator is already exists: %s", name)
@@ -92,30 +91,30 @@ func (d *Dispatcher) RegisterAuthenticator(name string, authenticator rocket.Aut
 	logrus.Infof("dispatcher: register:authenticator: %s", name)
 }
 
-func (d *Dispatcher) handle(local rocket.Tunnel) {
+func (d *Dispatcher) handle(local proxy.Tunnel) {
 	defer helper.Close(local)
 	destAddr := local.Destination()
 
 	defer func(start time.Time) {
-		rocket.Logger(local.Context()).
+		proxy.Logger(local.Context()).
 			WithField("duration", time.Since(start).String()).
 			Infof("dispatcher: TERM")
 	}(local.Context().Value(internal.CtxKeyStartTime).(time.Time))
 
 	// Ruleset
-	ruErr := UseRuleset().Allow(local.Context(), rocket.Permit{
+	ruErr := UseRuleset().Allow(local.Context(), proxy.Permit{
 		Source:      local.Source(),
 		Destination: destAddr,
 	})
 	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterRuleset); ok {
 		if hErr := hook(local.Context(), ruErr); hErr != nil {
-			rocket.Logger(local.Context()).Errorf("dispatcher: hook:ruleset: %s", hErr)
+			proxy.Logger(local.Context()).Errorf("dispatcher: hook:ruleset: %s", hErr)
 			return
 		}
 	}
 	if ruErr != nil {
-		if !errors.Is(ruErr, rocket.ErrNoRulesetMatched) {
-			rocket.Logger(local.Context()).Errorf("dispatcher: ruleset: %s", ruErr)
+		if !errors.Is(ruErr, proxy.ErrNoRulesetMatched) {
+			proxy.Logger(local.Context()).Errorf("dispatcher: ruleset: %s", ruErr)
 			return
 		}
 	}
@@ -123,13 +122,13 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 	// Resolve
 	destIPAddr, rvErr := UseResolver().Resolve(local.Context(), destAddr)
 	if rvErr != nil {
-		rocket.Logger(local.Context()).Errorf("dispatcher: resolve: %s", rvErr)
+		proxy.Logger(local.Context()).Errorf("dispatcher: resolve: %s", rvErr)
 		return
 	}
 
 	// Dial
 	if d.opts.Verbose {
-		rocket.Logger(local.Context()).
+		proxy.Logger(local.Context()).
 			WithField("ipaddr", destIPAddr.String()).
 			Infof("dispatcher: DIAL")
 	}
@@ -142,12 +141,12 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 	defer helper.Close(remote)
 	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterDialed); ok {
 		if hErr := hook(local.Context(), dlErr); hErr != nil {
-			rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
+			proxy.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
 			return
 		}
 	}
 	if dlErr != nil {
-		rocket.Logger(local.Context()).Errorf("dispatcher: dial: %s", dlErr)
+		proxy.Logger(local.Context()).Errorf("dispatcher: dial: %s", dlErr)
 		return
 	}
 
@@ -157,14 +156,14 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 
 }
 
-func (d *Dispatcher) lookupDialer(addr net.Address) rocket.Dialer {
+func (d *Dispatcher) lookupDialer(addr net.Address) proxy.Dialer {
 	return d.dialer[dialer.DIRECT]
 }
 
-func (d *Dispatcher) lookupAuthenticator(auth rocket.Authentication) rocket.Authenticator {
+func (d *Dispatcher) lookupAuthenticator(auth proxy.Authentication) proxy.Authenticator {
 	v, ok := d.authenticator[auth.Authenticate]
 	if !ok {
-		return d.authenticator[rocket.AuthenticateAllow]
+		return d.authenticator[proxy.AuthenticateAllow]
 	}
 	return v
 }

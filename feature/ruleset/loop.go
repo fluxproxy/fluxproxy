@@ -3,12 +3,11 @@ package ruleset
 import (
 	"context"
 	"fmt"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 )
 
 var (
-	_ rocket.Ruleset = (*Loopback)(nil)
+	_ proxy.Ruleset = (*Loopback)(nil)
 )
 
 // Loopback 禁止回环访问本机本服务的端口
@@ -22,12 +21,12 @@ func NewLoopback(locals []net.Address) *Loopback {
 	}
 }
 
-func (l *Loopback) Allow(ctx context.Context, permit rocket.Permit) error {
+func (l *Loopback) Allow(ctx context.Context, permit proxy.Permit) error {
 	for _, local := range l.localAddrs {
 		if local.Equal(permit.Destination) &&
 			local.Port == permit.Destination.Port {
 			return fmt.Errorf("loopback: deny: %s", local.String())
 		}
 	}
-	return rocket.ErrNoRulesetMatched
+	return proxy.ErrNoRulesetMatched
 }

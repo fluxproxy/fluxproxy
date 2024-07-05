@@ -2,7 +2,7 @@ package listener
 
 import (
 	"github.com/bytepowered/assert"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 	stdnet "net"
 )
 

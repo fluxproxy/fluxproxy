@@ -15,7 +15,7 @@ function build() {
   fi
 
   # output
-  OUTPUT="rocket-proxy_${GOOS}_${GOARCH}"
+  OUTPUT="fluxproxy_${GOOS}_${GOARCH}"
   if [ "$GOOS" = "windows" ]; then
     OUTPUT="$OUTPUT.exe"
   fi

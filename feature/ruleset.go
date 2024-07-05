@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 	"github.com/bytepowered/assert"
-	"github.com/rocket-proxy/rocket-proxy"
 	"sync"
 )
 
 var (
-	_ rocket.Ruleset = (*MultiRuleset)(nil)
+	_ proxy.Ruleset = (*MultiRuleset)(nil)
 )
 
 var (
@@ -18,23 +17,23 @@ var (
 )
 
 type MultiRuleset struct {
-	rulesets []rocket.Ruleset
+	rulesets []proxy.Ruleset
 }
 
-func (c *MultiRuleset) Allow(ctx context.Context, permit rocket.Permit) error {
+func (c *MultiRuleset) Allow(ctx context.Context, permit proxy.Permit) error {
 	for _, ruleset := range c.rulesets {
 		err := ruleset.Allow(ctx, permit)
 		if err != nil {
-			if errors.Is(err, rocket.ErrNoRulesetMatched) {
+			if errors.Is(err, proxy.ErrNoRulesetMatched) {
 				continue
 			}
 			return err
 		}
 	}
-	return rocket.ErrNoRulesetMatched
+	return proxy.ErrNoRulesetMatched
 }
 
-func InitMultiRuleset(ruleset []rocket.Ruleset) *MultiRuleset {
+func InitMultiRuleset(ruleset []proxy.Ruleset) *MultiRuleset {
 	rulesetOnce.Do(func() {
 		rulesetInst = &MultiRuleset{rulesets: ruleset}
 	})

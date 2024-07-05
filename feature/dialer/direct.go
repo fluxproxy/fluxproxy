@@ -3,8 +3,7 @@ package dialer
 import (
 	"context"
 	"fmt"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 	stdnet "net"
 	"time"
 )
@@ -14,7 +13,7 @@ const (
 )
 
 var (
-	_ rocket.Dialer = (*TcpDirectDialer)(nil)
+	_ proxy.Dialer = (*TcpDirectDialer)(nil)
 )
 
 type TcpDirectDialer struct {
@@ -28,7 +27,7 @@ func (d *TcpDirectDialer) Name() string {
 	return DIRECT
 }
 
-func (d *TcpDirectDialer) Dial(connCtx context.Context, remoteAddr net.Address) (rocket.Connection, error) {
+func (d *TcpDirectDialer) Dial(connCtx context.Context, remoteAddr net.Address) (proxy.Connection, error) {
 	dialer := &stdnet.Dialer{
 		Timeout:   time.Second * 5,
 		KeepAlive: time.Duration(0),
@@ -38,5 +37,5 @@ func (d *TcpDirectDialer) Dial(connCtx context.Context, remoteAddr net.Address) 
 		return nil, fmt.Errorf("tcp dail. %w", err)
 	}
 	_ = (conn.(*stdnet.TCPConn)).SetKeepAlive(true)
-	return rocket.NewDirectConnection(conn), nil
+	return proxy.NewDirectConnection(conn), nil
 }

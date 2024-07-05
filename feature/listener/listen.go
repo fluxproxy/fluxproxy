@@ -5,12 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/goes"
-	"github.com/rocket-proxy/rocket-proxy"
 	stdnet "net"
 	"time"
 )
 
-func tcpListenWith(serveCtx context.Context, opts rocket.ListenerOptions, connHandler func(*stdnet.TCPConn)) error {
+func tcpListenWith(serveCtx context.Context, opts proxy.ListenerOptions, connHandler func(*stdnet.TCPConn)) error {
 	addr := &stdnet.TCPAddr{IP: stdnet.ParseIP(opts.Address), Port: opts.Port}
 	listener, lErr := stdnet.ListenTCP("tcp", addr)
 	if lErr != nil {

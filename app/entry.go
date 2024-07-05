@@ -4,11 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/goes"
+	"github.com/fluxproxy/fluxproxy/helper"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/helper"
 	"github.com/sirupsen/logrus"
 	"runtime/debug"
 )
@@ -50,7 +49,7 @@ func RunAsMode(runCtx context.Context, args []string, cmdMode string) error {
 
 	logrus.Infof("main: load: %s", confpath)
 	// App
-	runCtx = context.WithValue(runCtx, rocket.CtxKeyConfiger, k)
+	runCtx = context.WithValue(runCtx, proxy.CtxKeyConfiger, k)
 	inst := NewApp()
 	if err := inst.Init(runCtx, cmdMode); err != nil {
 		return fmt.Errorf("main: instance start. %w", err)

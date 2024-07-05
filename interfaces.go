@@ -1,8 +1,8 @@
-package rocket
+package proxy
 
 import (
 	"context"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 	"io"
 	stdnet "net"
 )

@@ -3,11 +3,10 @@ package authenticator
 import (
 	"context"
 	"errors"
-	"github.com/rocket-proxy/rocket-proxy"
 )
 
 var (
-	_ rocket.Authenticator = (*AllowAuthenticator)(nil)
+	_ proxy.Authenticator = (*AllowAuthenticator)(nil)
 )
 
 type AllowAuthenticator struct {
@@ -17,7 +16,7 @@ func NewAllowAuthenticator() *AllowAuthenticator {
 	return &AllowAuthenticator{}
 }
 
-func (a *AllowAuthenticator) Authenticate(ctx context.Context, authentication rocket.Authentication) error {
+func (a *AllowAuthenticator) Authenticate(ctx context.Context, authentication proxy.Authentication) error {
 	return nil
 }
 
@@ -30,6 +29,6 @@ func NewDenyAuthenticator() *DenyAuthenticator {
 	return &DenyAuthenticator{}
 }
 
-func (a *DenyAuthenticator) Authenticate(ctx context.Context, authentication rocket.Authentication) error {
+func (a *DenyAuthenticator) Authenticate(ctx context.Context, authentication proxy.Authentication) error {
 	return errors.New("authenticate deny for all")
 }

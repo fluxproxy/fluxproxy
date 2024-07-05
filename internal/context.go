@@ -3,7 +3,6 @@ package internal
 import (
 	"context"
 	"github.com/lithammer/shortuuid/v4"
-	"github.com/rocket-proxy/rocket-proxy"
 	"net"
 	"time"
 )
@@ -26,7 +25,7 @@ func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Conte
 
 func setContextLogID(ctx context.Context, id string, source string) context.Context {
 	return context.WithValue(context.WithValue(context.WithValue(ctx,
-		rocket.CtxKeyID, id),
+		proxy.CtxKeyID, id),
 		CtxKeyStartTime, time.Now()),
-		rocket.CtxKeySource, source)
+		proxy.CtxKeySource, source)
 }

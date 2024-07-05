@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/knadh/koanf/v2"
-	"github.com/rocket-proxy/rocket-proxy"
 )
 
 const (
@@ -66,7 +65,7 @@ type RulesetConfig struct {
 ////
 
 func unmarshalWith(ctx context.Context, path string, out any) error {
-	if err := rocket.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "toml"}); err != nil {
+	if err := proxy.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "toml"}); err != nil {
 		return fmt.Errorf("config unmarshal %s. %w", path, err)
 	}
 	return nil

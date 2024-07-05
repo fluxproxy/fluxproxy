@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/feature"
-	"github.com/rocket-proxy/rocket-proxy/feature/authenticator"
-	"github.com/rocket-proxy/rocket-proxy/feature/listener"
-	"github.com/rocket-proxy/rocket-proxy/feature/ruleset"
-	"github.com/rocket-proxy/rocket-proxy/helper"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/feature"
+	"github.com/fluxproxy/fluxproxy/feature/authenticator"
+	"github.com/fluxproxy/fluxproxy/feature/listener"
+	"github.com/fluxproxy/fluxproxy/feature/ruleset"
+	"github.com/fluxproxy/fluxproxy/helper"
+	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/sirupsen/logrus"
 	stdnet "net"
 	"net/http"
@@ -26,8 +25,8 @@ const (
 )
 
 type App struct {
-	listeners  []rocket.Listener
-	dispatcher rocket.Dispatcher
+	listeners  []proxy.Listener
+	dispatcher proxy.Dispatcher
 	await      sync.WaitGroup
 	// shared config
 	authConfig   AuthenticatorConfig
@@ -105,7 +104,7 @@ func (a *App) Serve(runCtx context.Context) error {
 	// Listeners
 	for _, srv := range a.listeners {
 		a.await.Add(1)
-		go func(lis rocket.Listener) {
+		go func(lis proxy.Listener) {
 			if err := lis.Listen(servCtx, a.dispatcher);
 				err == nil ||
 					errors.Is(err, context.Canceled) ||
@@ -147,7 +146,7 @@ func (a *App) initHttpListener(runCtx context.Context) error {
 	if httpConfig.Bind == "" {
 		httpConfig.Bind = "0.0.0.0"
 	}
-	httpListener := listener.NewHttpListener(rocket.ListenerOptions{
+	httpListener := listener.NewHttpListener(proxy.ListenerOptions{
 		Address: httpConfig.Bind,
 		Port:    httpConfig.Port,
 		Verbose: a.serverConfig.Verbose,
@@ -172,7 +171,7 @@ func (a *App) initSocksListener(runCtx context.Context) error {
 	if socksConfig.Bind == "" {
 		socksConfig.Bind = "0.0.0.0"
 	}
-	socksListener := listener.NewSocksListener(rocket.ListenerOptions{
+	socksListener := listener.NewSocksListener(proxy.ListenerOptions{
 		Address: socksConfig.Bind,
 		Port:    socksConfig.Port,
 		Verbose: a.serverConfig.Verbose,
@@ -216,18 +215,18 @@ func (a *App) initAuthenticator(runCtx context.Context) {
 	dispatcher := a.dispatcher.(*feature.Dispatcher)
 	// Basic
 	basic := authenticator.NewUsersAuthenticator(a.authConfig.Basic)
-	dispatcher.RegisterAuthenticator(rocket.AuthenticateBasic, basic)
+	dispatcher.RegisterAuthenticator(proxy.AuthenticateBasic, basic)
 }
 
 func (a *App) initRuleset(runCtx context.Context) {
 	var config []RulesetConfig
 	_ = unmarshalWith(runCtx, configPathRuleset, &config)
 	// 最高优先级：禁止回环访问
-	rulesets := []rocket.Ruleset{
+	rulesets := []proxy.Ruleset{
 		ruleset.NewLoopback(loadLocalAddrs(runCtx)),
 	}
 	// builder
-	buildIPNet := func(rule RulesetConfig) rocket.Ruleset {
+	buildIPNet := func(rule RulesetConfig) proxy.Ruleset {
 		nets := make([]stdnet.IPNet, 0, len(rule.Address))
 		for _, sAddr := range rule.Address {
 			if _, ipNet, err := stdnet.ParseCIDR(sAddr); err == nil {

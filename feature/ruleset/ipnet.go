@@ -3,13 +3,12 @@ package ruleset
 import (
 	"context"
 	"fmt"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/net"
 	stdnet "net"
 )
 
 var (
-	_ rocket.Ruleset = (*IPNet)(nil)
+	_ proxy.Ruleset = (*IPNet)(nil)
 )
 
 type IPNet struct {
@@ -26,7 +25,7 @@ func NewIPNet(isAllow bool, useSource bool, nets []stdnet.IPNet) *IPNet {
 	}
 }
 
-func (i *IPNet) Allow(ctx context.Context, permit rocket.Permit) error {
+func (i *IPNet) Allow(ctx context.Context, permit proxy.Permit) error {
 	var target net.Address
 	if i.useSource {
 		target = permit.Source
@@ -40,7 +39,7 @@ func (i *IPNet) Allow(ctx context.Context, permit rocket.Permit) error {
 			return fmt.Errorf("ipnet: deny: %s", target)
 		}
 	} else {
-		return rocket.ErrNoRulesetMatched
+		return proxy.ErrNoRulesetMatched
 	}
 }
 

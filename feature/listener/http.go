@@ -6,11 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/assert"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/feature/tunnel"
-	"github.com/rocket-proxy/rocket-proxy/helper"
-	"github.com/rocket-proxy/rocket-proxy/internal"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/feature/tunnel"
+	"github.com/fluxproxy/fluxproxy/helper"
+	"github.com/fluxproxy/fluxproxy/internal"
+	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/sirupsen/logrus"
 	"io"
 	stdnet "net"
@@ -20,7 +19,7 @@ import (
 )
 
 var (
-	_ rocket.Listener = (*HttpListener)(nil)
+	_ proxy.Listener = (*HttpListener)(nil)
 )
 
 type HttpOptions struct {
@@ -28,10 +27,10 @@ type HttpOptions struct {
 
 type HttpListener struct {
 	opts         HttpOptions
-	listenerOpts rocket.ListenerOptions
+	listenerOpts proxy.ListenerOptions
 }
 
-func NewHttpListener(listenerOpts rocket.ListenerOptions, httpOpts HttpOptions) *HttpListener {
+func NewHttpListener(listenerOpts proxy.ListenerOptions, httpOpts HttpOptions) *HttpListener {
 	return &HttpListener{
 		listenerOpts: listenerOpts,
 		opts:         httpOpts,
@@ -45,7 +44,7 @@ func (l *HttpListener) Init(runCtx context.Context) error {
 	return nil
 }
 
-func (l *HttpListener) Listen(serveCtx context.Context, dispatcher rocket.Dispatcher) error {
+func (l *HttpListener) Listen(serveCtx context.Context, dispatcher proxy.Dispatcher) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.listenerOpts.Auth {
 		logrus.Infof("http: listen: %s", addr)
@@ -69,7 +68,7 @@ func (l *HttpListener) Listen(serveCtx context.Context, dispatcher rocket.Dispat
 	return httpServer.ListenAndServe()
 }
 
-func (l *HttpListener) newServeHandler(dispatcher rocket.Dispatcher) http.HandlerFunc {
+func (l *HttpListener) newServeHandler(dispatcher proxy.Dispatcher) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodConnect {
 			l.handleConnectStream(rw, r, dispatcher)
@@ -79,14 +78,14 @@ func (l *HttpListener) newServeHandler(dispatcher rocket.Dispatcher) http.Handle
 	}
 }
 
-func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Request, dispatcher rocket.Dispatcher) {
+func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Request, dispatcher proxy.Dispatcher) {
 	// Hijacker
 	hijacker, ok := rw.(http.Hijacker)
 	assert.MustTrue(ok, "http: not support hijack")
 	hiConn, _, hiErr := hijacker.Hijack()
 	if hiErr != nil {
 		rw.WriteHeader(http.StatusBadGateway)
-		rocket.Logger(r.Context()).Error("http: not support hijack")
+		proxy.Logger(r.Context()).Error("http: not support hijack")
 		return
 	}
 
@@ -102,7 +101,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	}
 	l.removeHopByHopHeaders(r.Header)
 
-	ctx := internal.ContextWithHooks(r.Context(), map[any]rocket.HookFunc{
+	ctx := internal.ContextWithHooks(r.Context(), map[any]proxy.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(hiConn),
 		internal.CtxHookAfterDialed:  l.withDialedHook(hiConn, r),
 	})
@@ -111,14 +110,14 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	dispatcher.Submit(stream)
 
 	if l.listenerOpts.Verbose {
-		rocket.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
+		proxy.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
 	}
 
 	// 需要维持Http连接
 	<-stream.Context().Done()
 }
 
-func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatcher rocket.Dispatcher) {
+func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatcher proxy.Dispatcher) {
 	// RFC 2068 (HTTP/1.1) requires URL to be absolute URL in HTTP proxy.
 	if r.URL.Host == "" || !r.URL.IsAbs() {
 		rw.WriteHeader(http.StatusBadRequest)
@@ -143,7 +142,7 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 	destAddr := l.parseHostAddress(r.Host)
 
 	// Submit
-	ctx := internal.ContextWithHooks(r.Context(), map[any]rocket.HookFunc{
+	ctx := internal.ContextWithHooks(r.Context(), map[any]proxy.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(rw),
 		internal.CtxHookAfterDialed:  l.withDialedHook(rw, r),
 	})
@@ -151,18 +150,18 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 	dispatcher.Submit(plain)
 
 	if l.listenerOpts.Verbose {
-		rocket.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
+		proxy.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
 	}
 	// 需要维持Http连接
 	<-plain.Context().Done()
 }
 
-func (*HttpListener) withRulesetHook(w io.Writer) rocket.HookFunc {
+func (*HttpListener) withRulesetHook(w io.Writer) proxy.HookFunc {
 	return func(ctx context.Context, state error, _ ...any) error {
-		if state == nil || errors.Is(state, rocket.ErrNoRulesetMatched) {
+		if state == nil || errors.Is(state, proxy.ErrNoRulesetMatched) {
 			return nil
 		}
-		rocket.Logger(ctx).Errorf("http: conn ruleset: %s", state)
+		proxy.Logger(ctx).Errorf("http: conn ruleset: %s", state)
 		if rw, ok := w.(http.ResponseWriter); ok {
 			rw.WriteHeader(http.StatusForbidden)
 		} else {
@@ -175,7 +174,7 @@ func (*HttpListener) withRulesetHook(w io.Writer) rocket.HookFunc {
 	}
 }
 
-func (*HttpListener) withDialedHook(w io.Writer, r *http.Request) rocket.HookFunc {
+func (*HttpListener) withDialedHook(w io.Writer, r *http.Request) proxy.HookFunc {
 	return func(_ context.Context, _ error, _ ...any) error {
 		if rw, ok := w.(http.ResponseWriter); ok {
 			rw.WriteHeader(http.StatusOK)
@@ -213,26 +212,26 @@ func (*HttpListener) removeHopByHopHeaders(header http.Header) {
 	}
 }
 
-func (l *HttpListener) parseProxyAuthorization(header http.Header, srcAddr net.Address) rocket.Authentication {
+func (l *HttpListener) parseProxyAuthorization(header http.Header, srcAddr net.Address) proxy.Authentication {
 	token := header.Get("Proxy-Authorization")
 	if strings.HasPrefix(token, "Basic ") {
 		username, password, _ := l.parseBasicAuthorization(token)
-		return rocket.Authentication{
+		return proxy.Authentication{
 			Source:         srcAddr,
-			Authenticate:   rocket.AuthenticateBasic,
+			Authenticate:   proxy.AuthenticateBasic,
 			Authentication: username + ":" + password,
 		}
 	} else if strings.HasPrefix(token, "Bearer ") {
 		token, _ := l.parseBearerAuthorization(token)
-		return rocket.Authentication{
+		return proxy.Authentication{
 			Source:         srcAddr,
-			Authenticate:   rocket.AuthenticateBearer,
+			Authenticate:   proxy.AuthenticateBearer,
 			Authentication: token,
 		}
 	} else {
-		return rocket.Authentication{
+		return proxy.Authentication{
 			Source:         srcAddr,
-			Authenticate:   rocket.AuthenticateToken,
+			Authenticate:   proxy.AuthenticateToken,
 			Authentication: token,
 		}
 	}

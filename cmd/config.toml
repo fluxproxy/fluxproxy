@@ -41,7 +41,7 @@ enabled = false
 
 # Basic认证方式
 [authenticator.basic]
-user1 = "rocket-proxy"
+user1 = "fluxproxy"
 
 
 # 域名解析配置

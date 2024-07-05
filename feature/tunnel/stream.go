@@ -2,15 +2,14 @@ package tunnel
 
 import (
 	"context"
-	"github.com/rocket-proxy/rocket-proxy"
-	"github.com/rocket-proxy/rocket-proxy/helper"
-	"github.com/rocket-proxy/rocket-proxy/net"
+	"github.com/fluxproxy/fluxproxy/helper"
+	"github.com/fluxproxy/fluxproxy/net"
 	"io"
 	stdnet "net"
 )
 
 var (
-	_ rocket.Tunnel = (*ConnStreamTunnel)(nil)
+	_ proxy.Tunnel = (*ConnStreamTunnel)(nil)
 )
 
 type ConnStreamTunnel struct {
@@ -37,7 +36,7 @@ func NewConnStream(
 	}
 }
 
-func (s *ConnStreamTunnel) Connect(connection rocket.Connection) error {
+func (s *ConnStreamTunnel) Connect(connection proxy.Connection) error {
 	defer s.cancelFunc()
 	ioErrors := make(chan error, 2)
 	copier := func(name string, from io.Reader, to io.Writer) {
