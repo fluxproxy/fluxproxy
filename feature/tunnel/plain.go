@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	_ rocket.Tunnel = (*HttpPlain)(nil)
+	_ rocket.Tunnel = (*HttpPlainTunnel)(nil)
 )
 
-type HttpPlain struct {
+type HttpPlainTunnel struct {
 	auth       rocket.Authentication
 	src        net.Address
 	dest       net.Address
@@ -30,9 +30,9 @@ type HttpPlain struct {
 func NewHttpPlain(
 	w http.ResponseWriter, r *http.Request, dest net.Address,
 	auth rocket.Authentication,
-) *HttpPlain {
+) *HttpPlainTunnel {
 	ctx, cancel := context.WithCancel(r.Context())
-	return &HttpPlain{
+	return &HttpPlainTunnel{
 		auth:       auth,
 		src:        auth.Source,
 		dest:       dest,
@@ -43,11 +43,11 @@ func NewHttpPlain(
 	}
 }
 
-func (h *HttpPlain) Connect(connector rocket.Connection) error {
+func (h *HttpPlainTunnel) Connect(connection rocket.Connection) error {
 	defer h.cancelFunc()
 	transport := http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (stdnet.Conn, error) {
-			return connector.Conn(), nil
+			return connection.Conn(), nil
 		},
 		MaxIdleConnsPerHost:   100,
 		IdleConnTimeout:       time.Second * 10,
@@ -76,24 +76,24 @@ func (h *HttpPlain) Connect(connector rocket.Connection) error {
 	return nil
 }
 
-func (h *HttpPlain) Close() error {
+func (h *HttpPlainTunnel) Close() error {
 	h.cancelFunc()
 	return nil
 }
 
-func (h *HttpPlain) Context() context.Context {
+func (h *HttpPlainTunnel) Context() context.Context {
 	return h.ctx
 }
 
-func (h *HttpPlain) Destination() net.Address {
+func (h *HttpPlainTunnel) Destination() net.Address {
 	return h.dest
 }
 
-func (h *HttpPlain) Source() net.Address {
+func (h *HttpPlainTunnel) Source() net.Address {
 	return h.auth.Source
 }
 
-func (h *HttpPlain) Authentication() rocket.Authentication {
+func (h *HttpPlainTunnel) Authentication() rocket.Authentication {
 	return h.auth
 }
 

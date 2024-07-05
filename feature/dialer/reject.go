@@ -17,7 +17,7 @@ const (
 type Reject struct {
 }
 
-func NewReject() *Reject {
+func NewRejectDialer() *Reject {
 	return &Reject{}
 }
 

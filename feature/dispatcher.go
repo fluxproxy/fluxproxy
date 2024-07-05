@@ -30,8 +30,8 @@ func NewDispatcher() *Dispatcher {
 
 func (d *Dispatcher) Init(ctx context.Context) error {
 	d.dialer = map[string]rocket.Dialer{
-		dialer.DIRECT: dialer.NewDirect(),
-		dialer.REJECT: dialer.NewReject(),
+		dialer.DIRECT: dialer.NewTcpDirectDialer(),
+		dialer.REJECT: dialer.NewRejectDialer(),
 	}
 	return nil
 }
@@ -43,9 +43,9 @@ func (d *Dispatcher) Serve(ctx context.Context) error {
 			logrus.Infof("dispatcher: serve:done")
 			return ctx.Err()
 
-		case server := <-d.tunnels:
+		case v := <-d.tunnels:
 			goes.Go(func() {
-				d.handleServer(server)
+				d.handle(v)
 			})
 		}
 	}
@@ -55,7 +55,7 @@ func (d *Dispatcher) Submit(s rocket.Tunnel) {
 	d.tunnels <- s
 }
 
-func (d *Dispatcher) handleServer(local rocket.Tunnel) {
+func (d *Dispatcher) handle(local rocket.Tunnel) {
 	defer helper.Close(local)
 	destAddr := local.Destination()
 

@@ -10,10 +10,10 @@ import (
 )
 
 var (
-	_ rocket.Tunnel = (*ConnStream)(nil)
+	_ rocket.Tunnel = (*ConnStreamTunnel)(nil)
 )
 
-type ConnStream struct {
+type ConnStreamTunnel struct {
 	auth       rocket.Authentication
 	src        net.Address
 	dest       net.Address
@@ -25,9 +25,9 @@ type ConnStream struct {
 func NewConnStream(
 	ctx context.Context, conn stdnet.Conn, dest net.Address,
 	auth rocket.Authentication,
-) *ConnStream {
+) *ConnStreamTunnel {
 	ctx, cancel := context.WithCancel(ctx)
-	return &ConnStream{
+	return &ConnStreamTunnel{
 		auth:       auth,
 		src:        auth.Source,
 		dest:       dest,
@@ -37,15 +37,15 @@ func NewConnStream(
 	}
 }
 
-func (s *ConnStream) Connect(connector rocket.Connection) error {
+func (s *ConnStreamTunnel) Connect(connection rocket.Connection) error {
 	defer s.cancelFunc()
 	ioErrors := make(chan error, 2)
 	copier := func(name string, from io.Reader, to io.Writer) {
 		ioErrors <- helper.Copier(from, to)
 	}
 
-	go copier("src-to-dest", s.conn, connector.Conn())
-	go copier("dest-to-src", connector.Conn(), s.conn)
+	go copier("src-to-dest", s.conn, connection.Conn())
+	go copier("dest-to-src", connection.Conn(), s.conn)
 
 	select {
 	case err := <-ioErrors:
@@ -55,23 +55,23 @@ func (s *ConnStream) Connect(connector rocket.Connection) error {
 	}
 }
 
-func (s *ConnStream) Close() error {
+func (s *ConnStreamTunnel) Close() error {
 	s.cancelFunc()
 	return s.conn.Close()
 }
 
-func (s *ConnStream) Context() context.Context {
+func (s *ConnStreamTunnel) Context() context.Context {
 	return s.ctx
 }
 
-func (s *ConnStream) Source() net.Address {
+func (s *ConnStreamTunnel) Source() net.Address {
 	return s.auth.Source
 }
 
-func (s *ConnStream) Destination() net.Address {
+func (s *ConnStreamTunnel) Destination() net.Address {
 	return s.dest
 }
 
-func (s *ConnStream) Authentication() rocket.Authentication {
+func (s *ConnStreamTunnel) Authentication() rocket.Authentication {
 	return s.auth
 }
