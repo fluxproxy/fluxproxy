@@ -18,29 +18,28 @@ var (
 )
 
 type HttpPlainTunnel struct {
-	authProvider rocket.AuthenticationProvideFunc
-	src          net.Address
-	dest         net.Address
-	r            *http.Request
-	w            http.ResponseWriter
-	ctx          context.Context
-	cancelFunc   context.CancelFunc
+	src        net.Address
+	dest       net.Address
+	r          *http.Request
+	w          http.ResponseWriter
+	ctx        context.Context
+	cancelFunc context.CancelFunc
 }
 
 func NewHttpPlain(
-	w http.ResponseWriter, r *http.Request,
-	dest net.Address, src net.Address,
-	authProvider rocket.AuthenticationProvideFunc,
+	w http.ResponseWriter,
+	r *http.Request,
+	dest net.Address,
+	src net.Address,
 ) *HttpPlainTunnel {
 	ctx, cancel := context.WithCancel(r.Context())
 	return &HttpPlainTunnel{
-		authProvider: authProvider,
-		src:          src,
-		dest:         dest,
-		r:            r,
-		w:            w,
-		ctx:          ctx,
-		cancelFunc:   cancel,
+		src:        src,
+		dest:       dest,
+		r:          r,
+		w:          w,
+		ctx:        ctx,
+		cancelFunc: cancel,
 	}
 }
 
@@ -92,10 +91,6 @@ func (h *HttpPlainTunnel) Destination() net.Address {
 
 func (h *HttpPlainTunnel) Source() net.Address {
 	return h.src
-}
-
-func (h *HttpPlainTunnel) Authentication() rocket.Authentication {
-	return h.authProvider(h.ctx)
 }
 
 ////

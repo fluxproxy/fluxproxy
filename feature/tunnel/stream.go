@@ -14,28 +14,26 @@ var (
 )
 
 type ConnStreamTunnel struct {
-	authProvider rocket.AuthenticationProvideFunc
-	src          net.Address
-	dest         net.Address
-	conn         stdnet.Conn
-	ctx          context.Context
-	cancelFunc   context.CancelFunc
+	src        net.Address
+	dest       net.Address
+	conn       stdnet.Conn
+	ctx        context.Context
+	cancelFunc context.CancelFunc
 }
 
 func NewConnStream(
 	ctx context.Context,
 	conn stdnet.Conn,
-	dest net.Address, src net.Address,
-	authProvider rocket.AuthenticationProvideFunc,
+	dest net.Address,
+	src net.Address,
 ) *ConnStreamTunnel {
 	ctx, cancel := context.WithCancel(ctx)
 	return &ConnStreamTunnel{
-		authProvider: authProvider,
-		src:          src,
-		dest:         dest,
-		conn:         conn,
-		ctx:          ctx,
-		cancelFunc:   cancel,
+		src:        src,
+		dest:       dest,
+		conn:       conn,
+		ctx:        ctx,
+		cancelFunc: cancel,
 	}
 }
 
@@ -72,8 +70,4 @@ func (s *ConnStreamTunnel) Source() net.Address {
 
 func (s *ConnStreamTunnel) Destination() net.Address {
 	return s.dest
-}
-
-func (s *ConnStreamTunnel) Authentication() rocket.Authentication {
-	return s.authProvider(s.ctx)
 }

@@ -22,4 +22,6 @@ const (
 type ListenerOptions struct {
 	Address string
 	Port    int
+	Verbose bool
+	Auth    bool
 }

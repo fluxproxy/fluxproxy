@@ -17,7 +17,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var (
@@ -25,7 +24,6 @@ var (
 )
 
 type HttpOptions struct {
-	Verbose bool
 }
 
 type HttpListener struct {
@@ -40,7 +38,7 @@ func NewHttpListener(listenerOpts rocket.ListenerOptions, httpOpts HttpOptions) 
 	}
 }
 
-func (l *HttpListener) Init(ctx context.Context) error {
+func (l *HttpListener) Init(runCtx context.Context) error {
 	if l.listenerOpts.Port <= 0 {
 		return fmt.Errorf("http: invalid port: %d", l.listenerOpts.Port)
 	}
@@ -49,7 +47,11 @@ func (l *HttpListener) Init(ctx context.Context) error {
 
 func (l *HttpListener) Listen(serveCtx context.Context, dispatcher rocket.Dispatcher) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
-	logrus.Infof("http: listen: %s", addr)
+	if l.listenerOpts.Auth {
+		logrus.Infof("http: listen: %s", addr)
+	} else {
+		logrus.Infof("http: listen(no auth): %s", addr)
+	}
 	httpServer := &http.Server{
 		Addr:    addr,
 		Handler: l.newServeHandler(dispatcher),
@@ -69,17 +71,6 @@ func (l *HttpListener) Listen(serveCtx context.Context, dispatcher rocket.Dispat
 
 func (l *HttpListener) newServeHandler(dispatcher rocket.Dispatcher) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		defer func(start time.Time) {
-			rocket.Logger(r.Context()).
-				WithField("dest", r.RequestURI).
-				WithField("duration", time.Since(start)).
-				Info("http: FINISH")
-		}(time.Now())
-		if l.opts.Verbose {
-			rocket.Logger(r.Context()).
-				WithField("dest", r.RequestURI).
-				Infof("http: %s", r.Method)
-		}
 		if r.Method == http.MethodConnect {
 			l.handleConnectStream(rw, r, dispatcher)
 		} else {
@@ -98,24 +89,33 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 		rocket.Logger(r.Context()).Error("http: not support hijack")
 		return
 	}
-	defer helper.Close(hiConn)
 
 	srcAddr := parseRemoteAddress(r.RemoteAddr)
 	destAddr := l.parseHostAddress(r.Host)
-	auth := l.parseProxyAuthorization(r.Header, srcAddr)
-	provider := func(_ context.Context) rocket.Authentication {
-		return auth
+
+	if l.listenerOpts.Auth {
+		auErr := dispatcher.Authenticate(r.Context(), l.parseProxyAuthorization(r.Header, srcAddr))
+		if auErr != nil {
+			_, _ = hiConn.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
+			return
+		}
 	}
+	l.removeHopByHopHeaders(r.Header)
+
 	ctx := internal.ContextWithHooks(r.Context(), map[any]rocket.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(hiConn),
-		internal.CtxHookAfterAuthed:  l.withAuthorizedHook(hiConn, r),
-		internal.CtxHookAfterDialed:  l.withEstablishedHook(hiConn, r),
+		internal.CtxHookAfterDialed:  l.withDialedHook(hiConn, r),
 	})
-	stream := tunnel.NewConnStream(ctx, hiConn, destAddr, srcAddr, provider)
-	defer helper.Close(stream)
+
+	stream := tunnel.NewConnStream(ctx, hiConn, destAddr, srcAddr)
 	dispatcher.Submit(stream)
 
-	<-stream.Context().Done()
+	if l.listenerOpts.Verbose {
+		rocket.Logger(r.Context()).
+			WithField("dest", r.Host).
+			WithField("rdest", destAddr.String()).
+			Infof("http: %s", r.Method)
+	}
 }
 
 func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatcher rocket.Dispatcher) {
@@ -124,45 +124,37 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	defer helper.Close(r.Body)
-	// Prevent UA
 	if r.Header.Get("User-Agent") == "" {
 		r.Header.Set("User-Agent", "")
 	}
 	srcAddr := parseRemoteAddress(r.RemoteAddr)
-	destAddr := l.parseHostAddress(r.Host)
-	auth := l.parseProxyAuthorization(r.Header, srcAddr)
-	provider := func(_ context.Context) rocket.Authentication {
-		return auth
+
+	// Authenticate
+	if l.listenerOpts.Auth {
+		auErr := dispatcher.Authenticate(r.Context(), l.parseProxyAuthorization(r.Header, srcAddr))
+		if auErr != nil {
+			rw.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 	}
+	l.removeHopByHopHeaders(r.Header)
+
+	// Destination
+	destAddr := l.parseHostAddress(r.Host)
+
+	// Submit
 	ctx := internal.ContextWithHooks(r.Context(), map[any]rocket.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(rw),
-		internal.CtxHookAfterAuthed:  l.withAuthorizedHook(rw, r),
-		internal.CtxHookAfterDialed:  l.withEstablishedHook(rw, r),
+		internal.CtxHookAfterDialed:  l.withDialedHook(rw, r),
 	})
-	plain := tunnel.NewHttpPlain(rw, r.WithContext(ctx), destAddr, srcAddr, provider)
-	defer helper.Close(plain)
+	plain := tunnel.NewHttpPlain(rw, r.WithContext(ctx), destAddr, srcAddr)
 	dispatcher.Submit(plain)
 
-	<-plain.Context().Done()
-}
-
-func (l *HttpListener) withAuthorizedHook(w io.Writer, r *http.Request) rocket.HookFunc {
-	return func(ctx context.Context, state error, _ ...any) error {
-		defer l.removeHopByHopHeaders(r.Header)
-		if state == nil {
-			return nil
-		}
-		rocket.Logger(ctx).Errorf("http: conn auth: %s", state)
-		if rw, ok := w.(http.ResponseWriter); ok {
-			rw.WriteHeader(http.StatusUnauthorized)
-		} else {
-			_, err := w.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
-			if err != nil {
-				return fmt.Errorf("http send response(unauthorized). %w", err)
-			}
-		}
-		return errors.New("unauthorized")
+	if l.listenerOpts.Verbose {
+		rocket.Logger(r.Context()).
+			WithField("dest", r.Host).
+			WithField("rdest", destAddr.String()).
+			Infof("http: %s", r.Method)
 	}
 }
 
@@ -184,7 +176,7 @@ func (*HttpListener) withRulesetHook(w io.Writer) rocket.HookFunc {
 	}
 }
 
-func (*HttpListener) withEstablishedHook(w io.Writer, r *http.Request) rocket.HookFunc {
+func (*HttpListener) withDialedHook(w io.Writer, r *http.Request) rocket.HookFunc {
 	return func(_ context.Context, _ error, _ ...any) error {
 		if rw, ok := w.(http.ResponseWriter); ok {
 			rw.WriteHeader(http.StatusOK)

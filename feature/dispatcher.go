@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"math"
 	"strings"
+	"time"
 )
 
 var (
@@ -65,6 +66,15 @@ func (d *Dispatcher) Submit(s rocket.Tunnel) {
 	d.tunnels <- s
 }
 
+func (d *Dispatcher) Authenticate(ctx context.Context, authentication rocket.Authentication) error {
+	assert.MustTrue(authentication.Authenticate != rocket.AuthenticateAllow, "authenticate is invalid")
+	auErr := d.lookupAuthenticator(authentication).Authenticate(ctx, authentication)
+	if auErr != nil {
+		rocket.Logger(ctx).Errorf("dispatcher: authenticate: %s", auErr)
+	}
+	return auErr
+}
+
 func (d *Dispatcher) RegisterAuthenticator(name string, authenticator rocket.Authenticator) {
 	assert.MustNotEmpty(name, "authenticator name")
 	name = strings.ToUpper(name)
@@ -78,39 +88,28 @@ func (d *Dispatcher) RegisterAuthenticator(name string, authenticator rocket.Aut
 
 func (d *Dispatcher) handle(local rocket.Tunnel) {
 	defer helper.Close(local)
-
-	// Authenticate
-	authentication := local.Authentication()
-	assert.MustTrue(authentication.Authenticate != rocket.AuthenticateAllow, "authenticate is invalid")
-	auErr := d.lookupAuthenticator(authentication).Authenticate(local.Context(), authentication)
-	// Hook: authed
-	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterAuthed); ok {
-		if hErr := hook(local.Context(), auErr); hErr != nil {
-			rocket.Logger(local.Context()).Errorf("dispatcher: hook:auth: %s", hErr)
-			return
-		}
-	}
-	if auErr != nil {
-		rocket.Logger(local.Context()).Errorf("dispatcher: authenticate: %s", auErr)
-		return
-	}
-
 	destAddr := local.Destination()
 
+	defer func(start time.Time) {
+		rocket.Logger(local.Context()).
+			WithField("duration", time.Since(start).String()).
+			Infof("dispatcher: TERM")
+	}(local.Context().Value(internal.CtxKeyStartTime).(time.Time))
+
 	// Ruleset
-	rsErr := UseRuleset().Allow(local.Context(), rocket.Permit{
+	ruErr := UseRuleset().Allow(local.Context(), rocket.Permit{
 		Source:      local.Source(),
 		Destination: destAddr,
 	})
 	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterRuleset); ok {
-		if hErr := hook(local.Context(), rsErr); hErr != nil {
+		if hErr := hook(local.Context(), ruErr); hErr != nil {
 			rocket.Logger(local.Context()).Errorf("dispatcher: hook:ruleset: %s", hErr)
 			return
 		}
 	}
-	if rsErr != nil {
-		if !errors.Is(rsErr, rocket.ErrNoRulesetMatched) {
-			rocket.Logger(local.Context()).Errorf("dispatcher: ruleset: %s", rsErr)
+	if ruErr != nil {
+		if !errors.Is(ruErr, rocket.ErrNoRulesetMatched) {
+			rocket.Logger(local.Context()).Errorf("dispatcher: ruleset: %s", ruErr)
 			return
 		}
 	}
@@ -123,27 +122,28 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 	}
 
 	// Dial
-	remote, dErr := d.lookupDialer(destAddr).Dial(local.Context(), net.Address{
+	remote, dlErr := d.lookupDialer(destAddr).Dial(local.Context(), net.Address{
 		Network: destAddr.Network,
 		Family:  net.ToAddressFamily(destIPAddr),
 		IP:      destIPAddr,
 		Port:    destAddr.Port,
 	})
-	if dErr != nil {
-		rocket.Logger(local.Context()).Errorf("dispatcher: dial: %s", dErr)
-		return
-	}
 	defer helper.Close(remote)
-	// Hook: dialed
 	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterDialed); ok {
-		if hErr := hook(local.Context(), nil); hErr != nil {
+		if hErr := hook(local.Context(), dlErr); hErr != nil {
 			rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
 			return
 		}
 	}
+	if dlErr != nil {
+		rocket.Logger(local.Context()).Errorf("dispatcher: dial: %s", dlErr)
+		return
+	}
+
 	// Connect
 	tErr := local.Connect(remote)
 	d.onTailError(local.Context(), tErr)
+
 }
 
 func (d *Dispatcher) lookupDialer(addr net.Address) rocket.Dialer {

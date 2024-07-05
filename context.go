@@ -18,8 +18,7 @@ var (
 
 func Logger(ctx context.Context) *logrus.Entry {
 	return logrus.WithFields(logrus.Fields{
-		"source": ctx.Value(CtxKeySource),
-		"id":     ctx.Value(CtxKeyID),
+		"id": ctx.Value(CtxKeyID),
 	})
 }
 

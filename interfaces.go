@@ -31,6 +31,8 @@ type Dispatcher interface {
 	// Serve 以阻塞状态运行，处理 Submit 提交的通道连接请求
 	Serve(ctx context.Context) error
 
+	Authenticate(ctx context.Context, auth Authentication) error
+
 	// Submit 提交通道连接请求
 	Submit(Tunnel)
 }
@@ -54,9 +56,6 @@ type Tunnel interface {
 
 	// Source 返回源客户端的地址
 	Source() net.Address
-
-	// Authentication 返回源客户端的身份认证信息
-	Authentication() Authentication
 
 	// Connect 连接到目标服务器
 	Connect(remote Connection) error

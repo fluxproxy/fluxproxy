@@ -74,8 +74,11 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 		}
 	}
 	// Socks listener
-
-	// 初始化服务
+	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeSocks) {
+		if err := a.initSocksListener(runCtx, serverConfig); err != nil {
+			return err
+		}
+	}
 	if len(a.listeners) == 0 {
 		return fmt.Errorf("inst: no available listeners")
 	}
@@ -136,14 +139,43 @@ func (a *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig
 	if httpConfig.Bind == "" {
 		httpConfig.Bind = "0.0.0.0"
 	}
-	inst := listener.NewHttpListener(rocket.ListenerOptions{
+	var auth AuthenticatorConfig
+	_ = unmarshalWith(runCtx, configPathAuthenticator, &auth)
+	httpListener := listener.NewHttpListener(rocket.ListenerOptions{
 		Address: httpConfig.Bind,
 		Port:    httpConfig.Port,
-	}, listener.HttpOptions{
 		Verbose: serverConfig.Verbose,
-	})
-	a.listeners = append(a.listeners, inst)
-	return inst.Init(runCtx)
+		Auth:    auth.Enabled,
+	}, listener.HttpOptions{})
+	a.listeners = append(a.listeners, httpListener)
+	return httpListener.Init(runCtx)
+}
+
+func (a *App) initSocksListener(runCtx context.Context, serverConfig ServerConfig) error {
+	var socksConfig SocksConfig
+	if err := unmarshalWith(runCtx, configPathServerSocks, &socksConfig); err != nil {
+		return fmt.Errorf("inst: unmarshal socks config. %w", err)
+	}
+	if socksConfig.Disabled {
+		logrus.Warnf("inst: socks server is disabled")
+		return nil
+	}
+	if socksConfig.Port <= 0 {
+		socksConfig.Port = 1081
+	}
+	if socksConfig.Bind == "" {
+		socksConfig.Bind = "0.0.0.0"
+	}
+	var auth AuthenticatorConfig
+	_ = unmarshalWith(runCtx, configPathAuthenticator, &auth)
+	socksListener := listener.NewSocksListener(rocket.ListenerOptions{
+		Address: socksConfig.Bind,
+		Port:    socksConfig.Port,
+		Verbose: serverConfig.Verbose,
+		Auth:    auth.Enabled,
+	}, listener.SocksOptions{})
+	a.listeners = append(a.listeners, socksListener)
+	return socksListener.Init(runCtx)
 }
 
 func (a *App) initResolver(runCtx context.Context) {

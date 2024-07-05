@@ -84,7 +84,28 @@ func ToAddressFamily(ip net.IP) AddressFamily {
 	return AddressFamilyIPv6
 }
 
-////
+func ParseDomainAddr(network Network, domain string) Address {
+	return Address{
+		Network: network,
+		Family:  AddressFamilyDomain,
+		Domain:  domain,
+	}
+}
+
+func ParseIPAddr(network Network, ipAddr net.IP) Address {
+	if ipAddr.To4() != nil {
+		return Address{
+			Network: network,
+			Family:  AddressFamilyIPv4,
+			IP:      ipAddr,
+		}
+	}
+	return Address{
+		Network: network,
+		Family:  AddressFamilyIPv6,
+		IP:      ipAddr,
+	}
+}
 
 func ParseAddress(network Network, hostport string) (Address, error) {
 	addr, sport, err := net.SplitHostPort(hostport)
