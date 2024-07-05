@@ -16,56 +16,58 @@ const (
 	configPathServerSocks   = "server.socks"
 )
 
-func unmarshalWith(ctx context.Context, path string, out any) error {
-	if err := rocket.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
-		return fmt.Errorf("config unmarshal %s. %w", path, err)
-	}
-	return nil
-}
-
 ////
 
 type ServerConfig struct {
-	Mode    string `yaml:"mode"`
-	Verbose bool   `yaml:"verbose"`
+	Mode    string `toml:"mode"`
+	Verbose bool   `toml:"verbose"`
 }
 
 ////
 
 type HttpConfig struct {
-	Disabled bool   `yaml:"disabled"`
-	Bind     string `yaml:"bind"`
-	Port     int    `yaml:"port"`
+	Disabled bool   `toml:"disabled"`
+	Bind     string `toml:"bind"`
+	Port     int    `toml:"port"`
 }
 
 ////
 
 type SocksConfig struct {
-	Disabled bool   `yaml:"disabled"`
-	Bind     string `yaml:"bind"`
-	Port     int    `yaml:"port"`
+	Disabled bool   `toml:"disabled"`
+	Bind     string `toml:"bind"`
+	Port     int    `toml:"port"`
 }
 
 ////
 
 type ResolverConfig struct {
-	CacheSize int               `yaml:"cache_size"`
-	CacheTTL  int               `yaml:"cache_ttl"`
-	Hosts     map[string]string `yaml:"hosts"`
+	CacheSize int               `toml:"cache_size"`
+	CacheTTL  int               `toml:"cache_ttl"`
+	Hosts     map[string]string `toml:"hosts"`
 }
 
 ////
 
 type AuthenticatorConfig struct {
-	Enabled bool              `yaml:"enabled"`
-	Basic   map[string]string `yaml:"basic"`
+	Enabled bool              `toml:"enabled"`
+	Basic   map[string]string `toml:"basic"`
 }
 
 ////
 
 type RulesetConfig struct {
-	Type    string   `yaml:"type"`
-	Origin  string   `yaml:"origin"`
-	Access  string   `yaml:"access"`
-	Address []string `yaml:"address"`
+	Type    string   `toml:"type"`
+	Origin  string   `toml:"origin"`
+	Access  string   `toml:"access"`
+	Address []string `toml:"address"`
+}
+
+////
+
+func unmarshalWith(ctx context.Context, path string, out any) error {
+	if err := rocket.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "toml"}); err != nil {
+		return fmt.Errorf("config unmarshal %s. %w", path, err)
+	}
+	return nil
 }

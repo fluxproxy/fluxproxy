@@ -1,0 +1,72 @@
+# 服务器配置
+[server]
+# 服务器运行模式
+# - auto 自动代理
+# - http 仅http代理模式
+# - socks 仅socks代理模式
+mode = "auto"
+
+# 显示更详细日志，默认为false。设置为true将会打印更多日志记录。
+verbose = true
+
+
+
+# Http 代理服务配置
+[server.http]
+# 禁用Http代理，默认为false，即启用Http代理
+#disabled = false
+
+# Http代理绑定地址，默认为本机所有网卡
+#bind = "0.0.0.0"
+
+# 监听端口，Http代理默认端口为 1080。有效端口为 (10 ~ 65535)
+port = 1080
+
+# Socks5 代理服务配置
+[server.socks]
+# 禁用Socks5代理，默认为false，即启用Socks代理
+#disabled = false
+
+# Socks代理绑定地址，默认为本机所有网卡
+#bind = "0.0.0.0"
+# 监听端口，Http代理默认端口为 1081。有效端口为 (10 ~ 65535)
+port = 1081
+
+
+# 客户端认证授权
+[authenticator]
+# 启用认证功能。默认为关闭认证，即允许任何客户端无认证连接。
+# 你需要将enabled设置为true来启用认证，同时需要设置认证方式。
+enabled = false
+
+# Basic认证方式
+[authenticator.basic]
+user1 = "rocket-proxy"
+
+
+# 域名 DNS 解析 Resolver 配置
+[resolver]
+# 缓存大小
+cache_size = 10000
+# 缓存时长，单位：分钟
+cache_ttl = 60
+
+# 指定域名解析 IP地址
+[resolver.hosts]
+"fake.domain.com" = "127.0.0.1"
+
+
+
+# 连接访问规则
+# 规则执行顺序：按以下列出顺序来检查。
+[[ruleset]]
+type = "ipnet"
+access = "allow"
+origin = "source"
+address = ["172.254.1.0/24", "172.254.2.0/24"]
+
+[[ruleset]]
+type = "ipnet"
+access = "deny"
+origin = "destination"
+address = ["172.254.161.0/24"]

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/goes"
-	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 	"github.com/rocket-proxy/rocket-proxy"
@@ -40,11 +40,11 @@ func init() {
 }
 
 func RunAsMode(runCtx context.Context, args []string, cmdMode string) error {
-	confpath := "config.yml"
+	confpath := "config.toml"
 	if len(args) > 0 {
 		confpath = args[0]
 	}
-	if err := k.Load(file.Provider(confpath), yaml.Parser()); err != nil {
+	if err := k.Load(file.Provider(confpath), toml.Parser()); err != nil {
 		return fmt.Errorf("main: load config: %s. %w", confpath, err)
 	}
 

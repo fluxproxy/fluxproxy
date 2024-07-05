@@ -76,3 +76,8 @@ func lookupLocalIPAddrs(_ context.Context) []stdnet.IP {
 	}
 	return output
 }
+
+type Netport struct {
+	Port    int
+	Network net.Network
+}
