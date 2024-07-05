@@ -78,23 +78,49 @@ func (d *Dispatcher) RegisterAuthenticator(name string, authenticator rocket.Aut
 
 func (d *Dispatcher) handle(local rocket.Tunnel) {
 	defer helper.Close(local)
+
 	// Authenticate
 	assert.MustTrue(local.Authentication().Authenticate != rocket.AuthenticateAllow, "authenticate is invalid")
-	aErr := d.lookupAuthenticator(local.Authentication()).Authenticate(local.Context(), local.Authentication())
+	auErr := d.lookupAuthenticator(local.Authentication()).Authenticate(local.Context(), local.Authentication())
 	// Hook: authed
 	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterAuthed); ok {
-		if hErr := hook(local.Context(), aErr); hErr != nil {
+		if hErr := hook(local.Context(), auErr); hErr != nil {
 			rocket.Logger(local.Context()).Errorf("dispatcher: hook:auth: %s", hErr)
 			return
 		}
 	}
-	destAddr := local.Destination()
-	// Resolve
-	destIPAddr, rErr := UseResolver().Resolve(local.Context(), destAddr)
-	if rErr != nil {
-		rocket.Logger(local.Context()).Errorf("dispatcher: resolve: %s", rErr)
+	if auErr != nil {
+		rocket.Logger(local.Context()).Errorf("dispatcher: authenticate: %s", auErr)
 		return
 	}
+
+	destAddr := local.Destination()
+
+	// Ruleset
+	rsErr := UseRuleset().Allow(local.Context(), rocket.Permit{
+		Source:      local.Source(),
+		Destination: destAddr,
+	})
+	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterRuleset); ok {
+		if hErr := hook(local.Context(), rsErr); hErr != nil {
+			rocket.Logger(local.Context()).Errorf("dispatcher: hook:ruleset: %s", hErr)
+			return
+		}
+	}
+	if rsErr != nil {
+		if !errors.Is(rsErr, rocket.ErrNoRulesetMatched) {
+			rocket.Logger(local.Context()).Errorf("dispatcher: ruleset: %s", rsErr)
+			return
+		}
+	}
+
+	// Resolve
+	destIPAddr, rvErr := UseResolver().Resolve(local.Context(), destAddr)
+	if rvErr != nil {
+		rocket.Logger(local.Context()).Errorf("dispatcher: resolve: %s", rvErr)
+		return
+	}
+
 	// Dial
 	remote, dErr := d.lookupDialer(destAddr).Dial(local.Context(), net.Address{
 		Network: destAddr.Network,

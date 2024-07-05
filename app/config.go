@@ -3,6 +3,7 @@ package app
 const (
 	configPathAuthenticator = "authenticator"
 	configPathResolver      = "resolver"
+	configPathRuleset       = "ruleset"
 	configPathServer        = "server"
 	configPathServerHttp    = "server.http"
 	configPathServerSocks   = "server.socks"
@@ -44,4 +45,13 @@ type ResolverConfig struct {
 type AuthenticatorConfig struct {
 	Enabled bool              `yaml:"enabled"`
 	Basic   map[string]string `yaml:"basic"`
+}
+
+////
+
+type RulesetConfig struct {
+	Type    string   `yaml:"type"`
+	Origin  string   `yaml:"origin"`
+	Access  string   `yaml:"access"`
+	Address []string `yaml:"address"`
 }

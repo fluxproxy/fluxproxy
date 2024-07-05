@@ -1,5 +1,13 @@
 package rocket
 
+import (
+	"errors"
+)
+
+var (
+	ErrNoRulesetMatched = errors.New("no-ruleset-matched")
+)
+
 //// Authenticate Types
 
 const (

@@ -10,8 +10,9 @@ type hookCtxKey struct {
 }
 
 var (
-	CtxHookAfterDialed = hookCtxKey{key: "ctx:hook-func:after-dialed"}
-	CtxHookAfterAuthed = hookCtxKey{key: "ctx:hook-func:after-authed"}
+	CtxHookAfterDialed  = hookCtxKey{key: "ctx:hook-func:after-dialed"}
+	CtxHookAfterAuthed  = hookCtxKey{key: "ctx:hook-func:after-authed"}
+	CtxHookAfterRuleset = hookCtxKey{key: "ctx:hook-func:after-ruleset"}
 )
 
 func ContextWithHook(ctx context.Context, k any, v rocket.HookFunc) context.Context {

@@ -63,6 +63,20 @@ func (a Address) IsDomain() bool {
 	return a.Family == AddressFamilyDomain
 }
 
+func (a Address) Equal(o Address) bool {
+	if a.Family != o.Family {
+		return false
+	}
+	if a.Port != o.Port {
+		return false
+	}
+	if a.Family == AddressFamilyDomain {
+		return a.Domain == o.Domain
+	} else {
+		return a.IP.Equal(o.IP)
+	}
+}
+
 func ToAddressFamily(ip net.IP) AddressFamily {
 	if ip.To4() != nil {
 		return AddressFamilyIPv4

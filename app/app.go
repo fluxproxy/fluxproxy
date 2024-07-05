@@ -4,14 +4,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/knadh/koanf/v2"
 	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/feature"
 	"github.com/rocket-proxy/rocket-proxy/feature/authenticator"
 	"github.com/rocket-proxy/rocket-proxy/feature/listener"
+	"github.com/rocket-proxy/rocket-proxy/feature/ruleset"
 	"github.com/rocket-proxy/rocket-proxy/helper"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
+	stdnet "net"
 	"net/http"
 	"strings"
 	"sync"
@@ -64,6 +65,8 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 	a.initResolver(runCtx)
 	// Authenticator
 	a.initAuthenticator(runCtx)
+	// Ruleset
+	a.initRuleset(runCtx)
 	// Http listener
 	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
 		if err := a.initHttpListener(runCtx, serverConfig); err != nil {
@@ -182,6 +185,34 @@ func (a *App) initAuthenticator(runCtx context.Context) {
 	dispatcher.RegisterAuthenticator(rocket.AuthenticateBasic, basic)
 }
 
+func (a *App) initRuleset(runCtx context.Context) {
+	var config []RulesetConfig
+	_ = unmarshalWith(runCtx, configPathRuleset, &config)
+	// 最高优先级：禁止回环访问
+	rulesets := []rocket.Ruleset{
+		ruleset.NewLoopback(loadLocalAddrs(runCtx)),
+	}
+	// builder
+	buildIPNet := func(rule RulesetConfig) rocket.Ruleset {
+		nets := make([]stdnet.IPNet, 0, len(rule.Address))
+		for _, sAddr := range rule.Address {
+			if _, ipNet, err := stdnet.ParseCIDR(sAddr); err == nil {
+				nets = append(nets, *ipNet)
+			} else {
+				logrus.Warnf("invalid ruleset(ipnet) address: %s", sAddr)
+			}
+		}
+		return ruleset.NewIPNet(strings.EqualFold(rule.Access, "allow"), strings.EqualFold(rule.Origin, "source"), nets)
+	}
+	for _, itemConfig := range config {
+		switch strings.ToLower(itemConfig.Type) {
+		case "ipnet":
+			rulesets = append(rulesets, buildIPNet(itemConfig))
+		}
+	}
+	feature.InitMultiRuleset(rulesets)
+}
+
 func (a *App) checkServerMode(mode string) error {
 	switch strings.ToLower(mode) {
 	case RunServerModeAuto, RunServerModeHttp, RunServerModeSocks:
@@ -189,11 +220,4 @@ func (a *App) checkServerMode(mode string) error {
 	default:
 		return fmt.Errorf("invalid server mode: %s", mode)
 	}
-}
-
-func unmarshalWith(ctx context.Context, path string, out any) error {
-	if err := rocket.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
-		return fmt.Errorf("config unmarshal %s. %w", path, err)
-	}
-	return nil
 }

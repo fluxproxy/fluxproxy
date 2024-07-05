@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/bytepowered/assert v1.1.0
+	github.com/bytepowered/cache v0.3.0
 	github.com/bytepowered/goes v1.0.0
 	github.com/cristalhq/acmd v0.12.0
 	github.com/hashicorp/go-uuid v1.0.3
@@ -14,7 +15,6 @@ require (
 )
 
 require (
-	github.com/bytepowered/cache v0.3.0 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.0.0-alpha.1 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect

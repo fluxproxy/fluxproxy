@@ -52,6 +52,9 @@ type Tunnel interface {
 	// Destination 返回目标服务器的地址
 	Destination() net.Address
 
+	// Source 返回源客户端的地址
+	Source() net.Address
+
 	// Authentication 返回源客户端的身份认证信息
 	Authentication() Authentication
 
@@ -79,6 +82,15 @@ type Resolver interface {
 // Authenticator 身份认证
 type Authenticator interface {
 	Authenticate(context.Context, Authentication) error
+}
+
+type Permit struct {
+	Source      net.Address
+	Destination net.Address
+}
+
+type Ruleset interface {
+	Allow(context.Context, Permit) error
 }
 
 // HookFunc 注册到Context中的Hook函数

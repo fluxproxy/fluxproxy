@@ -3,6 +3,7 @@ package listener
 import (
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"github.com/bytepowered/assert"
 	"github.com/rocket-proxy/rocket-proxy"
@@ -107,6 +108,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 
 	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, newConnEstablishedHook(hiConn))
 	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, newUnauthorizedHook(hiConn))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, newRulesetHook(hiConn))
 
 	stream := tunnel.NewConnStream(connCtx, hiConn, destAddr, auth)
 	defer helper.Close(stream)
@@ -118,7 +120,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatcher rocket.Dispatcher) {
 	// RFC 2068 (HTTP/1.1) requires URL to be absolute URL in HTTP proxy.
 	if r.URL.Host == "" || !r.URL.IsAbs() {
-		_, _ = rw.Write([]byte("HTTP/1.1 400 Bad Request\r\n\r\n"))
+		rw.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	defer helper.Close(r.Body)
@@ -136,6 +138,7 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 
 	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, newConnEstablishedHook(rw))
 	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, newUnauthorizedHook(rw))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, newRulesetHook(rw))
 
 	plain := tunnel.NewHttpPlain(rw, r.WithContext(connCtx), destAddr, auth)
 	defer helper.Close(plain)
@@ -150,19 +153,45 @@ func newUnauthorizedHook(w io.Writer) rocket.HookFunc {
 			return nil
 		}
 		rocket.Logger(ctx).Errorf("http: conn auth: %s", state)
-		_, err := w.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
-		if err != nil {
-			return fmt.Errorf("http send response. %w", err)
+		if rw, ok := w.(http.ResponseWriter); ok {
+			rw.WriteHeader(http.StatusUnauthorized)
+		} else {
+			_, err := w.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
+			if err != nil {
+				return fmt.Errorf("http send response(unauthorized). %w", err)
+			}
 		}
-		return nil
+		return errors.New("unauthorized")
+	}
+}
+
+func newRulesetHook(w io.Writer) rocket.HookFunc {
+	return func(ctx context.Context, state error, _ ...any) error {
+		if state == nil || errors.Is(state, rocket.ErrNoRulesetMatched) {
+			return nil
+		}
+		rocket.Logger(ctx).Errorf("http: conn ruleset: %s", state)
+		if rw, ok := w.(http.ResponseWriter); ok {
+			rw.WriteHeader(http.StatusForbidden)
+		} else {
+			_, err := w.Write([]byte("HTTP/1.1 403 Forbidden\r\n\r\n"))
+			if err != nil {
+				return fmt.Errorf("http send response(ruleset). %w", err)
+			}
+		}
+		return errors.New("ruleset forbidden")
 	}
 }
 
 func newConnEstablishedHook(w io.Writer) rocket.HookFunc {
 	return func(_ context.Context, _ error, _ ...any) error {
-		_, err := w.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-		if err != nil {
-			return fmt.Errorf("http send response. %w", err)
+		if rw, ok := w.(http.ResponseWriter); ok {
+			rw.WriteHeader(http.StatusOK)
+		} else {
+			_, err := w.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+			if err != nil {
+				return fmt.Errorf("http send response(established). %w", err)
+			}
 		}
 		return nil
 	}
