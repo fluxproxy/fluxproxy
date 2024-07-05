@@ -130,7 +130,7 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 	// Dial
 	if d.opts.Verbose {
 		rocket.Logger(local.Context()).
-			WithField("ip", destIPAddr.String()).
+			WithField("ipaddr", destIPAddr.String()).
 			Infof("dispatcher: DIAL")
 	}
 	remote, dlErr := d.lookupDialer(destAddr).Dial(local.Context(), net.Address{

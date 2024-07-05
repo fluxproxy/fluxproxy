@@ -58,8 +58,8 @@ func (l *HttpListener) Listen(serveCtx context.Context, dispatcher rocket.Dispat
 		BaseContext: func(_ stdnet.Listener) context.Context {
 			return serveCtx
 		},
-		ConnContext: func(ctx context.Context, conn stdnet.Conn) context.Context {
-			return internal.SetupTcpContextLogger(ctx, conn)
+		ConnContext: func(connCtx context.Context, conn stdnet.Conn) context.Context {
+			return internal.SetupTcpContextLogger(connCtx, conn)
 		},
 	}
 	go func() {
@@ -113,6 +113,9 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	if l.listenerOpts.Verbose {
 		rocket.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
 	}
+
+	// 需要维持Http连接
+	<-stream.Context().Done()
 }
 
 func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatcher rocket.Dispatcher) {
@@ -150,6 +153,8 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 	if l.listenerOpts.Verbose {
 		rocket.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
 	}
+	// 需要维持Http连接
+	<-plain.Context().Done()
 }
 
 func (*HttpListener) withRulesetHook(w io.Writer) rocket.HookFunc {
