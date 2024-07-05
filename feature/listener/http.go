@@ -194,14 +194,14 @@ func removeHopByHopHeaders(header http.Header) {
 
 func parseProxyAuthorization(header http.Header, srcAddr net.Address) rocket.Authentication {
 	token := header.Get("Proxy-Authorization")
-	if strings.HasPrefix(token, rocket.AuthenticateBasic) {
+	if strings.HasPrefix(token, "Basic ") {
 		username, password, _ := parseBasicAuthorization(token)
 		return rocket.Authentication{
 			Source:         srcAddr,
 			Authenticate:   rocket.AuthenticateBasic,
 			Authentication: username + ":" + password,
 		}
-	} else if strings.HasPrefix(token, rocket.AuthenticateBearer) {
+	} else if strings.HasPrefix(token, "Bearer ") {
 		token, _ := parseBearerAuthorization(token)
 		return rocket.Authentication{
 			Source:         srcAddr,

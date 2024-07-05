@@ -3,14 +3,17 @@ package feature
 import (
 	"context"
 	"errors"
+	"github.com/bytepowered/assert"
 	"github.com/bytepowered/goes"
 	"github.com/rocket-proxy/rocket-proxy"
+	"github.com/rocket-proxy/rocket-proxy/feature/authenticator"
 	"github.com/rocket-proxy/rocket-proxy/feature/dialer"
 	"github.com/rocket-proxy/rocket-proxy/helper"
 	"github.com/rocket-proxy/rocket-proxy/internal"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 	"math"
+	"strings"
 )
 
 var (
@@ -18,8 +21,9 @@ var (
 )
 
 type Dispatcher struct {
-	tunnels chan rocket.Tunnel
-	dialer  map[string]rocket.Dialer
+	tunnels       chan rocket.Tunnel
+	dialer        map[string]rocket.Dialer
+	authenticator map[string]rocket.Authenticator
 }
 
 func NewDispatcher() *Dispatcher {
@@ -32,6 +36,12 @@ func (d *Dispatcher) Init(ctx context.Context) error {
 	d.dialer = map[string]rocket.Dialer{
 		dialer.DIRECT: dialer.NewTcpDirectDialer(),
 		dialer.REJECT: dialer.NewRejectDialer(),
+	}
+	d.authenticator = map[string]rocket.Authenticator{
+		rocket.AuthenticateAllow:  authenticator.NewAllowAuthenticator(),
+		rocket.AuthenticateBearer: authenticator.NewDenyAuthenticator(),
+		rocket.AuthenticateSource: authenticator.NewDenyAuthenticator(),
+		rocket.AuthenticateToken:  authenticator.NewDenyAuthenticator(),
 	}
 	return nil
 }
@@ -55,24 +65,38 @@ func (d *Dispatcher) Submit(s rocket.Tunnel) {
 	d.tunnels <- s
 }
 
+func (d *Dispatcher) RegisterAuthenticator(name string, authenticator rocket.Authenticator) {
+	assert.MustNotEmpty(name, "authenticator name")
+	name = strings.ToUpper(name)
+	assert.MustFalse(strings.EqualFold(name, rocket.AuthenticateAllow), "authenticator name is invalid")
+	assert.MustNotNil(authenticator, "authenticator is nil")
+	_, exists := d.authenticator[name]
+	assert.MustFalse(exists, "authenticator is already exists: %s", name)
+	d.authenticator[name] = authenticator
+	logrus.Infof("dispatcher: register:authenticator: %s", name)
+}
+
 func (d *Dispatcher) handle(local rocket.Tunnel) {
 	defer helper.Close(local)
-	// Authenticate TODO 身份认证
+	// Authenticate
+	assert.MustTrue(local.Authentication().Authenticate != rocket.AuthenticateAllow, "authenticate is invalid")
+	aErr := d.lookupAuthenticator(local.Authentication()).Authenticate(local.Context(), local.Authentication())
+	// Hook: authed
 	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterAuthed); ok {
-		if hErr := hook(local.Context(), nil); hErr != nil {
+		if hErr := hook(local.Context(), aErr); hErr != nil {
 			rocket.Logger(local.Context()).Errorf("dispatcher: hook:auth: %s", hErr)
 			return
 		}
 	}
 	destAddr := local.Destination()
 	// Resolve
-	destIPAddr, rErr := GetResolver().Resolve(local.Context(), destAddr)
+	destIPAddr, rErr := UseResolver().Resolve(local.Context(), destAddr)
 	if rErr != nil {
 		rocket.Logger(local.Context()).Errorf("dispatcher: resolve: %s", rErr)
 		return
 	}
 	// Dial
-	remote, dErr := d.lookup(destAddr).Dial(local.Context(), net.Address{
+	remote, dErr := d.lookupDialer(destAddr).Dial(local.Context(), net.Address{
 		Network: destAddr.Network,
 		Family:  net.ToAddressFamily(destIPAddr),
 		IP:      destIPAddr,
@@ -95,8 +119,16 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 	d.onTailError(local.Context(), tErr)
 }
 
-func (d *Dispatcher) lookup(addr net.Address) rocket.Dialer {
+func (d *Dispatcher) lookupDialer(addr net.Address) rocket.Dialer {
 	return d.dialer[dialer.DIRECT]
+}
+
+func (d *Dispatcher) lookupAuthenticator(auth rocket.Authentication) rocket.Authenticator {
+	v, ok := d.authenticator[auth.Authenticate]
+	if !ok {
+		return d.authenticator[rocket.AuthenticateAllow]
+	}
+	return v
 }
 
 func (d *Dispatcher) onTailError(connCtx context.Context, tErr error) {

@@ -79,7 +79,7 @@ func InitResolverWith(opts Options) *CacheResolver {
 	return resolverInst
 }
 
-func GetResolver() *CacheResolver {
+func UseResolver() *CacheResolver {
 	assert.MustNotNil(resolverInst, "resolver not initialized")
 	return resolverInst
 }

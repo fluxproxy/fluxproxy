@@ -11,33 +11,34 @@ var (
 	_ rocket.Authenticator = (*BasicAuthenticator)(nil)
 )
 
+var (
+	ErrUPInvalidUsernameOrPassword = errors.New("basic:invalid username or password")
+	ErrUPAuthenticateFailed        = errors.New("basic:authenticate failed")
+)
+
 type BasicAuthenticator struct {
-	enabled bool
-	users   map[string]string
+	users map[string]string
 }
 
-func WithBasicUsers(enabled bool, users map[string]string) *BasicAuthenticator {
-	return &BasicAuthenticator{enabled: enabled, users: users}
+func NewUsersAuthenticator(users map[string]string) *BasicAuthenticator {
+	return &BasicAuthenticator{users: users}
 }
 
-func (u *BasicAuthenticator) Authenticate(ctx context.Context, auth rocket.Authentication) (context.Context, error) {
-	if !u.enabled {
-		return ctx, nil
-	}
-	//assert.MustTrue(auth.Authenticate == rocket.AuthenticateBasic, "invalid auth type: %s", auth.Authenticate)
+func (u *BasicAuthenticator) Authenticate(ctx context.Context, auth rocket.Authentication) error {
 	username, password, ok := strings.Cut(auth.Authentication, ":")
 	if !ok {
-		return ctx, errors.New("invalid username or password")
+		return ErrUPInvalidUsernameOrPassword
 	}
 	// check username and password
 	if username == "" {
-		return ctx, errors.New("username is empty")
+		return ErrUPInvalidUsernameOrPassword
 	}
 	if password == "" {
-		return ctx, errors.New("password is empty")
+		return ErrUPInvalidUsernameOrPassword
 	}
 	if u.users[username] != password {
-		return ctx, errors.New("invalid username or password")
+		return ErrUPAuthenticateFailed
+	} else {
+		return nil // success
 	}
-	return ctx, nil
 }

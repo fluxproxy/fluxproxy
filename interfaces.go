@@ -78,7 +78,7 @@ type Resolver interface {
 
 // Authenticator 身份认证
 type Authenticator interface {
-	Authenticate(context.Context, Authentication) (context.Context, error)
+	Authenticate(context.Context, Authentication) error
 }
 
 // HookFunc 注册到Context中的Hook函数

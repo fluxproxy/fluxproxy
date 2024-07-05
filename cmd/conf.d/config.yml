@@ -6,40 +6,40 @@ server:
   # - socks 仅socks代理模式
   mode: "auto"
 
-  # 显示更详细日志
+  # 显示更详细日志，默认为false。设置为true将会打印更多日志记录。
   verbose: true
 
   # Http 代理服务配置
   http:
-    # 禁用Http代理(默认启用）
+    # 禁用Http代理，默认为false，即启用Http代理
     # disabled: false
-    # Http代理端口
-    bind: "0.0.0.0"
+
+    # Http代理绑定地址，默认为本机所有网卡
+    # bind: "0.0.0.0"
+
+    # 监听端口，Http代理默认端口为 1080。有效端口为 (10 ~ 65535)
     port: 1080
-    # 认证授权
-    auth:
-      # 启用认证功能，默认关闭认证。
-      # 如需要启用代理认证，设置为true，并设置代理认证配置。
-      enabled: false
-      # Basic认证机制配置
-      basic:
-        user1: "rocket-proxy"
 
   # Socks5 代理服务配置
   socks:
-    # 禁用Socks代理(默认启用）
+    # 禁用Socks代理，默认为false，即启用Socket代理
     # disabled: false
-    # Socks代理端口
-    bind: "0.0.0.0"
+
+    # Socket代理绑定地址，默认为本机所有网卡
+    # bind: "0.0.0.0"
+
+    # 监听端口，Http代理默认端口为 1081。有效端口为 (10 ~ 65535)
     port: 1081
-    # 认证授权
-    auth:
-      # 启用认证功能，默认关闭认证。
-      # 如需要启用代理认证，设置为true，并设置代理认证配置。
-      enabled: false
-      # 认证用户列表
-      users:
-        user1: "rocket-proxy"
+
+# 认证授权
+authenticator:
+  # 启用认证功能。默认为关闭认证，即允许任何客户端无认证连接。
+  # 你需要将enabled设置为true来启用认证，同时需要设置认证方式。
+  enabled: true
+
+  # 认证用户列表
+  basic:
+    user1: "rocket-proxy"
 
 # Resolver 配置
 resolver:

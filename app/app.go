@@ -7,6 +7,7 @@ import (
 	"github.com/knadh/koanf/v2"
 	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/feature"
+	"github.com/rocket-proxy/rocket-proxy/feature/authenticator"
 	"github.com/rocket-proxy/rocket-proxy/feature/listener"
 	"github.com/rocket-proxy/rocket-proxy/helper"
 	"github.com/rocket-proxy/rocket-proxy/net"
@@ -54,14 +55,15 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 	} else {
 		logrus.Infof("inst: server mode: %s", serverConfig.Mode)
 	}
-	// Resolver
-	a.initResolver(runCtx)
-
 	// Dispatcher
 	a.dispatcher = feature.NewDispatcher()
 	if err := a.dispatcher.Init(runCtx); err != nil {
 		return fmt.Errorf("inst: dispacher: %w", err)
 	}
+	// Resolver
+	a.initResolver(runCtx)
+	// Authenticator
+	a.initAuthenticator(runCtx)
 	// Http listener
 	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
 		if err := a.initHttpListener(runCtx, serverConfig); err != nil {
@@ -118,12 +120,18 @@ func (a *App) term(err error) error {
 
 func (a *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig) error {
 	var httpConfig HttpConfig
-	if err := unmarshalWith(runCtx, configPathHttp, &httpConfig); err != nil {
+	if err := unmarshalWith(runCtx, configPathServerHttp, &httpConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal http config. %w", err)
 	}
 	if httpConfig.Disabled {
 		logrus.Warnf("inst: http server is disabled")
 		return nil
+	}
+	if httpConfig.Port <= 0 {
+		httpConfig.Port = 1080
+	}
+	if httpConfig.Bind == "" {
+		httpConfig.Bind = "0.0.0.0"
 	}
 	inst := listener.NewHttpListener(rocket.ListenerOptions{
 		Address: httpConfig.Bind,
@@ -160,6 +168,18 @@ func (a *App) initResolver(runCtx context.Context) {
 			logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, userIP)
 		}
 	}
+}
+
+func (a *App) initAuthenticator(runCtx context.Context) {
+	var config AuthenticatorConfig
+	_ = unmarshalWith(runCtx, configPathAuthenticator, &config)
+	if !config.Enabled {
+		return
+	}
+	dispatcher := a.dispatcher.(*feature.Dispatcher)
+	// Basic
+	basic := authenticator.NewUsersAuthenticator(config.Basic)
+	dispatcher.RegisterAuthenticator(rocket.AuthenticateBasic, basic)
 }
 
 func (a *App) checkServerMode(mode string) error {

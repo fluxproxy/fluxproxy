@@ -3,10 +3,11 @@ package rocket
 //// Authenticate Types
 
 const (
-	AuthenticateSource = "Source"
-	AuthenticateBasic  = "Basic"
-	AuthenticateBearer = "Bearer"
-	AuthenticateToken  = "Token"
+	AuthenticateAllow  = "ALLOW"
+	AuthenticateBasic  = "BASIC"
+	AuthenticateBearer = "BEARER"
+	AuthenticateSource = "SOURCE"
+	AuthenticateToken  = "TOKEN"
 )
 
 // ListenerOptions 监听器的网络参数
