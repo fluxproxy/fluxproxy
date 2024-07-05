@@ -100,15 +100,15 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	}
 	defer helper.Close(hiConn)
 
-	srcAddr := parseRemoteToSrcAddress(r.RemoteAddr)
-	destAddr := parseHostToDestAddress(r.Host)
-	auth := parseProxyAuthorization(r.Header, srcAddr)
+	srcAddr := parseRemoteAddress(r.RemoteAddr)
+	destAddr := l.parseHostAddress(r.Host)
+	auth := l.parseProxyAuthorization(r.Header, srcAddr)
 
-	removeHopByHopHeaders(r.Header)
+	l.removeHopByHopHeaders(r.Header)
 
-	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, newConnEstablishedHook(hiConn))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, newUnauthorizedHook(hiConn))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, newRulesetHook(hiConn))
+	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, l.newEstablishedHook(hiConn))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, l.newUnauthorizedHook(hiConn))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, l.newRulesetHook(hiConn))
 
 	stream := tunnel.NewConnStream(connCtx, hiConn, destAddr, auth)
 	defer helper.Close(stream)
@@ -130,15 +130,15 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 		r.Header.Set("User-Agent", "")
 	}
 
-	srcAddr := parseRemoteToSrcAddress(r.RemoteAddr)
-	destAddr := parseHostToDestAddress(r.Host)
-	auth := parseProxyAuthorization(r.Header, srcAddr)
+	srcAddr := parseRemoteAddress(r.RemoteAddr)
+	destAddr := l.parseHostAddress(r.Host)
+	auth := l.parseProxyAuthorization(r.Header, srcAddr)
 
-	removeHopByHopHeaders(r.Header)
+	l.removeHopByHopHeaders(r.Header)
 
-	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, newConnEstablishedHook(rw))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, newUnauthorizedHook(rw))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, newRulesetHook(rw))
+	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, l.newEstablishedHook(rw))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, l.newUnauthorizedHook(rw))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, l.newRulesetHook(rw))
 
 	plain := tunnel.NewHttpPlain(rw, r.WithContext(connCtx), destAddr, auth)
 	defer helper.Close(plain)
@@ -147,7 +147,7 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 	<-plain.Context().Done()
 }
 
-func newUnauthorizedHook(w io.Writer) rocket.HookFunc {
+func (*HttpListener) newUnauthorizedHook(w io.Writer) rocket.HookFunc {
 	return func(ctx context.Context, state error, _ ...any) error {
 		if state == nil {
 			return nil
@@ -165,7 +165,7 @@ func newUnauthorizedHook(w io.Writer) rocket.HookFunc {
 	}
 }
 
-func newRulesetHook(w io.Writer) rocket.HookFunc {
+func (*HttpListener) newRulesetHook(w io.Writer) rocket.HookFunc {
 	return func(ctx context.Context, state error, _ ...any) error {
 		if state == nil || errors.Is(state, rocket.ErrNoRulesetMatched) {
 			return nil
@@ -183,7 +183,7 @@ func newRulesetHook(w io.Writer) rocket.HookFunc {
 	}
 }
 
-func newConnEstablishedHook(w io.Writer) rocket.HookFunc {
+func (*HttpListener) newEstablishedHook(w io.Writer) rocket.HookFunc {
 	return func(_ context.Context, _ error, _ ...any) error {
 		if rw, ok := w.(http.ResponseWriter); ok {
 			rw.WriteHeader(http.StatusOK)
@@ -197,7 +197,7 @@ func newConnEstablishedHook(w io.Writer) rocket.HookFunc {
 	}
 }
 
-func removeHopByHopHeaders(header http.Header) {
+func (*HttpListener) removeHopByHopHeaders(header http.Header) {
 	// Strip hop-by-hop header based on RFC:
 	// http://www.w3.org/Protocols/rfc2616/rfc2616-sec13.html#sec13.5.1
 	// https://www.mnot.net/blog/2011/07/11/what_proxies_must_do
@@ -221,17 +221,17 @@ func removeHopByHopHeaders(header http.Header) {
 	}
 }
 
-func parseProxyAuthorization(header http.Header, srcAddr net.Address) rocket.Authentication {
+func (l *HttpListener) parseProxyAuthorization(header http.Header, srcAddr net.Address) rocket.Authentication {
 	token := header.Get("Proxy-Authorization")
 	if strings.HasPrefix(token, "Basic ") {
-		username, password, _ := parseBasicAuthorization(token)
+		username, password, _ := l.parseBasicAuthorization(token)
 		return rocket.Authentication{
 			Source:         srcAddr,
 			Authenticate:   rocket.AuthenticateBasic,
 			Authentication: username + ":" + password,
 		}
 	} else if strings.HasPrefix(token, "Bearer ") {
-		token, _ := parseBearerAuthorization(token)
+		token, _ := l.parseBearerAuthorization(token)
 		return rocket.Authentication{
 			Source:         srcAddr,
 			Authenticate:   rocket.AuthenticateBearer,
@@ -246,7 +246,7 @@ func parseProxyAuthorization(header http.Header, srcAddr net.Address) rocket.Aut
 	}
 }
 
-func parseBasicAuthorization(token string) (username, password string, ok bool) {
+func (*HttpListener) parseBasicAuthorization(token string) (username, password string, ok bool) {
 	const prefix = "Basic "
 	if len(token) < len(prefix) || !helper.ASCIIEqualFold(token[:len(prefix)], prefix) {
 		return "", "", false
@@ -263,7 +263,7 @@ func parseBasicAuthorization(token string) (username, password string, ok bool) 
 	return username, password, true
 }
 
-func parseBearerAuthorization(token string) (out string, ok bool) {
+func (*HttpListener) parseBearerAuthorization(token string) (out string, ok bool) {
 	const prefix = "Bearer "
 	if len(token) < len(prefix) || !helper.ASCIIEqualFold(token[:len(prefix)], prefix) {
 		return "", false
@@ -271,7 +271,7 @@ func parseBearerAuthorization(token string) (out string, ok bool) {
 	return token[len(prefix):], true
 }
 
-func parseHostToDestAddress(host string) (addr net.Address) {
+func (*HttpListener) parseHostAddress(host string) (addr net.Address) {
 	assert.MustNotEmpty(host, "http host is empty")
 	if strings.LastIndexByte(host, ':') > 0 {
 		addr, _ = net.ParseAddress(net.NetworkTCP, host)
@@ -279,12 +279,4 @@ func parseHostToDestAddress(host string) (addr net.Address) {
 		addr, _ = net.ParseAddress(net.NetworkTCP, host+":80")
 	}
 	return
-}
-
-func parseRemoteToSrcAddress(remoteAddr string) net.Address {
-	host, _, hpErr := stdnet.SplitHostPort(remoteAddr)
-	assert.MustNil(hpErr, "http: parse host port error: %s", hpErr)
-	srcAddr, _ := net.ParseAddress(net.NetworkTCP, host)
-	assert.MustTrue(srcAddr.IsIP(), "http: srcAddr is not ip")
-	return srcAddr
 }
