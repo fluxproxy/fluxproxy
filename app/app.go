@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/knadh/koanf/v2"
 	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/feature"
 	"github.com/rocket-proxy/rocket-proxy/feature/listener"
@@ -35,7 +36,7 @@ func NewApp() *App {
 func (i *App) Init(runCtx context.Context, cmdMode string) error {
 	// Server mode
 	var serverConfig ServerConfig
-	if err := rocket.ConfigerUnmarshal(runCtx, configPathServer, &serverConfig); err != nil {
+	if err := unmarshalWith(runCtx, configPathServer, &serverConfig); err != nil {
 		return err
 	}
 	if err := i.checkServerMode(serverConfig.Mode); err != nil {
@@ -112,7 +113,7 @@ func (i *App) term(err error) error {
 
 func (i *App) initHttpListener(runCtx context.Context) error {
 	var httpConfig HttpConfig
-	if err := rocket.ConfigerUnmarshal(runCtx, configPathHttp, &httpConfig); err != nil {
+	if err := unmarshalWith(runCtx, configPathHttp, &httpConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal http config. %w", err)
 	}
 	if httpConfig.Disabled {
@@ -134,4 +135,11 @@ func (i *App) checkServerMode(mode string) error {
 	default:
 		return fmt.Errorf("invalid server mode: %s", mode)
 	}
+}
+
+func unmarshalWith(ctx context.Context, path string, out any) error {
+	if err := rocket.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
+		return fmt.Errorf("config unmarshal %s. %w", path, err)
+	}
+	return nil
 }

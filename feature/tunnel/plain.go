@@ -18,33 +18,33 @@ var (
 )
 
 type HttpPlain struct {
-	hook rocket.TunnelHook
 	auth rocket.Authentication
-	ctx  context.Context
-	done context.CancelFunc
+	src  net.Address
 	dest net.Address
 	r    *http.Request
 	w    http.ResponseWriter
+	ctx  context.Context
+	done context.CancelFunc
 }
 
 func NewHttpPlain(
 	w http.ResponseWriter, r *http.Request, dest net.Address,
 	auth rocket.Authentication,
-	hook rocket.TunnelHook,
 ) *HttpPlain {
-	ctx, cancel := context.WithCancel(r.Context())
+	ctx, done := context.WithCancel(r.Context())
 	return &HttpPlain{
-		hook: hook,
 		auth: auth,
+		src:  auth.Source,
 		dest: dest,
 		r:    r,
 		w:    w,
 		ctx:  ctx,
-		done: cancel,
+		done: done,
 	}
 }
 
 func (h *HttpPlain) Connect(connector rocket.Connection) {
+	defer h.done()
 	transport := http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (stdnet.Conn, error) {
 			return connector.Conn(), nil
@@ -66,12 +66,11 @@ func (h *HttpPlain) Connect(connector rocket.Connection) {
 		}
 	}
 	h.w.WriteHeader(resp.StatusCode)
-	var writer io.Writer = h.w
-	if len(resp.TransferEncoding) > 0 && strings.EqualFold(resp.TransferEncoding[0], "chunked") {
-		writer = httpChunkWriter{Writer: h.w}
-	}
-	defer h.done()
-	if resp.Body == nil {
+	if resp.Body != nil {
+		var writer io.Writer = h.w
+		if len(resp.TransferEncoding) > 0 && strings.EqualFold(resp.TransferEncoding[0], "chunked") {
+			writer = httpChunkWriter{Writer: h.w}
+		}
 		if err := helper.Copier(resp.Body, writer); err != nil {
 			logrus.Errorf("Failed to copy response body: %v", err)
 		}
@@ -91,12 +90,12 @@ func (h *HttpPlain) Destination() net.Address {
 	return h.dest
 }
 
-func (h *HttpPlain) Authentication() rocket.Authentication {
-	return h.auth
+func (h *HttpPlain) Source() net.Address {
+	return h.auth.Source
 }
 
-func (h *HttpPlain) Hook() rocket.TunnelHook {
-	return h.hook
+func (h *HttpPlain) Authentication() rocket.Authentication {
+	return h.auth
 }
 
 ////

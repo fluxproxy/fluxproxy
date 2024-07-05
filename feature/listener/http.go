@@ -11,6 +11,7 @@ import (
 	"github.com/rocket-proxy/rocket-proxy/internal"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
+	"io"
 	stdnet "net"
 	"net/http"
 	"strconv"
@@ -70,14 +71,13 @@ func (l *HttpListener) newServeHandler(dispatcher rocket.Dispatcher) http.Handle
 }
 
 func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Request, dispatcher rocket.Dispatcher) {
-	connCtx := r.Context()
 	// Hijacker
 	hijacker, ok := rw.(http.Hijacker)
 	assert.MustTrue(ok, "http: not support hijack")
 	hiConn, _, hijErr := hijacker.Hijack()
 	if hijErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
-		rocket.Logger(connCtx).Error("http: not support hijack")
+		rocket.Logger(r.Context()).Error("http: not support hijack")
 		return
 	}
 	defer helper.Close(hiConn)
@@ -88,20 +88,10 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 
 	removeHopByHopHeaders(r.Header)
 
-	hook := rocket.TunnelHook{
-		OnAuth: func(ctx context.Context, err error) error {
-			return nil
-		},
-		OnDial: func(context.Context) error {
-			_, err := hiConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-			if err != nil {
-				return fmt.Errorf("http send response. %w", err)
-			}
-			return nil
-		},
-	}
+	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, newConnEstablishedHook(hiConn))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, newUnauthorizedHook(hiConn))
 
-	stream := tunnel.NewConnStream(connCtx, hiConn, destAddr, auth, hook)
+	stream := tunnel.NewConnStream(connCtx, hiConn, destAddr, auth)
 	defer helper.Close(stream)
 	dispatcher.Submit(stream)
 
@@ -127,24 +117,38 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 
 	removeHopByHopHeaders(r.Header)
 
-	hook := rocket.TunnelHook{
-		OnAuth: func(ctx context.Context, err error) error {
-			return nil
-		},
-		OnDial: func(context.Context) error {
-			_, err := rw.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
-			if err != nil {
-				return fmt.Errorf("http send response. %w", err)
-			}
-			return nil
-		},
-	}
+	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, newConnEstablishedHook(rw))
+	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, newUnauthorizedHook(rw))
 
-	plain := tunnel.NewHttpPlain(rw, r, destAddr, auth, hook)
+	plain := tunnel.NewHttpPlain(rw, r.WithContext(connCtx), destAddr, auth)
 	defer helper.Close(plain)
 	dispatcher.Submit(plain)
 
 	<-plain.Context().Done()
+}
+
+func newUnauthorizedHook(w io.Writer) rocket.HookFunc {
+	return func(ctx context.Context, state error, _ ...any) error {
+		if state == nil {
+			return nil
+		}
+		rocket.Logger(ctx).Errorf("http: conn auth: %s", state)
+		_, err := w.Write([]byte("HTTP/1.1 401 Unauthorized\r\n\r\n"))
+		if err != nil {
+			return fmt.Errorf("http send response. %w", err)
+		}
+		return nil
+	}
+}
+
+func newConnEstablishedHook(w io.Writer) rocket.HookFunc {
+	return func(_ context.Context, _ error, _ ...any) error {
+		_, err := w.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+		if err != nil {
+			return fmt.Errorf("http send response. %w", err)
+		}
+		return nil
+	}
 }
 
 func removeHopByHopHeaders(header http.Header) {

@@ -57,14 +57,14 @@ type Tunnel interface {
 	// Destination 返回目标服务器的地址
 	Destination() net.Address
 
+	// Source 返回源客户端的地址
+	// Source() net.Address
+
 	// Authentication 返回源客户端的身份认证信息
 	Authentication() Authentication
 
 	// Connect 连接到目标服务器
 	Connect(remote Connection)
-
-	// Hook 返回通道Hook函数
-	Hook() TunnelHook
 
 	// Context 返回通道的 Context
 	Context() context.Context
@@ -86,4 +86,4 @@ type Authenticator interface {
 
 //// Hook func
 
-type HookFunc func(ctx context.Context) error
+type HookFunc func(ctx context.Context, s error, v ...any) error

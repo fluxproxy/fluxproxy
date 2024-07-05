@@ -6,6 +6,7 @@ import (
 	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/feature/dialer"
 	"github.com/rocket-proxy/rocket-proxy/helper"
+	"github.com/rocket-proxy/rocket-proxy/internal"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -56,7 +57,15 @@ func (d *Dispatcher) Submit(s rocket.Tunnel) {
 func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 	defer helper.Close(local)
 	destAddr := local.Destination()
+
 	// TODO 身份认证
+	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterAuthed); ok {
+		if hErr := hook(local.Context(), nil); hErr != nil {
+			rocket.Logger(local.Context()).Errorf("dispatcher: hook:auth: %s", hErr)
+			return
+		}
+	}
+
 	remote, dErr := d.lookup(destAddr).Dial(local.Context(), destAddr)
 	if dErr != nil {
 		rocket.Logger(local.Context()).Errorf("dispatcher: dial: %s", dErr)
@@ -64,10 +73,11 @@ func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 	}
 	defer helper.Close(remote)
 
-	// call hook
-	if hErr := local.Hook().OnDial(local.Context()); hErr != nil {
-		rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
-		return
+	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterDialed); ok {
+		if hErr := hook(local.Context(), nil); hErr != nil {
+			rocket.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
+			return
+		}
 	}
 
 	// connect

@@ -10,10 +10,15 @@ import (
 func SetupTcpContextLogger(ctx context.Context, conn net.Conn) context.Context {
 	id, _ := uuid.GenerateUUID()
 	remoteAddr := conn.RemoteAddr()
-	return rocket.SetContextLogID(ctx, id, remoteAddr.String())
+	return setContextLogID(ctx, id, remoteAddr.String())
 }
 
 func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Context {
 	id, _ := uuid.GenerateUUID()
-	return rocket.SetContextLogID(ctx, id, conn.String())
+	return setContextLogID(ctx, id, conn.String())
+}
+
+func setContextLogID(ctx context.Context, id string, source string) context.Context {
+	ctx = context.WithValue(ctx, rocket.CtxKeyID, id)
+	return context.WithValue(ctx, rocket.CtxKeySource, source)
 }
