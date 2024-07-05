@@ -2,19 +2,9 @@ package app
 
 import (
 	"context"
-	"fmt"
-	"github.com/knadh/koanf/v2"
-	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/net"
 	stdnet "net"
 )
-
-func unmarshalWith(ctx context.Context, path string, out any) error {
-	if err := rocket.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
-		return fmt.Errorf("config unmarshal %s. %w", path, err)
-	}
-	return nil
-}
 
 func loadLocalAddrs(ctx context.Context) []net.Address {
 	locals := make([]net.Address, 0)

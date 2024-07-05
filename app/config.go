@@ -1,5 +1,12 @@
 package app
 
+import (
+	"context"
+	"fmt"
+	"github.com/knadh/koanf/v2"
+	"github.com/rocket-proxy/rocket-proxy"
+)
+
 const (
 	configPathAuthenticator = "authenticator"
 	configPathResolver      = "resolver"
@@ -8,6 +15,13 @@ const (
 	configPathServerHttp    = "server.http"
 	configPathServerSocks   = "server.socks"
 )
+
+func unmarshalWith(ctx context.Context, path string, out any) error {
+	if err := rocket.Configer(ctx).UnmarshalWithConf(path, out, koanf.UnmarshalConf{Tag: "yaml"}); err != nil {
+		return fmt.Errorf("config unmarshal %s. %w", path, err)
+	}
+	return nil
+}
 
 ////
 

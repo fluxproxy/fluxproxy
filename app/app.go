@@ -204,6 +204,7 @@ func (a *App) initRuleset(runCtx context.Context) {
 		}
 		return ruleset.NewIPNet(strings.EqualFold(rule.Access, "allow"), strings.EqualFold(rule.Origin, "source"), nets)
 	}
+	// 第二优先级：其它规则
 	for _, itemConfig := range config {
 		switch strings.ToLower(itemConfig.Type) {
 		case "ipnet":
