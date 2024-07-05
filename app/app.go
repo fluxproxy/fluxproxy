@@ -29,6 +29,9 @@ type App struct {
 	listeners  []rocket.Listener
 	dispatcher rocket.Dispatcher
 	await      sync.WaitGroup
+	// shared config
+	authConfig   AuthenticatorConfig
+	serverConfig ServerConfig
 }
 
 func NewApp() *App {
@@ -38,27 +41,30 @@ func NewApp() *App {
 }
 
 func (a *App) Init(runCtx context.Context, cmdMode string) error {
-	// Server mode
-	var serverConfig ServerConfig
-	if err := unmarshalWith(runCtx, configPathServer, &serverConfig); err != nil {
+	// Shared config
+	if err := unmarshalWith(runCtx, configPathServer, &a.serverConfig); err != nil {
 		return err
 	}
-	if err := a.checkServerMode(serverConfig.Mode); err != nil {
+	if err := unmarshalWith(runCtx, configPathAuthenticator, &a.authConfig); err != nil {
+		return err
+	}
+	// Server mode
+	if err := a.checkServerMode(a.serverConfig.Mode); err != nil {
 		return fmt.Errorf("inst: %w", err)
 	}
 	forceChanged := false
 	if cmdMode != RunServerModeAuto {
-		forceChanged = serverConfig.Mode != cmdMode
-		serverConfig.Mode = cmdMode
+		forceChanged = a.serverConfig.Mode != cmdMode
+		a.serverConfig.Mode = cmdMode
 	}
 	if forceChanged {
-		logrus.Infof("inst: server mode: %s (force changed by command)", serverConfig.Mode)
+		logrus.Infof("inst: server mode: %s (force changed by command)", a.serverConfig.Mode)
 	} else {
-		logrus.Infof("inst: server mode: %s", serverConfig.Mode)
+		logrus.Infof("inst: server mode: %s", a.serverConfig.Mode)
 	}
 	// Dispatcher
 	a.dispatcher = feature.NewDispatcher(feature.DispatcherOptions{
-		Verbose: serverConfig.Verbose,
+		Verbose: a.serverConfig.Verbose,
 	})
 	if err := a.dispatcher.Init(runCtx); err != nil {
 		return fmt.Errorf("inst: dispacher: %w", err)
@@ -70,14 +76,14 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 	// Ruleset
 	a.initRuleset(runCtx)
 	// Http listener
-	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
-		if err := a.initHttpListener(runCtx, serverConfig); err != nil {
+	if helper.ContainsAny(a.serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
+		if err := a.initHttpListener(runCtx); err != nil {
 			return err
 		}
 	}
 	// Socks listener
-	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeSocks) {
-		if err := a.initSocksListener(runCtx, serverConfig); err != nil {
+	if helper.ContainsAny(a.serverConfig.Mode, RunServerModeAuto, RunServerModeSocks) {
+		if err := a.initSocksListener(runCtx); err != nil {
 			return err
 		}
 	}
@@ -126,7 +132,7 @@ func (a *App) term(err error) error {
 	return err
 }
 
-func (a *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig) error {
+func (a *App) initHttpListener(runCtx context.Context) error {
 	var httpConfig HttpConfig
 	if err := unmarshalWith(runCtx, configPathServerHttp, &httpConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal http config. %w", err)
@@ -141,19 +147,17 @@ func (a *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig
 	if httpConfig.Bind == "" {
 		httpConfig.Bind = "0.0.0.0"
 	}
-	var auth AuthenticatorConfig
-	_ = unmarshalWith(runCtx, configPathAuthenticator, &auth)
 	httpListener := listener.NewHttpListener(rocket.ListenerOptions{
 		Address: httpConfig.Bind,
 		Port:    httpConfig.Port,
-		Verbose: serverConfig.Verbose,
-		Auth:    auth.Enabled,
+		Verbose: a.serverConfig.Verbose,
+		Auth:    a.authConfig.Enabled,
 	}, listener.HttpOptions{})
 	a.listeners = append(a.listeners, httpListener)
 	return httpListener.Init(runCtx)
 }
 
-func (a *App) initSocksListener(runCtx context.Context, serverConfig ServerConfig) error {
+func (a *App) initSocksListener(runCtx context.Context) error {
 	var socksConfig SocksConfig
 	if err := unmarshalWith(runCtx, configPathServerSocks, &socksConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal socks config. %w", err)
@@ -168,13 +172,11 @@ func (a *App) initSocksListener(runCtx context.Context, serverConfig ServerConfi
 	if socksConfig.Bind == "" {
 		socksConfig.Bind = "0.0.0.0"
 	}
-	var auth AuthenticatorConfig
-	_ = unmarshalWith(runCtx, configPathAuthenticator, &auth)
 	socksListener := listener.NewSocksListener(rocket.ListenerOptions{
 		Address: socksConfig.Bind,
 		Port:    socksConfig.Port,
-		Verbose: serverConfig.Verbose,
-		Auth:    auth.Enabled,
+		Verbose: a.serverConfig.Verbose,
+		Auth:    a.authConfig.Enabled,
 	}, listener.SocksOptions{})
 	a.listeners = append(a.listeners, socksListener)
 	return socksListener.Init(runCtx)
@@ -208,14 +210,12 @@ func (a *App) initResolver(runCtx context.Context) {
 }
 
 func (a *App) initAuthenticator(runCtx context.Context) {
-	var config AuthenticatorConfig
-	_ = unmarshalWith(runCtx, configPathAuthenticator, &config)
-	if !config.Enabled {
+	if !a.authConfig.Enabled {
 		return
 	}
 	dispatcher := a.dispatcher.(*feature.Dispatcher)
 	// Basic
-	basic := authenticator.NewUsersAuthenticator(config.Basic)
+	basic := authenticator.NewUsersAuthenticator(a.authConfig.Basic)
 	dispatcher.RegisterAuthenticator(rocket.AuthenticateBasic, basic)
 }
 
