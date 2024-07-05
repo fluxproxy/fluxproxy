@@ -13,14 +13,14 @@ var (
 )
 
 func SetupTcpContextLogger(ctx context.Context, conn net.Conn) context.Context {
-	id := shortuuid.New()
-	remoteAddr := conn.RemoteAddr()
-	return setContextLogID(ctx, id, remoteAddr.String())
+	remoteAddr := conn.RemoteAddr().String()
+	id := shortuuid.NewWithNamespace(remoteAddr)
+	return setContextLogID(ctx, id, remoteAddr)
 }
 
 func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Context {
-	id := shortuuid.New()
 	remoteAddr := conn.String()
+	id := shortuuid.NewWithNamespace(remoteAddr)
 	return setContextLogID(ctx, id, remoteAddr)
 }
 
