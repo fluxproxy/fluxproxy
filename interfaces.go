@@ -71,6 +71,11 @@ type Dialer interface {
 	Dial(ctx context.Context, remote net.Address) (Connection, error)
 }
 
+// Resolver 域名解析器
+type Resolver interface {
+	Resolve(ctx context.Context, addr net.Address) (stdnet.IP, error)
+}
+
 // Authenticator 身份认证
 type Authenticator interface {
 	Authenticate(context.Context, Authentication) (context.Context, error)

@@ -9,10 +9,12 @@ import (
 	"github.com/rocket-proxy/rocket-proxy/feature"
 	"github.com/rocket-proxy/rocket-proxy/feature/listener"
 	"github.com/rocket-proxy/rocket-proxy/helper"
+	"github.com/rocket-proxy/rocket-proxy/net"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -33,13 +35,13 @@ func NewApp() *App {
 	}
 }
 
-func (i *App) Init(runCtx context.Context, cmdMode string) error {
+func (a *App) Init(runCtx context.Context, cmdMode string) error {
 	// Server mode
 	var serverConfig ServerConfig
 	if err := unmarshalWith(runCtx, configPathServer, &serverConfig); err != nil {
 		return err
 	}
-	if err := i.checkServerMode(serverConfig.Mode); err != nil {
+	if err := a.checkServerMode(serverConfig.Mode); err != nil {
 		return fmt.Errorf("inst: %w", err)
 	}
 	forceChanged := false
@@ -52,40 +54,43 @@ func (i *App) Init(runCtx context.Context, cmdMode string) error {
 	} else {
 		logrus.Infof("inst: server mode: %s", serverConfig.Mode)
 	}
+	// Resolver
+	a.initResolver(runCtx)
+
 	// Dispatcher
-	i.dispatcher = feature.NewDispatcher()
-	if err := i.dispatcher.Init(runCtx); err != nil {
+	a.dispatcher = feature.NewDispatcher()
+	if err := a.dispatcher.Init(runCtx); err != nil {
 		return fmt.Errorf("inst: dispacher: %w", err)
 	}
 	// Http listener
 	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
-		if err := i.initHttpListener(runCtx, serverConfig); err != nil {
+		if err := a.initHttpListener(runCtx, serverConfig); err != nil {
 			return err
 		}
 	}
 	// Socks listener
 
 	// 初始化服务
-	if len(i.listeners) == 0 {
+	if len(a.listeners) == 0 {
 		return fmt.Errorf("inst: no available listeners")
 	}
 	return nil
 }
 
-func (i *App) Serve(runCtx context.Context) error {
+func (a *App) Serve(runCtx context.Context) error {
 	servCtx, servCancel := context.WithCancel(runCtx)
 	defer servCancel()
 
-	servErrors := make(chan error, len(i.listeners)+1)
+	servErrors := make(chan error, len(a.listeners)+1)
 	// Dispatcher
 	go func() {
-		servErrors <- i.dispatcher.Serve(servCtx)
+		servErrors <- a.dispatcher.Serve(servCtx)
 	}()
 	// Listeners
-	for _, srv := range i.listeners {
-		i.await.Add(1)
+	for _, srv := range a.listeners {
+		a.await.Add(1)
 		go func(lis rocket.Listener) {
-			if err := lis.Listen(servCtx, i.dispatcher);
+			if err := lis.Listen(servCtx, a.dispatcher);
 				err == nil ||
 					errors.Is(err, context.Canceled) ||
 					errors.Is(err, http.ErrServerClosed) {
@@ -93,25 +98,25 @@ func (i *App) Serve(runCtx context.Context) error {
 			} else {
 				servErrors <- err
 			}
-			i.await.Done()
+			a.await.Done()
 		}(srv)
 	}
 	select {
 	case err := <-servErrors:
 		servCancel()
-		return i.term(err)
+		return a.term(err)
 	case <-runCtx.Done():
 		servCancel()
-		return i.term(nil)
+		return a.term(nil)
 	}
 }
 
-func (i *App) term(err error) error {
-	i.await.Wait()
+func (a *App) term(err error) error {
+	a.await.Wait()
 	return err
 }
 
-func (i *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig) error {
+func (a *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig) error {
 	var httpConfig HttpConfig
 	if err := unmarshalWith(runCtx, configPathHttp, &httpConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal http config. %w", err)
@@ -126,11 +131,38 @@ func (i *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig
 	}, listener.HttpOptions{
 		Verbose: serverConfig.Verbose,
 	})
-	i.listeners = append(i.listeners, inst)
+	a.listeners = append(a.listeners, inst)
 	return inst.Init(runCtx)
 }
 
-func (i *App) checkServerMode(mode string) error {
+func (a *App) initResolver(runCtx context.Context) {
+	var config ResolverConfig
+	_ = unmarshalWith(runCtx, configPathResolver, &config)
+	if config.CacheSize <= 0 {
+		config.CacheSize = 1024 * 10
+	}
+	if config.CacheTTL <= 0 {
+		config.CacheTTL = 60
+	}
+	inst := feature.InitResolverWith(feature.Options{
+		CacheSize: config.CacheSize,
+		CacheTTL:  time.Duration(config.CacheTTL) * time.Second,
+		Hosts:     config.Hosts,
+	})
+	// prepare
+	for name, userIP := range config.Hosts {
+		rAddr, err := net.ParseAddress(net.NetworkTCP, userIP+":80")
+		if err != nil {
+			logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, userIP)
+		} else if rAddr.IsIP() {
+			inst.Set(name, rAddr.IP)
+		} else {
+			logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, userIP)
+		}
+	}
+}
+
+func (a *App) checkServerMode(mode string) error {
 	switch strings.ToLower(mode) {
 	case RunServerModeAuto, RunServerModeHttp, RunServerModeSocks:
 		return nil

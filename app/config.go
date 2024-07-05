@@ -1,9 +1,10 @@
 package app
 
 const (
-	configPathServer = "server"
-	configPathHttp   = "server.http"
-	configPathSocks  = "server.socks"
+	configPathResolver = "resolver"
+	configPathServer   = "server"
+	configPathHttp     = "server.http"
+	configPathSocks    = "server.socks"
 )
 
 ////
@@ -39,4 +40,12 @@ type SocksConfig struct {
 	Bind     string          `yaml:"bind"`
 	Port     int             `yaml:"port"`
 	Auth     SocksAuthConfig `yaml:"auth"`
+}
+
+////
+
+type ResolverConfig struct {
+	CacheSize int               `yaml:"cache_size"`
+	CacheTTL  int               `yaml:"cache_ttl"`
+	Hosts     map[string]string `yaml:"hosts"`
 }

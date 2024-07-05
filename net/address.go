@@ -38,6 +38,19 @@ func (a Address) Addrport() string {
 	}
 }
 
+func (a Address) Addr() string {
+	switch a.Family {
+	case AddressFamilyDomain:
+		return a.Domain
+	case AddressFamilyIPv6:
+		return "[" + a.IP.String() + "]"
+	case AddressFamilyIPv4:
+		fallthrough
+	default:
+		return a.IP.String()
+	}
+}
+
 func (a Address) String() string {
 	return a.Network.String() + "://" + a.Addrport()
 }
@@ -48,6 +61,13 @@ func (a Address) IsIP() bool {
 
 func (a Address) IsDomain() bool {
 	return a.Family == AddressFamilyDomain
+}
+
+func ToAddressFamily(ip net.IP) AddressFamily {
+	if ip.To4() != nil {
+		return AddressFamilyIPv4
+	}
+	return AddressFamilyIPv6
 }
 
 ////
