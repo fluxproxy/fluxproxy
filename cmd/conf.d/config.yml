@@ -35,7 +35,7 @@ server:
 authenticator:
   # 启用认证功能。默认为关闭认证，即允许任何客户端无认证连接。
   # 你需要将enabled设置为true来启用认证，同时需要设置认证方式。
-  enabled: true
+  enabled: false
 
   # 认证用户列表
   basic:
