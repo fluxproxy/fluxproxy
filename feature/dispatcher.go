@@ -80,8 +80,9 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 	defer helper.Close(local)
 
 	// Authenticate
-	assert.MustTrue(local.Authentication().Authenticate != rocket.AuthenticateAllow, "authenticate is invalid")
-	auErr := d.lookupAuthenticator(local.Authentication()).Authenticate(local.Context(), local.Authentication())
+	authentication := local.Authentication()
+	assert.MustTrue(authentication.Authenticate != rocket.AuthenticateAllow, "authenticate is invalid")
+	auErr := d.lookupAuthenticator(authentication).Authenticate(local.Context(), authentication)
 	// Hook: authed
 	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterAuthed); ok {
 		if hErr := hook(local.Context(), auErr); hErr != nil {

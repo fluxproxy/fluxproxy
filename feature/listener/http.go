@@ -94,7 +94,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	assert.MustTrue(ok, "http: not support hijack")
 	hiConn, _, hiErr := hijacker.Hijack()
 	if hiErr != nil {
-		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
+		rw.WriteHeader(http.StatusBadGateway)
 		rocket.Logger(r.Context()).Error("http: not support hijack")
 		return
 	}
@@ -103,14 +103,15 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	srcAddr := parseRemoteAddress(r.RemoteAddr)
 	destAddr := l.parseHostAddress(r.Host)
 	auth := l.parseProxyAuthorization(r.Header, srcAddr)
-
-	l.removeHopByHopHeaders(r.Header)
-
-	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, l.newEstablishedHook(hiConn))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, l.newUnauthorizedHook(hiConn))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, l.newRulesetHook(hiConn))
-
-	stream := tunnel.NewConnStream(connCtx, hiConn, destAddr, auth)
+	provider := func(_ context.Context) rocket.Authentication {
+		return auth
+	}
+	ctx := internal.ContextWithHooks(r.Context(), map[any]rocket.HookFunc{
+		internal.CtxHookAfterRuleset: l.withRulesetHook(hiConn),
+		internal.CtxHookAfterAuthed:  l.withAuthorizedHook(hiConn, r),
+		internal.CtxHookAfterDialed:  l.withEstablishedHook(hiConn, r),
+	})
+	stream := tunnel.NewConnStream(ctx, hiConn, destAddr, srcAddr, provider)
 	defer helper.Close(stream)
 	dispatcher.Submit(stream)
 
@@ -124,31 +125,31 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 		return
 	}
 	defer helper.Close(r.Body)
-
-	// Prevent UA from being set to golang's default ones
+	// Prevent UA
 	if r.Header.Get("User-Agent") == "" {
 		r.Header.Set("User-Agent", "")
 	}
-
 	srcAddr := parseRemoteAddress(r.RemoteAddr)
 	destAddr := l.parseHostAddress(r.Host)
 	auth := l.parseProxyAuthorization(r.Header, srcAddr)
-
-	l.removeHopByHopHeaders(r.Header)
-
-	connCtx := internal.ContextWithHook(r.Context(), internal.CtxHookAfterDialed, l.newEstablishedHook(rw))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterAuthed, l.newUnauthorizedHook(rw))
-	connCtx = internal.ContextWithHook(connCtx, internal.CtxHookAfterRuleset, l.newRulesetHook(rw))
-
-	plain := tunnel.NewHttpPlain(rw, r.WithContext(connCtx), destAddr, auth)
+	provider := func(_ context.Context) rocket.Authentication {
+		return auth
+	}
+	ctx := internal.ContextWithHooks(r.Context(), map[any]rocket.HookFunc{
+		internal.CtxHookAfterRuleset: l.withRulesetHook(rw),
+		internal.CtxHookAfterAuthed:  l.withAuthorizedHook(rw, r),
+		internal.CtxHookAfterDialed:  l.withEstablishedHook(rw, r),
+	})
+	plain := tunnel.NewHttpPlain(rw, r.WithContext(ctx), destAddr, srcAddr, provider)
 	defer helper.Close(plain)
 	dispatcher.Submit(plain)
 
 	<-plain.Context().Done()
 }
 
-func (*HttpListener) newUnauthorizedHook(w io.Writer) rocket.HookFunc {
+func (l *HttpListener) withAuthorizedHook(w io.Writer, r *http.Request) rocket.HookFunc {
 	return func(ctx context.Context, state error, _ ...any) error {
+		defer l.removeHopByHopHeaders(r.Header)
 		if state == nil {
 			return nil
 		}
@@ -165,7 +166,7 @@ func (*HttpListener) newUnauthorizedHook(w io.Writer) rocket.HookFunc {
 	}
 }
 
-func (*HttpListener) newRulesetHook(w io.Writer) rocket.HookFunc {
+func (*HttpListener) withRulesetHook(w io.Writer) rocket.HookFunc {
 	return func(ctx context.Context, state error, _ ...any) error {
 		if state == nil || errors.Is(state, rocket.ErrNoRulesetMatched) {
 			return nil
@@ -183,7 +184,7 @@ func (*HttpListener) newRulesetHook(w io.Writer) rocket.HookFunc {
 	}
 }
 
-func (*HttpListener) newEstablishedHook(w io.Writer) rocket.HookFunc {
+func (*HttpListener) withEstablishedHook(w io.Writer, r *http.Request) rocket.HookFunc {
 	return func(_ context.Context, _ error, _ ...any) error {
 		if rw, ok := w.(http.ResponseWriter); ok {
 			rw.WriteHeader(http.StatusOK)

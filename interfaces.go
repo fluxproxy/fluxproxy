@@ -93,5 +93,7 @@ type Ruleset interface {
 	Allow(context.Context, Permit) error
 }
 
+type AuthenticationProvideFunc func(ctx context.Context) Authentication
+
 // HookFunc 注册到Context中的Hook函数
 type HookFunc func(ctx context.Context, s error, v ...any) error
