@@ -44,14 +44,14 @@ enabled = false
 user1 = "rocket-proxy"
 
 
-# 域名 DNS 解析 Resolver 配置
+# 域名解析配置
 [resolver]
 # 缓存大小
 cache_size = 10000
 # 缓存时长，单位：分钟
 cache_ttl = 60
 
-# 指定域名解析 IP地址
+# 将指定域名解析 IP 地址
 [resolver.hosts]
 "fake.domain.com" = "127.0.0.1"
 
