@@ -23,6 +23,20 @@ func init() {
 	goes.SetPanicHandler(func(ctx context.Context, r interface{}) {
 		logrus.Errorf("goroutine panic %v: %s", r, debug.Stack())
 	})
+	logrus.SetReportCaller(false)
+	logrus.SetFormatter(&logrus.TextFormatter{
+		DisableColors:    false,
+		DisableTimestamp: false,
+		FullTimestamp:    true,
+		SortingFunc: func(fields []string) {
+			for i, f := range fields {
+				if f == "id" {
+					fields[i], fields[0] = fields[0], fields[i]
+					break
+				}
+			}
+		},
+	})
 }
 
 func RunAsMode(runCtx context.Context, args []string, cmdMode string) error {
@@ -33,17 +47,7 @@ func RunAsMode(runCtx context.Context, args []string, cmdMode string) error {
 	if err := k.Load(file.Provider(confpath), yaml.Parser()); err != nil {
 		return fmt.Errorf("main: load config: %s. %w", confpath, err)
 	}
-	switch k.String("log.format") {
-	case "json":
-		logrus.SetFormatter(&logrus.JSONFormatter{})
-	default:
-		logrus.SetFormatter(&logrus.TextFormatter{
-			DisableColors:    false,
-			DisableTimestamp: false,
-			FullTimestamp:    true,
-		})
-	}
-	logrus.SetReportCaller(false)
+
 	logrus.Infof("main: load: %s", confpath)
 	// App
 	runCtx = context.WithValue(runCtx, rocket.CtxKeyConfiger, k)

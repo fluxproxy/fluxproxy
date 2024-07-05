@@ -21,14 +21,20 @@ var (
 	_ rocket.Dispatcher = (*Dispatcher)(nil)
 )
 
+type DispatcherOptions struct {
+	Verbose bool
+}
+
 type Dispatcher struct {
+	opts          DispatcherOptions
 	tunnels       chan rocket.Tunnel
 	dialer        map[string]rocket.Dialer
 	authenticator map[string]rocket.Authenticator
 }
 
-func NewDispatcher() *Dispatcher {
+func NewDispatcher(opts DispatcherOptions) *Dispatcher {
 	return &Dispatcher{
+		opts:    opts,
 		tunnels: make(chan rocket.Tunnel, math.MaxInt32),
 	}
 }
@@ -122,6 +128,11 @@ func (d *Dispatcher) handle(local rocket.Tunnel) {
 	}
 
 	// Dial
+	if d.opts.Verbose {
+		rocket.Logger(local.Context()).
+			WithField("ip", destIPAddr.String()).
+			Infof("dispatcher: DIAL")
+	}
 	remote, dlErr := d.lookupDialer(destAddr).Dial(local.Context(), net.Address{
 		Network: destAddr.Network,
 		Family:  net.ToAddressFamily(destIPAddr),

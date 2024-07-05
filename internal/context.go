@@ -2,7 +2,7 @@ package internal
 
 import (
 	"context"
-	"github.com/hashicorp/go-uuid"
+	"github.com/lithammer/shortuuid/v4"
 	"github.com/rocket-proxy/rocket-proxy"
 	"net"
 	"time"
@@ -13,14 +13,15 @@ var (
 )
 
 func SetupTcpContextLogger(ctx context.Context, conn net.Conn) context.Context {
-	id, _ := uuid.GenerateUUID()
+	id := shortuuid.New()
 	remoteAddr := conn.RemoteAddr()
 	return setContextLogID(ctx, id, remoteAddr.String())
 }
 
 func SetupUdpContextLogger(ctx context.Context, conn *net.UDPAddr) context.Context {
-	id, _ := uuid.GenerateUUID()
-	return setContextLogID(ctx, id, conn.String())
+	id := shortuuid.New()
+	remoteAddr := conn.String()
+	return setContextLogID(ctx, id, remoteAddr)
 }
 
 func setContextLogID(ctx context.Context, id string, source string) context.Context {

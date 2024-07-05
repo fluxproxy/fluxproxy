@@ -111,10 +111,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	dispatcher.Submit(stream)
 
 	if l.listenerOpts.Verbose {
-		rocket.Logger(r.Context()).
-			WithField("dest", r.Host).
-			WithField("rdest", destAddr.String()).
-			Infof("http: %s", r.Method)
+		rocket.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
 	}
 }
 
@@ -151,10 +148,7 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 	dispatcher.Submit(plain)
 
 	if l.listenerOpts.Verbose {
-		rocket.Logger(r.Context()).
-			WithField("dest", r.Host).
-			WithField("rdest", destAddr.String()).
-			Infof("http: %s", r.Method)
+		rocket.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
 	}
 }
 

@@ -57,7 +57,9 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 		logrus.Infof("inst: server mode: %s", serverConfig.Mode)
 	}
 	// Dispatcher
-	a.dispatcher = feature.NewDispatcher()
+	a.dispatcher = feature.NewDispatcher(feature.DispatcherOptions{
+		Verbose: serverConfig.Verbose,
+	})
 	if err := a.dispatcher.Init(runCtx); err != nil {
 		return fmt.Errorf("inst: dispacher: %w", err)
 	}

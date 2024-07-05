@@ -98,10 +98,7 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher rocket.Dispa
 		dispatcher.Submit(stream)
 
 		if l.listenerOpts.Verbose {
-			rocket.Logger(connCtx).
-				WithField("dest", request.DstAddr.String()).
-				WithField("rdest", destAddr.String()).
-				Infof("socks: CONNECT")
+			rocket.Logger(connCtx).WithField("dest", request.DstAddr.String()).Infof("socks: CONN")
 		}
 
 	})
