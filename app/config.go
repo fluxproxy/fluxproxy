@@ -9,7 +9,8 @@ const (
 ////
 
 type ServerConfig struct {
-	Mode string `yaml:"mode"`
+	Mode    string `yaml:"mode"`
+	Verbose bool   `yaml:"verbose"`
 }
 
 ////

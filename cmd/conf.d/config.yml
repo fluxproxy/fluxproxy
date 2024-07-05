@@ -6,6 +6,9 @@ server:
   # - socks 仅socks代理模式
   mode: "auto"
 
+  # 显示更详细日志
+  verbose: true
+
   # Http 代理服务配置
   http:
     # 禁用Http代理(默认启用）

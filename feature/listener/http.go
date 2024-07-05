@@ -16,19 +16,26 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
 	_ rocket.Listener = (*HttpListener)(nil)
 )
 
+type HttpOptions struct {
+	Verbose bool
+}
+
 type HttpListener struct {
+	opts         HttpOptions
 	listenerOpts rocket.ListenerOptions
 }
 
-func NewHttpListener(opts rocket.ListenerOptions) *HttpListener {
+func NewHttpListener(listenerOpts rocket.ListenerOptions, httpOpts HttpOptions) *HttpListener {
 	return &HttpListener{
-		listenerOpts: opts,
+		listenerOpts: listenerOpts,
+		opts:         httpOpts,
 	}
 }
 
@@ -61,7 +68,17 @@ func (l *HttpListener) Listen(serveCtx context.Context, dispatcher rocket.Dispat
 
 func (l *HttpListener) newServeHandler(dispatcher rocket.Dispatcher) http.HandlerFunc {
 	return func(rw http.ResponseWriter, r *http.Request) {
-		logrus.Infof("http: %s %s", r.Method, r.RequestURI)
+		defer func(start time.Time) {
+			rocket.Logger(r.Context()).
+				WithField("dest", r.RequestURI).
+				WithField("duration", time.Since(start)).
+				Info("http: FINISH")
+		}(time.Now())
+		if l.opts.Verbose {
+			rocket.Logger(r.Context()).
+				WithField("dest", r.RequestURI).
+				Infof("http: %s", r.Method)
+		}
 		if r.Method == http.MethodConnect {
 			l.handleConnectStream(rw, r, dispatcher)
 		} else {
@@ -74,8 +91,8 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	// Hijacker
 	hijacker, ok := rw.(http.Hijacker)
 	assert.MustTrue(ok, "http: not support hijack")
-	hiConn, _, hijErr := hijacker.Hijack()
-	if hijErr != nil {
+	hiConn, _, hiErr := hijacker.Hijack()
+	if hiErr != nil {
 		_, _ = rw.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		rocket.Logger(r.Context()).Error("http: not support hijack")
 		return

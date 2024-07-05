@@ -2,10 +2,10 @@ package tunnel
 
 import (
 	"context"
+	"fmt"
 	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/helper"
 	"github.com/rocket-proxy/rocket-proxy/net"
-	"github.com/sirupsen/logrus"
 	"io"
 	stdnet "net"
 	"net/http"
@@ -18,33 +18,33 @@ var (
 )
 
 type HttpPlain struct {
-	auth rocket.Authentication
-	src  net.Address
-	dest net.Address
-	r    *http.Request
-	w    http.ResponseWriter
-	ctx  context.Context
-	done context.CancelFunc
+	auth       rocket.Authentication
+	src        net.Address
+	dest       net.Address
+	r          *http.Request
+	w          http.ResponseWriter
+	ctx        context.Context
+	cancelFunc context.CancelFunc
 }
 
 func NewHttpPlain(
 	w http.ResponseWriter, r *http.Request, dest net.Address,
 	auth rocket.Authentication,
 ) *HttpPlain {
-	ctx, done := context.WithCancel(r.Context())
+	ctx, cancel := context.WithCancel(r.Context())
 	return &HttpPlain{
-		auth: auth,
-		src:  auth.Source,
-		dest: dest,
-		r:    r,
-		w:    w,
-		ctx:  ctx,
-		done: done,
+		auth:       auth,
+		src:        auth.Source,
+		dest:       dest,
+		r:          r,
+		w:          w,
+		ctx:        ctx,
+		cancelFunc: cancel,
 	}
 }
 
-func (h *HttpPlain) Connect(connector rocket.Connection) {
-	defer h.done()
+func (h *HttpPlain) Connect(connector rocket.Connection) error {
+	defer h.cancelFunc()
 	transport := http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (stdnet.Conn, error) {
 			return connector.Conn(), nil
@@ -53,9 +53,9 @@ func (h *HttpPlain) Connect(connector rocket.Connection) {
 		IdleConnTimeout:       time.Second * 10,
 		ExpectContinueTimeout: time.Second * 5,
 	}
-	resp, err := transport.RoundTrip(h.r)
-	if err != nil {
-		logrus.Errorf("Failed to connect to rocket-proxy server: %v", err)
+	resp, rtErr := transport.RoundTrip(h.r)
+	if rtErr != nil {
+		return fmt.Errorf("http: roundtrip. %w", rtErr)
 	}
 	defer helper.Close(resp.Body)
 
@@ -71,14 +71,13 @@ func (h *HttpPlain) Connect(connector rocket.Connection) {
 		if len(resp.TransferEncoding) > 0 && strings.EqualFold(resp.TransferEncoding[0], "chunked") {
 			writer = httpChunkWriter{Writer: h.w}
 		}
-		if err := helper.Copier(resp.Body, writer); err != nil {
-			logrus.Errorf("Failed to copy response body: %v", err)
-		}
+		return helper.Copier(resp.Body, writer)
 	}
+	return nil
 }
 
 func (h *HttpPlain) Close() error {
-	h.done()
+	h.cancelFunc()
 	return nil
 }
 

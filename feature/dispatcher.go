@@ -2,6 +2,7 @@ package feature
 
 import (
 	"context"
+	"errors"
 	"github.com/bytepowered/goes"
 	"github.com/rocket-proxy/rocket-proxy"
 	"github.com/rocket-proxy/rocket-proxy/feature/dialer"
@@ -80,10 +81,19 @@ func (d *Dispatcher) handleServer(local rocket.Tunnel) {
 		}
 	}
 
-	// connect
-	local.Connect(remote)
+	tErr := local.Connect(remote)
+	d.onTailError(local.Context(), tErr)
 }
 
 func (d *Dispatcher) lookup(addr net.Address) rocket.Dialer {
 	return d.dialer[dialer.DIRECT]
+}
+
+func (d *Dispatcher) onTailError(connCtx context.Context, tErr error) {
+	if tErr == nil {
+		return
+	}
+	if !helper.IsCopierError(tErr) && !errors.Is(tErr, context.Canceled) {
+		internal.LogTailError(connCtx, "http", tErr)
+	}
 }

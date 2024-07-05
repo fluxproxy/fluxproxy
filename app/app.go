@@ -59,7 +59,7 @@ func (i *App) Init(runCtx context.Context, cmdMode string) error {
 	}
 	// Http listener
 	if helper.ContainsAnyString(serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
-		if err := i.initHttpListener(runCtx); err != nil {
+		if err := i.initHttpListener(runCtx, serverConfig); err != nil {
 			return err
 		}
 	}
@@ -111,7 +111,7 @@ func (i *App) term(err error) error {
 	return err
 }
 
-func (i *App) initHttpListener(runCtx context.Context) error {
+func (i *App) initHttpListener(runCtx context.Context, serverConfig ServerConfig) error {
 	var httpConfig HttpConfig
 	if err := unmarshalWith(runCtx, configPathHttp, &httpConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal http config. %w", err)
@@ -123,6 +123,8 @@ func (i *App) initHttpListener(runCtx context.Context) error {
 	inst := listener.NewHttpListener(rocket.ListenerOptions{
 		Address: httpConfig.Bind,
 		Port:    httpConfig.Port,
+	}, listener.HttpOptions{
+		Verbose: serverConfig.Verbose,
 	})
 	i.listeners = append(i.listeners, inst)
 	return inst.Init(runCtx)
