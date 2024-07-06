@@ -19,10 +19,6 @@ func NewDirectConnection(conn net.Conn) *DirectConnection {
 	return &DirectConnection{conn: conn}
 }
 
-func (d *DirectConnection) ReadWriter() io.ReadWriter {
-	return d.conn
-}
-
 func (d *DirectConnection) Conn() net.Conn {
 	return d.conn
 }
@@ -42,10 +38,6 @@ type RejectConnection struct {
 
 func NewRejectConnection() *RejectConnection {
 	return &RejectConnection{}
-}
-
-func (r *RejectConnection) ReadWriter() io.ReadWriter {
-	return &nopReadWriter{}
 }
 
 func (r *RejectConnection) Conn() net.Conn {

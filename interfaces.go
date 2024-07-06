@@ -27,18 +27,12 @@ type Authentication struct {
 
 // Listener 监听器，监听服务端口，完成与客户端的连接握手。
 type Listener interface {
-	// Init 执行初始化操作
-	Init(ctx context.Context) error
-
 	// Listen 以阻塞态监听服务端，接收客户端连接
 	Listen(ctx context.Context) error
 }
 
 // Dispatcher 管理通道连接请求及路由
 type Dispatcher interface {
-	// Init 执行初始化操作
-	Init(ctx context.Context) error
-
 	// Authenticate 对客户端进行身份认证
 	Authenticate(ctx context.Context, auth Authentication) error
 
@@ -49,10 +43,6 @@ type Dispatcher interface {
 // Connection 表示与目标服务器建立的网络连接
 type Connection interface {
 	io.Closer
-
-	// ReadWriter 返回连接的读写接口
-	ReadWriter() io.ReadWriter
-
 	// Conn 返回建立的连接
 	Conn() stdnet.Conn
 }
@@ -70,6 +60,7 @@ type Connector interface {
 	// Connect 连接到目标服务器
 	Connect(remote Connection) error
 
+	// HookFunc 根据指定 Key 获取 Hook 函数
 	HookFunc(any) (HookFunc, bool)
 
 	// Context 返回通道的 Context

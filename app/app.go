@@ -64,11 +64,13 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 		logrus.Infof("inst: server mode: %s", a.serverConfig.Mode)
 	}
 	// Dispatcher
-	a.dispatcher = feature.NewDispatcher(feature.DispatcherOptions{
+	dispatcher := feature.NewDispatcher(feature.DispatcherOptions{
 		Verbose: a.serverConfig.Verbose,
 	})
-	if err := a.dispatcher.Init(runCtx); err != nil {
+	if err := dispatcher.Init(runCtx); err != nil {
 		return fmt.Errorf("inst: dispacher: %w", err)
+	} else {
+		a.dispatcher = dispatcher
 	}
 	// Resolver
 	if err := a.initResolver(runCtx); err != nil {
