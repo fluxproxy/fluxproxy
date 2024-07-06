@@ -6,7 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/assert"
-	"github.com/fluxproxy/fluxproxy/feature/tunnel"
+	"github.com/fluxproxy/fluxproxy"
+	"github.com/fluxproxy/fluxproxy/feature/connector"
 	"github.com/fluxproxy/fluxproxy/helper"
 	"github.com/fluxproxy/fluxproxy/internal"
 	"github.com/fluxproxy/fluxproxy/net"
@@ -28,12 +29,18 @@ type HttpOptions struct {
 type HttpListener struct {
 	opts         HttpOptions
 	listenerOpts proxy.ListenerOptions
+	dispatcher   proxy.Dispatcher
 }
 
-func NewHttpListener(listenerOpts proxy.ListenerOptions, httpOpts HttpOptions) *HttpListener {
+func NewHttpListener(
+	listenerOpts proxy.ListenerOptions,
+	httpOpts HttpOptions,
+	dispatcher proxy.Dispatcher,
+) *HttpListener {
 	return &HttpListener{
 		listenerOpts: listenerOpts,
 		opts:         httpOpts,
+		dispatcher:   dispatcher,
 	}
 }
 
@@ -44,7 +51,7 @@ func (l *HttpListener) Init(runCtx context.Context) error {
 	return nil
 }
 
-func (l *HttpListener) Listen(serveCtx context.Context, dispatcher proxy.Dispatcher) error {
+func (l *HttpListener) Listen(serveCtx context.Context) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.listenerOpts.Auth {
 		logrus.Infof("http: listen: %s", addr)
@@ -53,7 +60,7 @@ func (l *HttpListener) Listen(serveCtx context.Context, dispatcher proxy.Dispatc
 	}
 	httpServer := &http.Server{
 		Addr:    addr,
-		Handler: l.newServeHandler(dispatcher),
+		Handler: http.HandlerFunc(l.serveHandler),
 		BaseContext: func(_ stdnet.Listener) context.Context {
 			return serveCtx
 		},
@@ -68,13 +75,11 @@ func (l *HttpListener) Listen(serveCtx context.Context, dispatcher proxy.Dispatc
 	return httpServer.ListenAndServe()
 }
 
-func (l *HttpListener) newServeHandler(dispatcher proxy.Dispatcher) http.HandlerFunc {
-	return func(rw http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodConnect {
-			l.handleConnectStream(rw, r, dispatcher)
-		} else {
-			l.handlePlainRequest(rw, r, dispatcher)
-		}
+func (l *HttpListener) serveHandler(rw http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodConnect {
+		l.handleConnectStream(rw, r, l.dispatcher)
+	} else {
+		l.handlePlainRequest(rw, r, l.dispatcher)
 	}
 }
 
@@ -106,7 +111,7 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 		internal.CtxHookAfterDialed:  l.withDialedHook(hiConn, r),
 	})
 
-	stream := tunnel.NewConnStream(ctx, hiConn, destAddr, srcAddr)
+	stream := connector.NewStreamConnector(ctx, hiConn, destAddr, srcAddr)
 	dispatcher.Submit(stream)
 
 	if l.listenerOpts.Verbose {
@@ -146,12 +151,13 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 		internal.CtxHookAfterRuleset: l.withRulesetHook(rw),
 		internal.CtxHookAfterDialed:  l.withDialedHook(rw, r),
 	})
-	plain := tunnel.NewHttpPlain(rw, r.WithContext(ctx), destAddr, srcAddr)
+	plain := connector.NewHttpConnector(rw, r.WithContext(ctx), destAddr, srcAddr)
 	dispatcher.Submit(plain)
 
 	if l.listenerOpts.Verbose {
 		proxy.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
 	}
+
 	// 需要维持Http连接
 	<-plain.Context().Done()
 }

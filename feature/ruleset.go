@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/bytepowered/assert"
+	"github.com/fluxproxy/fluxproxy"
 	"sync"
 )
 

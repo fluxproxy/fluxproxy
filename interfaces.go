@@ -7,11 +7,22 @@ import (
 	stdnet "net"
 )
 
+type Authenticate string
+
+const (
+	AuthenticateUnknown Authenticate = ""
+	AuthenticateAllow   Authenticate = "ALLOW"
+	AuthenticateBasic   Authenticate = "BASIC"
+	AuthenticateBearer  Authenticate = "BEARER"
+	AuthenticateSource  Authenticate = "SOURCE"
+	AuthenticateToken   Authenticate = "TOKEN"
+)
+
 // Authentication 身份认证信息
 type Authentication struct {
-	Source         net.Address
-	Authenticate   string
-	Authentication string
+	Source         net.Address  // 客户端源地址
+	Authenticate   Authenticate // 指定获取身份认证的方式
+	Authentication string       // 用于身份验证的凭证
 }
 
 // Listener 监听器，监听服务端口，完成与客户端的连接握手。
@@ -20,7 +31,7 @@ type Listener interface {
 	Init(ctx context.Context) error
 
 	// Listen 以阻塞态监听服务端，接收客户端连接
-	Listen(ctx context.Context, dispatcher Dispatcher) error
+	Listen(ctx context.Context) error
 }
 
 // Dispatcher 管理通道连接请求及路由
@@ -31,26 +42,28 @@ type Dispatcher interface {
 	// Serve 以阻塞状态运行，处理 Submit 提交的通道连接请求
 	Serve(ctx context.Context) error
 
+	// Authenticate 对客户端进行身份认证
 	Authenticate(ctx context.Context, auth Authentication) error
 
 	// Submit 提交通道连接请求
-	Submit(Tunnel)
+	Submit(Connector)
 }
 
 // Connection 表示与目标服务器建立的网络连接
 type Connection interface {
+	io.Closer
+
 	// ReadWriter 返回连接的读写接口
 	ReadWriter() io.ReadWriter
 
 	// Conn 返回建立的连接
 	Conn() stdnet.Conn
-
-	// Close 关闭连接
-	Close() error
 }
 
-// Tunnel 连接源客户端与目标服务器的通道
-type Tunnel interface {
+// Connector 连接源客户端与目标服务器的通道
+type Connector interface {
+	io.Closer
+
 	// Destination 返回目标服务器的地址
 	Destination() net.Address
 
@@ -62,19 +75,19 @@ type Tunnel interface {
 
 	// Context 返回通道的 Context
 	Context() context.Context
-
-	// Close 关闭通道
-	Close() error
 }
 
 // Dialer 建立与目标地址的连接
 type Dialer interface {
+	// Name 名称
 	Name() string
+	// Dial 建立与目标地址的连接
 	Dial(ctx context.Context, remote net.Address) (Connection, error)
 }
 
 // Resolver 域名解析器
 type Resolver interface {
+	// Resolve 将域名解析成 IP 地址
 	Resolve(ctx context.Context, addr net.Address) (stdnet.IP, error)
 }
 

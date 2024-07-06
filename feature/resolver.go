@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/bytepowered/assert"
 	"github.com/bytepowered/cache"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/sirupsen/logrus"
 	stdnet "net"

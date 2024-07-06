@@ -3,6 +3,7 @@ package authenticator
 import (
 	"context"
 	"errors"
+	"github.com/fluxproxy/fluxproxy"
 	"strings"
 )
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/bytepowered/goes"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/helper"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"

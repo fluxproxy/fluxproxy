@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/bytepowered/assert"
 	"github.com/bytepowered/goes"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/feature/authenticator"
 	"github.com/fluxproxy/fluxproxy/feature/dialer"
 	"github.com/fluxproxy/fluxproxy/helper"
@@ -12,7 +13,6 @@ import (
 	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/sirupsen/logrus"
 	"math"
-	"strings"
 	"time"
 )
 
@@ -26,15 +26,15 @@ type DispatcherOptions struct {
 
 type Dispatcher struct {
 	opts          DispatcherOptions
-	tunnels       chan proxy.Tunnel
+	tunnels       chan proxy.Connector
 	dialer        map[string]proxy.Dialer
-	authenticator map[string]proxy.Authenticator
+	authenticator map[proxy.Authenticate]proxy.Authenticator
 }
 
 func NewDispatcher(opts DispatcherOptions) *Dispatcher {
 	return &Dispatcher{
 		opts:    opts,
-		tunnels: make(chan proxy.Tunnel, math.MaxInt32),
+		tunnels: make(chan proxy.Connector, math.MaxInt32),
 	}
 }
 
@@ -43,7 +43,7 @@ func (d *Dispatcher) Init(ctx context.Context) error {
 		dialer.DIRECT: dialer.NewTcpDirectDialer(),
 		dialer.REJECT: dialer.NewRejectDialer(),
 	}
-	d.authenticator = map[string]proxy.Authenticator{
+	d.authenticator = map[proxy.Authenticate]proxy.Authenticator{
 		proxy.AuthenticateAllow:  authenticator.NewAllowAuthenticator(),
 		proxy.AuthenticateBearer: authenticator.NewDenyAuthenticator(),
 		proxy.AuthenticateSource: authenticator.NewDenyAuthenticator(),
@@ -67,7 +67,7 @@ func (d *Dispatcher) Serve(ctx context.Context) error {
 	}
 }
 
-func (d *Dispatcher) Submit(s proxy.Tunnel) {
+func (d *Dispatcher) Submit(s proxy.Connector) {
 	d.tunnels <- s
 }
 
@@ -80,18 +80,16 @@ func (d *Dispatcher) Authenticate(ctx context.Context, authentication proxy.Auth
 	return auErr
 }
 
-func (d *Dispatcher) RegisterAuthenticator(name string, authenticator proxy.Authenticator) {
-	assert.MustNotEmpty(name, "authenticator name")
-	name = strings.ToUpper(name)
-	assert.MustFalse(strings.EqualFold(name, proxy.AuthenticateAllow), "authenticator name is invalid")
+func (d *Dispatcher) RegisterAuthenticator(kind proxy.Authenticate, authenticator proxy.Authenticator) {
+	assert.MustFalse(kind == proxy.AuthenticateAllow, "authenticator kind is invalid")
 	assert.MustNotNil(authenticator, "authenticator is nil")
-	_, exists := d.authenticator[name]
-	assert.MustFalse(exists, "authenticator is already exists: %s", name)
-	d.authenticator[name] = authenticator
-	logrus.Infof("dispatcher: register:authenticator: %s", name)
+	_, exists := d.authenticator[kind]
+	assert.MustFalse(exists, "authenticator is already exists: %s", kind)
+	d.authenticator[kind] = authenticator
+	logrus.Infof("dispatcher: register:authenticator: %s", kind)
 }
 
-func (d *Dispatcher) handle(local proxy.Tunnel) {
+func (d *Dispatcher) handle(local proxy.Connector) {
 	defer helper.Close(local)
 	destAddr := local.Destination()
 

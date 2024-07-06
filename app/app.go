@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/bytepowered/assert"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/feature"
 	"github.com/fluxproxy/fluxproxy/feature/authenticator"
 	"github.com/fluxproxy/fluxproxy/feature/listener"
@@ -76,13 +78,13 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 	a.initRuleset(runCtx)
 	// Http listener
 	if helper.ContainsAny(a.serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
-		if err := a.initHttpListener(runCtx); err != nil {
+		if err := a.initHttpListener(runCtx, a.dispatcher); err != nil {
 			return err
 		}
 	}
 	// Socks listener
 	if helper.ContainsAny(a.serverConfig.Mode, RunServerModeAuto, RunServerModeSocks) {
-		if err := a.initSocksListener(runCtx); err != nil {
+		if err := a.initSocksListener(runCtx, a.dispatcher); err != nil {
 			return err
 		}
 	}
@@ -105,7 +107,7 @@ func (a *App) Serve(runCtx context.Context) error {
 	for _, srv := range a.listeners {
 		a.await.Add(1)
 		go func(lis proxy.Listener) {
-			if err := lis.Listen(servCtx, a.dispatcher);
+			if err := lis.Listen(servCtx);
 				err == nil ||
 					errors.Is(err, context.Canceled) ||
 					errors.Is(err, http.ErrServerClosed) {
@@ -131,7 +133,9 @@ func (a *App) term(err error) error {
 	return err
 }
 
-func (a *App) initHttpListener(runCtx context.Context) error {
+func (a *App) initHttpListener(runCtx context.Context, dispatcher proxy.Dispatcher) error {
+	assert.MustNotNil(runCtx, "context is nil")
+	assert.MustNotNil(dispatcher, "dispatcher is nil")
 	var httpConfig HttpConfig
 	if err := unmarshalWith(runCtx, configPathServerHttp, &httpConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal http config. %w", err)
@@ -140,23 +144,21 @@ func (a *App) initHttpListener(runCtx context.Context) error {
 		logrus.Warnf("inst: http server is disabled")
 		return nil
 	}
-	if httpConfig.Port <= 0 {
-		httpConfig.Port = 1080
-	}
-	if httpConfig.Bind == "" {
-		httpConfig.Bind = "0.0.0.0"
-	}
-	httpListener := listener.NewHttpListener(proxy.ListenerOptions{
-		Address: httpConfig.Bind,
-		Port:    httpConfig.Port,
+	lstOpts := proxy.ListenerOptions{
+		Address: convBindAddress(httpConfig.Bind),
+		Port:    convBindPort(httpConfig.Port, 1080),
 		Verbose: a.serverConfig.Verbose,
 		Auth:    a.authConfig.Enabled,
-	}, listener.HttpOptions{})
+	}
+	httpOpts := listener.HttpOptions{}
+	httpListener := listener.NewHttpListener(lstOpts, httpOpts, dispatcher)
 	a.listeners = append(a.listeners, httpListener)
 	return httpListener.Init(runCtx)
 }
 
-func (a *App) initSocksListener(runCtx context.Context) error {
+func (a *App) initSocksListener(runCtx context.Context, dispatcher proxy.Dispatcher) error {
+	assert.MustNotNil(runCtx, "context is nil")
+	assert.MustNotNil(dispatcher, "dispatcher is nil")
 	var socksConfig SocksConfig
 	if err := unmarshalWith(runCtx, configPathServerSocks, &socksConfig); err != nil {
 		return fmt.Errorf("inst: unmarshal socks config. %w", err)
@@ -165,18 +167,14 @@ func (a *App) initSocksListener(runCtx context.Context) error {
 		logrus.Warnf("inst: socks server is disabled")
 		return nil
 	}
-	if socksConfig.Port <= 0 {
-		socksConfig.Port = 1081
-	}
-	if socksConfig.Bind == "" {
-		socksConfig.Bind = "0.0.0.0"
-	}
-	socksListener := listener.NewSocksListener(proxy.ListenerOptions{
-		Address: socksConfig.Bind,
-		Port:    socksConfig.Port,
+	lstOpts := proxy.ListenerOptions{
+		Address: convBindAddress(socksConfig.Bind),
+		Port:    convBindPort(socksConfig.Port, 1081),
 		Verbose: a.serverConfig.Verbose,
 		Auth:    a.authConfig.Enabled,
-	}, listener.SocksOptions{})
+	}
+	socksOpts := listener.SocksOptions{}
+	socksListener := listener.NewSocksListener(lstOpts, socksOpts, dispatcher)
 	a.listeners = append(a.listeners, socksListener)
 	return socksListener.Init(runCtx)
 }
@@ -254,4 +252,18 @@ func (a *App) checkServerMode(mode string) error {
 	default:
 		return fmt.Errorf("invalid server mode: %s", mode)
 	}
+}
+
+func convBindAddress(bind string) string {
+	if bind == "" {
+		return "0.0.0.0"
+	}
+	return bind
+}
+
+func convBindPort(port int, def int) int {
+	if port == 0 {
+		return def
+	}
+	return port
 }

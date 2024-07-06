@@ -2,6 +2,7 @@ package dialer
 
 import (
 	"context"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/net"
 )
 

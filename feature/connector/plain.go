@@ -1,8 +1,9 @@
-package tunnel
+package connector
 
 import (
 	"context"
 	"fmt"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/helper"
 	"github.com/fluxproxy/fluxproxy/net"
 	"io"
@@ -13,10 +14,10 @@ import (
 )
 
 var (
-	_ proxy.Tunnel = (*HttpPlainTunnel)(nil)
+	_ proxy.Connector = (*HttpPlainConnector)(nil)
 )
 
-type HttpPlainTunnel struct {
+type HttpPlainConnector struct {
 	src        net.Address
 	dest       net.Address
 	r          *http.Request
@@ -25,14 +26,14 @@ type HttpPlainTunnel struct {
 	cancelFunc context.CancelFunc
 }
 
-func NewHttpPlain(
+func NewHttpConnector(
 	w http.ResponseWriter,
 	r *http.Request,
 	dest net.Address,
 	src net.Address,
-) *HttpPlainTunnel {
+) *HttpPlainConnector {
 	ctx, cancel := context.WithCancel(r.Context())
-	return &HttpPlainTunnel{
+	return &HttpPlainConnector{
 		src:        src,
 		dest:       dest,
 		r:          r,
@@ -42,7 +43,7 @@ func NewHttpPlain(
 	}
 }
 
-func (h *HttpPlainTunnel) Connect(connection proxy.Connection) error {
+func (h *HttpPlainConnector) Connect(connection proxy.Connection) error {
 	defer h.cancelFunc()
 	transport := http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (stdnet.Conn, error) {
@@ -75,20 +76,20 @@ func (h *HttpPlainTunnel) Connect(connection proxy.Connection) error {
 	return nil
 }
 
-func (h *HttpPlainTunnel) Close() error {
+func (h *HttpPlainConnector) Close() error {
 	h.cancelFunc()
 	return nil
 }
 
-func (h *HttpPlainTunnel) Context() context.Context {
+func (h *HttpPlainConnector) Context() context.Context {
 	return h.ctx
 }
 
-func (h *HttpPlainTunnel) Destination() net.Address {
+func (h *HttpPlainConnector) Destination() net.Address {
 	return h.dest
 }
 
-func (h *HttpPlainTunnel) Source() net.Address {
+func (h *HttpPlainConnector) Source() net.Address {
 	return h.src
 }
 

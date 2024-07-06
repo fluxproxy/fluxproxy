@@ -3,6 +3,7 @@ package dialer
 import (
 	"context"
 	"fmt"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/net"
 	stdnet "net"
 	"time"

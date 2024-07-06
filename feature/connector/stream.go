@@ -1,7 +1,8 @@
-package tunnel
+package connector
 
 import (
 	"context"
+	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/helper"
 	"github.com/fluxproxy/fluxproxy/net"
 	"io"
@@ -9,10 +10,10 @@ import (
 )
 
 var (
-	_ proxy.Tunnel = (*ConnStreamTunnel)(nil)
+	_ proxy.Connector = (*StreamConnector)(nil)
 )
 
-type ConnStreamTunnel struct {
+type StreamConnector struct {
 	src        net.Address
 	dest       net.Address
 	conn       stdnet.Conn
@@ -20,14 +21,14 @@ type ConnStreamTunnel struct {
 	cancelFunc context.CancelFunc
 }
 
-func NewConnStream(
+func NewStreamConnector(
 	ctx context.Context,
 	conn stdnet.Conn,
 	dest net.Address,
 	src net.Address,
-) *ConnStreamTunnel {
+) *StreamConnector {
 	ctx, cancel := context.WithCancel(ctx)
-	return &ConnStreamTunnel{
+	return &StreamConnector{
 		src:        src,
 		dest:       dest,
 		conn:       conn,
@@ -36,7 +37,7 @@ func NewConnStream(
 	}
 }
 
-func (s *ConnStreamTunnel) Connect(connection proxy.Connection) error {
+func (s *StreamConnector) Connect(connection proxy.Connection) error {
 	defer s.cancelFunc()
 	ioErrors := make(chan error, 2)
 	copier := func(name string, from io.Reader, to io.Writer) {
@@ -54,19 +55,19 @@ func (s *ConnStreamTunnel) Connect(connection proxy.Connection) error {
 	}
 }
 
-func (s *ConnStreamTunnel) Close() error {
+func (s *StreamConnector) Close() error {
 	s.cancelFunc()
 	return s.conn.Close()
 }
 
-func (s *ConnStreamTunnel) Context() context.Context {
+func (s *StreamConnector) Context() context.Context {
 	return s.ctx
 }
 
-func (s *ConnStreamTunnel) Source() net.Address {
+func (s *StreamConnector) Source() net.Address {
 	return s.src
 }
 
-func (s *ConnStreamTunnel) Destination() net.Address {
+func (s *StreamConnector) Destination() net.Address {
 	return s.dest
 }

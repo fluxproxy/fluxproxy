@@ -4,7 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/fluxproxy/fluxproxy/feature/tunnel"
+	"github.com/fluxproxy/fluxproxy"
+	"github.com/fluxproxy/fluxproxy/feature/connector"
 	"github.com/fluxproxy/fluxproxy/internal"
 	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/fluxproxy/fluxproxy/statute/socks"
@@ -24,12 +25,18 @@ type SocksOptions struct {
 type SocksListener struct {
 	opts         SocksOptions
 	listenerOpts proxy.ListenerOptions
+	dispatcher   proxy.Dispatcher
 }
 
-func NewSocksListener(listenerOpts proxy.ListenerOptions, socksOpts SocksOptions) *SocksListener {
+func NewSocksListener(
+	listenerOpts proxy.ListenerOptions,
+	socksOpts SocksOptions,
+	dispatcher proxy.Dispatcher,
+) *SocksListener {
 	return &SocksListener{
 		listenerOpts: listenerOpts,
 		opts:         socksOpts,
+		dispatcher:   dispatcher,
 	}
 }
 
@@ -40,7 +47,7 @@ func (l *SocksListener) Init(ctx context.Context) error {
 	return nil
 }
 
-func (l *SocksListener) Listen(serveCtx context.Context, dispatcher proxy.Dispatcher) error {
+func (l *SocksListener) Listen(serveCtx context.Context) error {
 	addr := stdnet.JoinHostPort(l.listenerOpts.Address, strconv.Itoa(l.listenerOpts.Port))
 	if l.listenerOpts.Auth {
 		logrus.Infof("socks: listen: %s", addr)
@@ -58,12 +65,12 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher proxy.Dispat
 
 		// Authenticate
 		if l.listenerOpts.Auth {
-			if err := l.handshakeUserAuth(connCtx, tcpConn, dispatcher); err != nil {
+			if err := l.handshakeUserAuth(connCtx, tcpConn, l.dispatcher); err != nil {
 				proxy.Logger(connCtx).Errorf("socks: auth(user): %s", err)
 				return
 			}
 		} else {
-			if err := l.handshakeSkipAuth(connCtx, tcpConn, dispatcher); err != nil {
+			if err := l.handshakeSkipAuth(connCtx, tcpConn, l.dispatcher); err != nil {
 				proxy.Logger(connCtx).Errorf("socks: auth(skip): %s", err)
 				return
 			}
@@ -93,8 +100,8 @@ func (l *SocksListener) Listen(serveCtx context.Context, dispatcher proxy.Dispat
 			internal.CtxHookAfterRuleset: l.withRulesetHook(tcpConn),
 			internal.CtxHookAfterDialed:  l.withDialedHook(tcpConn),
 		})
-		stream := tunnel.NewConnStream(connCtx, tcpConn, destAddr, srcAddr)
-		dispatcher.Submit(stream)
+		stream := connector.NewStreamConnector(connCtx, tcpConn, destAddr, srcAddr)
+		l.dispatcher.Submit(stream)
 
 		if l.listenerOpts.Verbose {
 			proxy.Logger(connCtx).WithField("dest", request.DstAddr.String()).Infof("socks: CONN")
