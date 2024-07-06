@@ -5,7 +5,6 @@ go 1.22
 require (
 	github.com/bytepowered/assert v1.1.0
 	github.com/bytepowered/cache v0.3.0
-	github.com/bytepowered/goes v1.0.0
 	github.com/cristalhq/acmd v0.12.0
 	github.com/knadh/koanf/parsers/toml v0.1.0
 	github.com/knadh/koanf/providers/file v1.0.0

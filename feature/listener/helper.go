@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/bytepowered/assert"
-	"github.com/bytepowered/goes"
 	proxy "github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/net"
 	stdnet "net"
@@ -55,8 +54,6 @@ func tcpListenWith(serveCtx context.Context, opts proxy.ListenerOptions, connHan
 				return fmt.Errorf("accept. %w", acErr)
 			}
 		}
-		goes.Go(func() {
-			connHandler(conn.(*stdnet.TCPConn))
-		})
+		go connHandler(conn.(*stdnet.TCPConn))
 	}
 }

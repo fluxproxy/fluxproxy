@@ -3,14 +3,12 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/bytepowered/goes"
 	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/helper"
 	"github.com/knadh/koanf/parsers/toml"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 	"github.com/sirupsen/logrus"
-	"runtime/debug"
 )
 
 // Configuration
@@ -20,9 +18,6 @@ var k = koanf.NewWithConf(koanf.Conf{
 })
 
 func init() {
-	goes.SetPanicHandler(func(ctx context.Context, r interface{}) {
-		logrus.Errorf("goroutine panic %v: %s", r, debug.Stack())
-	})
 	logrus.SetReportCaller(false)
 	logrus.SetFormatter(&logrus.TextFormatter{
 		DisableColors:    false,

@@ -2,8 +2,6 @@ github.com/bytepowered/assert v1.1.0 h1:Dyno6LkH2sguolyUQ+Hzql++nd/RPROqGjKu26Di
 github.com/bytepowered/assert v1.1.0/go.mod h1:aypxOpGbPRrJfrNgFUP1+lhr6x/kF9OWE3Iu0mk8FuI=
 github.com/bytepowered/cache v0.3.0 h1:3uWRQ7DJZ/jLbLnAWQV0F2TaJDZ8CqOzFAIt7b+PPkE=
 github.com/bytepowered/cache v0.3.0/go.mod h1:LtakMd/bUm/IS2juhxIewuM+cvkp3v8OIBjbcSkDY1E=
-github.com/bytepowered/goes v1.0.0 h1:eOgFFj48qHpG5ISqHmrTWMeyyhVKqsQ9cn/VRrKdgtY=
-github.com/bytepowered/goes v1.0.0/go.mod h1:D+zs7XEyJLtRVdQYZIJQEZH58NMWKvZOSFlM7zyq7gU=
 github.com/cristalhq/acmd v0.12.0 h1:RdlKnxjN+txbQosg8p/TRNZ+J1Rdne43MVQZ1zDhGWk=
 github.com/cristalhq/acmd v0.12.0/go.mod h1:LG5oa43pE/BbxtfMoImHCQN++0Su7dzipdgBjMCBVDQ=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
