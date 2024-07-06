@@ -94,19 +94,17 @@ func (l *SocksListener) Listen(serveCtx context.Context) error {
 			destAddr = net.ParseIPAddr(net.NetworkTCP, request.DstAddr.IP)
 		}
 		destAddr.Port = request.DstAddr.Port
+		if l.listenerOpts.Verbose {
+			proxy.Logger(connCtx).WithField("dest", destAddr).Infof("socks: CONN")
+		}
 
-		// Submit
+		// Dispatch
 		connCtx = internal.ContextWithHooks(connCtx, map[any]proxy.HookFunc{
 			internal.CtxHookAfterRuleset: l.withRulesetHook(tcpConn),
 			internal.CtxHookAfterDialed:  l.withDialedHook(tcpConn),
 		})
-		stream := connector.NewStreamConnector(connCtx, tcpConn, destAddr, srcAddr)
-		l.dispatcher.Submit(stream)
-
-		if l.listenerOpts.Verbose {
-			proxy.Logger(connCtx).WithField("dest", request.DstAddr.String()).Infof("socks: CONN")
-		}
-
+		inst := connector.NewStreamConnector(connCtx, tcpConn, destAddr, srcAddr)
+		l.dispatcher.Dispatch(inst)
 	})
 }
 

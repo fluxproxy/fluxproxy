@@ -103,13 +103,7 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 func (a *App) Serve(runCtx context.Context) error {
 	servCtx, servCancel := context.WithCancel(runCtx)
 	defer servCancel()
-
-	servErrors := make(chan error, len(a.listeners)+1)
-	// Dispatcher
-	go func() {
-		servErrors <- a.dispatcher.Serve(servCtx)
-	}()
-	// Listeners
+	servErrors := make(chan error, len(a.listeners))
 	for _, srv := range a.listeners {
 		a.await.Add(1)
 		go func(lis proxy.Listener) {

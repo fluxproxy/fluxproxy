@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"github.com/bytepowered/assert"
-	"github.com/bytepowered/goes"
 	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/feature/authenticator"
 	"github.com/fluxproxy/fluxproxy/feature/dialer"
@@ -12,7 +11,7 @@ import (
 	"github.com/fluxproxy/fluxproxy/internal"
 	"github.com/fluxproxy/fluxproxy/net"
 	"github.com/sirupsen/logrus"
-	"math"
+	"strings"
 	"time"
 )
 
@@ -26,15 +25,13 @@ type DispatcherOptions struct {
 
 type Dispatcher struct {
 	opts          DispatcherOptions
-	tunnels       chan proxy.Connector
 	dialer        map[string]proxy.Dialer
 	authenticator map[proxy.Authenticate]proxy.Authenticator
 }
 
 func NewDispatcher(opts DispatcherOptions) *Dispatcher {
 	return &Dispatcher{
-		opts:    opts,
-		tunnels: make(chan proxy.Connector, math.MaxInt32),
+		opts: opts,
 	}
 }
 
@@ -52,44 +49,7 @@ func (d *Dispatcher) Init(ctx context.Context) error {
 	return nil
 }
 
-func (d *Dispatcher) Serve(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			logrus.Infof("dispatcher: serve:done")
-			return ctx.Err()
-
-		case v := <-d.tunnels:
-			goes.Go(func() {
-				d.handle(v)
-			})
-		}
-	}
-}
-
-func (d *Dispatcher) Submit(s proxy.Connector) {
-	d.tunnels <- s
-}
-
-func (d *Dispatcher) Authenticate(ctx context.Context, authentication proxy.Authentication) error {
-	assert.MustTrue(authentication.Authenticate != proxy.AuthenticateAllow, "authenticate is invalid")
-	auErr := d.lookupAuthenticator(authentication).Authenticate(ctx, authentication)
-	if auErr != nil {
-		proxy.Logger(ctx).Errorf("dispatcher: authenticate: %s", auErr)
-	}
-	return auErr
-}
-
-func (d *Dispatcher) RegisterAuthenticator(kind proxy.Authenticate, authenticator proxy.Authenticator) {
-	assert.MustFalse(kind == proxy.AuthenticateAllow, "authenticator kind is invalid")
-	assert.MustNotNil(authenticator, "authenticator is nil")
-	_, exists := d.authenticator[kind]
-	assert.MustFalse(exists, "authenticator is already exists: %s", kind)
-	d.authenticator[kind] = authenticator
-	logrus.Infof("dispatcher: register:authenticator: %s", kind)
-}
-
-func (d *Dispatcher) handle(local proxy.Connector) {
+func (d *Dispatcher) Dispatch(local proxy.Connector) {
 	defer helper.Close(local)
 	destAddr := local.Destination()
 
@@ -104,7 +64,7 @@ func (d *Dispatcher) handle(local proxy.Connector) {
 		Source:      local.Source(),
 		Destination: destAddr,
 	})
-	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterRuleset); ok {
+	if hook, ok := local.HookFunc(internal.CtxHookAfterRuleset); ok {
 		if hErr := hook(local.Context(), ruErr); hErr != nil {
 			proxy.Logger(local.Context()).Errorf("dispatcher: hook:ruleset: %s", hErr)
 			return
@@ -137,7 +97,7 @@ func (d *Dispatcher) handle(local proxy.Connector) {
 		Port:    destAddr.Port,
 	})
 	defer helper.Close(remote)
-	if hook, ok := internal.LookupHook(local.Context(), internal.CtxHookAfterDialed); ok {
+	if hook, ok := local.HookFunc(internal.CtxHookAfterDialed); ok {
 		if hErr := hook(local.Context(), dlErr); hErr != nil {
 			proxy.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
 			return
@@ -151,7 +111,24 @@ func (d *Dispatcher) handle(local proxy.Connector) {
 	// Connect
 	tErr := local.Connect(remote)
 	d.onTailError(local.Context(), tErr)
+}
 
+func (d *Dispatcher) Authenticate(ctx context.Context, authentication proxy.Authentication) error {
+	assert.MustTrue(authentication.Authenticate != proxy.AuthenticateAllow, "authenticate is invalid")
+	auErr := d.lookupAuthenticator(authentication).Authenticate(ctx, authentication)
+	if auErr != nil {
+		proxy.Logger(ctx).Errorf("dispatcher: authenticate: %s", auErr)
+	}
+	return auErr
+}
+
+func (d *Dispatcher) RegisterAuthenticator(kind proxy.Authenticate, authenticator proxy.Authenticator) {
+	assert.MustFalse(kind == proxy.AuthenticateAllow, "authenticator kind is invalid")
+	assert.MustNotNil(authenticator, "authenticator is nil")
+	_, exists := d.authenticator[kind]
+	assert.MustFalse(exists, "authenticator is already exists: %s", kind)
+	d.authenticator[kind] = authenticator
+	logrus.Infof("dispatcher: register:authenticator: %s", kind)
 }
 
 func (d *Dispatcher) lookupDialer(addr net.Address) proxy.Dialer {
@@ -171,6 +148,13 @@ func (d *Dispatcher) onTailError(connCtx context.Context, tErr error) {
 		return
 	}
 	if !helper.IsCopierError(tErr) && !errors.Is(tErr, context.Canceled) {
-		internal.LogTailError(connCtx, "http", tErr)
+		msg := tErr.Error()
+		if strings.Contains(msg, "i/o timeout") {
+			return
+		}
+		if strings.Contains(msg, "connection reset by peer") {
+			return
+		}
+		proxy.Logger(connCtx).Errorf("dispatcher: conn error: %s", tErr)
 	}
 }

@@ -95,8 +95,8 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	}
 
 	srcAddr := parseRemoteAddress(r.RemoteAddr)
-	destAddr := l.parseHostAddress(r.Host)
 
+	// Authenticate
 	if l.listenerOpts.Auth {
 		auErr := dispatcher.Authenticate(r.Context(), l.parseProxyAuthorization(r.Header, srcAddr))
 		if auErr != nil {
@@ -106,20 +106,19 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	}
 	l.removeHopByHopHeaders(r.Header)
 
+	// Destination
+	destAddr := l.parseHostAddress(r.Host)
+	if l.listenerOpts.Verbose {
+		proxy.Logger(r.Context()).WithField("dest", destAddr).Infof("http: %s", r.Method)
+	}
+
+	// Dispatch
 	ctx := internal.ContextWithHooks(r.Context(), map[any]proxy.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(hiConn),
 		internal.CtxHookAfterDialed:  l.withDialedHook(hiConn, r),
 	})
-
 	stream := connector.NewStreamConnector(ctx, hiConn, destAddr, srcAddr)
-	dispatcher.Submit(stream)
-
-	if l.listenerOpts.Verbose {
-		proxy.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
-	}
-
-	// 需要维持Http连接
-	<-stream.Context().Done()
+	dispatcher.Dispatch(stream)
 }
 
 func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Request, dispatcher proxy.Dispatcher) {
@@ -145,21 +144,17 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 
 	// Destination
 	destAddr := l.parseHostAddress(r.Host)
+	if l.listenerOpts.Verbose {
+		proxy.Logger(r.Context()).WithField("dest", destAddr).Infof("http: %s", r.Method)
+	}
 
-	// Submit
+	// Dispatch
 	ctx := internal.ContextWithHooks(r.Context(), map[any]proxy.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(rw),
 		internal.CtxHookAfterDialed:  l.withDialedHook(rw, r),
 	})
-	plain := connector.NewHttpConnector(rw, r.WithContext(ctx), destAddr, srcAddr)
-	dispatcher.Submit(plain)
-
-	if l.listenerOpts.Verbose {
-		proxy.Logger(r.Context()).WithField("dest", r.Host).Infof("http: %s", r.Method)
-	}
-
-	// 需要维持Http连接
-	<-plain.Context().Done()
+	inst := connector.NewHttpConnector(rw, r.WithContext(ctx), destAddr, srcAddr)
+	dispatcher.Dispatch(inst)
 }
 
 func (*HttpListener) withRulesetHook(w io.Writer) proxy.HookFunc {

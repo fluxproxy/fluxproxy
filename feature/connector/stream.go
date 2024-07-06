@@ -60,6 +60,11 @@ func (s *StreamConnector) Close() error {
 	return s.conn.Close()
 }
 
+func (s *StreamConnector) HookFunc(key any) (proxy.HookFunc, bool) {
+	v, ok := s.ctx.Value(key).(proxy.HookFunc)
+	return v, ok
+}
+
 func (s *StreamConnector) Context() context.Context {
 	return s.ctx
 }

@@ -14,10 +14,10 @@ import (
 )
 
 var (
-	_ proxy.Connector = (*HttpPlainConnector)(nil)
+	_ proxy.Connector = (*HttpConnector)(nil)
 )
 
-type HttpPlainConnector struct {
+type HttpConnector struct {
 	src        net.Address
 	dest       net.Address
 	r          *http.Request
@@ -31,9 +31,9 @@ func NewHttpConnector(
 	r *http.Request,
 	dest net.Address,
 	src net.Address,
-) *HttpPlainConnector {
+) *HttpConnector {
 	ctx, cancel := context.WithCancel(r.Context())
-	return &HttpPlainConnector{
+	return &HttpConnector{
 		src:        src,
 		dest:       dest,
 		r:          r,
@@ -43,7 +43,7 @@ func NewHttpConnector(
 	}
 }
 
-func (h *HttpPlainConnector) Connect(connection proxy.Connection) error {
+func (h *HttpConnector) Connect(connection proxy.Connection) error {
 	defer h.cancelFunc()
 	transport := http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (stdnet.Conn, error) {
@@ -76,20 +76,25 @@ func (h *HttpPlainConnector) Connect(connection proxy.Connection) error {
 	return nil
 }
 
-func (h *HttpPlainConnector) Close() error {
+func (h *HttpConnector) Close() error {
 	h.cancelFunc()
 	return nil
 }
 
-func (h *HttpPlainConnector) Context() context.Context {
+func (h *HttpConnector) HookFunc(key any) (proxy.HookFunc, bool) {
+	v, ok := h.ctx.Value(key).(proxy.HookFunc)
+	return v, ok
+}
+
+func (h *HttpConnector) Context() context.Context {
 	return h.ctx
 }
 
-func (h *HttpPlainConnector) Destination() net.Address {
+func (h *HttpConnector) Destination() net.Address {
 	return h.dest
 }
 
-func (h *HttpPlainConnector) Source() net.Address {
+func (h *HttpConnector) Source() net.Address {
 	return h.src
 }
 

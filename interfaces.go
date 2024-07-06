@@ -39,14 +39,11 @@ type Dispatcher interface {
 	// Init 执行初始化操作
 	Init(ctx context.Context) error
 
-	// Serve 以阻塞状态运行，处理 Submit 提交的通道连接请求
-	Serve(ctx context.Context) error
-
 	// Authenticate 对客户端进行身份认证
 	Authenticate(ctx context.Context, auth Authentication) error
 
-	// Submit 提交通道连接请求
-	Submit(Connector)
+	// Dispatch 执行通道连接（同步执行）
+	Dispatch(Connector)
 }
 
 // Connection 表示与目标服务器建立的网络连接
@@ -72,6 +69,8 @@ type Connector interface {
 
 	// Connect 连接到目标服务器
 	Connect(remote Connection) error
+
+	HookFunc(any) (HookFunc, bool)
 
 	// Context 返回通道的 Context
 	Context() context.Context
