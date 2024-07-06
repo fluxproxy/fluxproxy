@@ -52,7 +52,7 @@ func (l *SocksListener) Listen(serveCtx context.Context) error {
 	if l.listenerOpts.Auth {
 		logrus.Infof("socks: listen: %s", addr)
 	} else {
-		logrus.Infof("socks: listen(no auth): %s", addr)
+		logrus.Infof("socks: listen(no-auth): %s", addr)
 	}
 	return tcpListenWith(serveCtx, l.listenerOpts, func(tcpConn *stdnet.TCPConn) {
 		connCtx := internal.SetupTcpContextLogger(serveCtx, tcpConn)

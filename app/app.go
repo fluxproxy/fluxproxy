@@ -71,11 +71,17 @@ func (a *App) Init(runCtx context.Context, cmdMode string) error {
 		return fmt.Errorf("inst: dispacher: %w", err)
 	}
 	// Resolver
-	a.initResolver(runCtx)
+	if err := a.initResolver(runCtx); err != nil {
+		return fmt.Errorf("inst: init resolver: %w", err)
+	}
 	// Authenticator
-	a.initAuthenticator(runCtx)
+	if err := a.initAuthenticator(runCtx); err != nil {
+		return fmt.Errorf("inst: init authenticator: %w", err)
+	}
 	// Ruleset
-	a.initRuleset(runCtx)
+	if err := a.initRuleset(runCtx); err != nil {
+		return fmt.Errorf("inst: init ruleset: %w", err)
+	}
 	// Http listener
 	if helper.ContainsAny(a.serverConfig.Mode, RunServerModeAuto, RunServerModeHttp) {
 		if err := a.initHttpListener(runCtx, a.dispatcher); err != nil {
@@ -179,9 +185,11 @@ func (a *App) initSocksListener(runCtx context.Context, dispatcher proxy.Dispatc
 	return socksListener.Init(runCtx)
 }
 
-func (a *App) initResolver(runCtx context.Context) {
+func (a *App) initResolver(runCtx context.Context) error {
 	var config ResolverConfig
-	_ = unmarshalWith(runCtx, configPathResolver, &config)
+	if err := unmarshalWith(runCtx, configPathResolver, &config); err != nil {
+		return fmt.Errorf("inst: unmarshal resolver config. %w", err)
+	}
 	if config.CacheSize <= 0 {
 		config.CacheSize = 1024 * 10
 	}
@@ -194,55 +202,72 @@ func (a *App) initResolver(runCtx context.Context) {
 		Hosts:     config.Hosts,
 	})
 	// prepare
-	for name, userIP := range config.Hosts {
-		rAddr, err := net.ParseAddress(net.NetworkTCP, userIP+":80")
+	for host, ipAddr := range config.Hosts {
+		rIPAddr, err := net.ParseAddress(net.NetworkTCP, ipAddr+":80")
 		if err != nil {
-			logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, userIP)
-		} else if rAddr.IsIP() {
-			inst.Set(name, rAddr.IP)
+			return fmt.Errorf("resolver.hosts %s=%s is invalid", host, ipAddr)
+		}
+		if rIPAddr.IsIP() {
+			inst.Set(host, rIPAddr.IP)
 		} else {
-			logrus.Warnf("resolver.hosts.%s=%s is not ip address", name, userIP)
+			return fmt.Errorf("resolver.hosts %s=%s is not ip address", host, ipAddr)
 		}
 	}
+	return nil
 }
 
-func (a *App) initAuthenticator(runCtx context.Context) {
+func (a *App) initAuthenticator(runCtx context.Context) error {
 	if !a.authConfig.Enabled {
-		return
+		logrus.Warnf("inst: authenticator is disabled")
+		return nil
 	}
 	dispatcher := a.dispatcher.(*feature.Dispatcher)
 	// Basic
+	for u, p := range a.authConfig.Basic {
+		if len(u) < 2 || len(p) < 2 {
+			return fmt.Errorf("invalid user or password in authenticator.basic: %s=%s", u, p)
+		}
+	}
 	basic := authenticator.NewUsersAuthenticator(a.authConfig.Basic)
 	dispatcher.RegisterAuthenticator(proxy.AuthenticateBasic, basic)
+	// Others todo
+	return nil
 }
 
-func (a *App) initRuleset(runCtx context.Context) {
+func (a *App) initRuleset(runCtx context.Context) error {
 	var config []RulesetConfig
-	_ = unmarshalWith(runCtx, configPathRuleset, &config)
-	// 最高优先级：禁止回环访问
-	rulesets := []proxy.Ruleset{
-		ruleset.NewLoopback(loadLocalAddrs(runCtx)),
+	if err := unmarshalWith(runCtx, configPathRuleset, &config); err != nil {
+		return fmt.Errorf("unmarshal ruleset. %w", err)
 	}
 	// builder
-	buildIPNet := func(rule RulesetConfig) proxy.Ruleset {
+	ipnetBuilder := func(rule RulesetConfig) (proxy.Ruleset, error) {
 		nets := make([]stdnet.IPNet, 0, len(rule.Address))
 		for _, sAddr := range rule.Address {
 			if _, ipNet, err := stdnet.ParseCIDR(sAddr); err == nil {
 				nets = append(nets, *ipNet)
 			} else {
-				logrus.Warnf("invalid ruleset(ipnet) address: %s", sAddr)
+				return nil, fmt.Errorf("invalid ruleset(ipnet) address: %s", sAddr)
 			}
 		}
-		return ruleset.NewIPNet(strings.EqualFold(rule.Access, "allow"), strings.EqualFold(rule.Origin, "source"), nets)
+		return ruleset.NewIPNet(strings.EqualFold(rule.Access, "allow"), strings.EqualFold(rule.Origin, "source"), nets), nil
+	}
+	// 最高优先级：禁止回环访问
+	rulesets := []proxy.Ruleset{
+		ruleset.NewLoopback(loadLocalAddrs(runCtx)),
 	}
 	// 第二优先级：其它规则
 	for _, itemConfig := range config {
 		switch strings.ToLower(itemConfig.Type) {
 		case "ipnet":
-			rulesets = append(rulesets, buildIPNet(itemConfig))
+			if ruleset, err := ipnetBuilder(itemConfig); err != nil {
+				return err
+			} else {
+				rulesets = append(rulesets, ruleset)
+			}
 		}
 	}
 	feature.InitMultiRuleset(rulesets)
+	return nil
 }
 
 func (a *App) checkServerMode(mode string) error {

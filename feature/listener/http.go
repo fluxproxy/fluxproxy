@@ -56,7 +56,7 @@ func (l *HttpListener) Listen(serveCtx context.Context) error {
 	if l.listenerOpts.Auth {
 		logrus.Infof("http: listen: %s", addr)
 	} else {
-		logrus.Infof("http: listen(no auth): %s", addr)
+		logrus.Infof("http: listen(no-auth): %s", addr)
 	}
 	httpServer := &http.Server{
 		Addr:    addr,
