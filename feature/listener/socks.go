@@ -95,13 +95,13 @@ func (l *SocksListener) Listen(serveCtx context.Context) error {
 		}
 		destAddr.Port = request.DstAddr.Port
 		if l.listenerOpts.Verbose {
-			proxy.Logger(connCtx).WithField("dest", destAddr).Infof("socks: CONN")
+			proxy.Logger(connCtx).WithField("dest", destAddr).Infof("socks: connect")
 		}
 
 		// Dispatch
 		connCtx = internal.ContextWithHooks(connCtx, map[any]proxy.HookFunc{
 			internal.CtxHookAfterRuleset: l.withRulesetHook(tcpConn),
-			internal.CtxHookAfterDialed:  l.withDialedHook(tcpConn),
+			internal.CtxHookAfterDial:    l.withDialedHook(tcpConn),
 		})
 		inst := connector.NewStreamConnector(connCtx, tcpConn, destAddr, srcAddr)
 		l.dispatcher.Dispatch(inst)

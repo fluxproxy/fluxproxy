@@ -109,13 +109,13 @@ func (l *HttpListener) handleConnectStream(rw http.ResponseWriter, r *http.Reque
 	// Destination
 	destAddr := l.parseHostAddress(r.Host)
 	if l.listenerOpts.Verbose {
-		proxy.Logger(r.Context()).WithField("dest", destAddr).Infof("http: %s", r.Method)
+		proxy.Logger(r.Context()).WithField("dest", destAddr).Infof("http: %s", strings.ToLower(r.Method))
 	}
 
 	// Dispatch
 	ctx := internal.ContextWithHooks(r.Context(), map[any]proxy.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(hiConn),
-		internal.CtxHookAfterDialed:  l.withDialedHook(hiConn, r),
+		internal.CtxHookAfterDial:    l.withDialedHook(hiConn, r),
 	})
 	stream := connector.NewStreamConnector(ctx, hiConn, destAddr, srcAddr)
 	dispatcher.Dispatch(stream)
@@ -151,7 +151,7 @@ func (l *HttpListener) handlePlainRequest(rw http.ResponseWriter, r *http.Reques
 	// Dispatch
 	ctx := internal.ContextWithHooks(r.Context(), map[any]proxy.HookFunc{
 		internal.CtxHookAfterRuleset: l.withRulesetHook(rw),
-		internal.CtxHookAfterDialed:  l.withDialedHook(rw, r),
+		internal.CtxHookAfterDial:    l.withDialedHook(rw, r),
 	})
 	inst := connector.NewHttpConnector(rw, r.WithContext(ctx), destAddr, srcAddr)
 	dispatcher.Dispatch(inst)

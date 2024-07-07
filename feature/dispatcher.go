@@ -3,6 +3,7 @@ package feature
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/bytepowered/assert"
 	"github.com/fluxproxy/fluxproxy"
 	"github.com/fluxproxy/fluxproxy/feature/authenticator"
@@ -56,7 +57,7 @@ func (d *Dispatcher) Dispatch(local proxy.Connector) {
 	defer func(start time.Time) {
 		proxy.Logger(local.Context()).
 			WithField("duration", time.Since(start).String()).
-			Infof("dispatcher: TERM")
+			Infof("disp: term")
 	}(local.Context().Value(internal.CtxKeyStartTime).(time.Time))
 
 	// Ruleset
@@ -64,23 +65,19 @@ func (d *Dispatcher) Dispatch(local proxy.Connector) {
 		Source:      local.Source(),
 		Destination: destAddr,
 	})
-	if hook, ok := local.HookFunc(internal.CtxHookAfterRuleset); ok {
-		if hErr := hook(local.Context(), ruErr); hErr != nil {
-			proxy.Logger(local.Context()).Errorf("dispatcher: hook:ruleset: %s", hErr)
-			return
-		}
-	}
+	ruErr = d.callHook(local, internal.CtxHookAfterRuleset, ruErr, "ruleset")
 	if ruErr != nil {
 		if !errors.Is(ruErr, proxy.ErrNoRulesetMatched) {
-			proxy.Logger(local.Context()).Errorf("dispatcher: ruleset: %s", ruErr)
+			proxy.Logger(local.Context()).Errorf("disp: ruleset: %s", ruErr)
 			return
 		}
 	}
 
 	// Resolve
 	destIPAddr, rvErr := UseResolver().Resolve(local.Context(), destAddr)
+	rvErr = d.callHook(local, internal.CtxHookAfterResolve, rvErr, "resolve")
 	if rvErr != nil {
-		proxy.Logger(local.Context()).Errorf("dispatcher: resolve: %s", rvErr)
+		proxy.Logger(local.Context()).Errorf("disp: resolve: %s", rvErr)
 		return
 	}
 
@@ -88,7 +85,7 @@ func (d *Dispatcher) Dispatch(local proxy.Connector) {
 	if d.opts.Verbose {
 		proxy.Logger(local.Context()).
 			WithField("ipaddr", destIPAddr.String()).
-			Infof("dispatcher: DIAL")
+			Infof("disp: dial")
 	}
 	remote, dlErr := d.lookupDialer(destAddr).Dial(local.Context(), net.Address{
 		Network: destAddr.Network,
@@ -97,27 +94,23 @@ func (d *Dispatcher) Dispatch(local proxy.Connector) {
 		Port:    destAddr.Port,
 	})
 	defer helper.Close(remote)
-	if hook, ok := local.HookFunc(internal.CtxHookAfterDialed); ok {
-		if hErr := hook(local.Context(), dlErr); hErr != nil {
-			proxy.Logger(local.Context()).Errorf("dispatcher: hook:dial: %s", hErr)
-			return
-		}
-	}
+	dlErr = d.callHook(local, internal.CtxHookAfterDial, dlErr, "dial")
 	if dlErr != nil {
-		proxy.Logger(local.Context()).Errorf("dispatcher: dial: %s", dlErr)
+		proxy.Logger(local.Context()).Errorf("disp: dial: %s", dlErr)
 		return
 	}
 
 	// Connect
-	tErr := local.Connect(remote)
-	d.onTailError(local.Context(), tErr)
+	cnErr := local.Connect(remote)
+	cnErr = d.callHook(local, internal.CtxHookAfterConnect, cnErr, "connect")
+	d.onTailError(local.Context(), cnErr)
 }
 
 func (d *Dispatcher) Authenticate(ctx context.Context, authentication proxy.Authentication) error {
 	assert.MustTrue(authentication.Authenticate != proxy.AuthenticateAllow, "authenticate is invalid")
 	auErr := d.lookupAuthenticator(authentication).Authenticate(ctx, authentication)
 	if auErr != nil {
-		proxy.Logger(ctx).Errorf("dispatcher: authenticate: %s", auErr)
+		proxy.Logger(ctx).Errorf("disp: authenticate: %s", auErr)
 	}
 	return auErr
 }
@@ -128,11 +121,25 @@ func (d *Dispatcher) RegisterAuthenticator(kind proxy.Authenticate, authenticato
 	_, exists := d.authenticator[kind]
 	assert.MustFalse(exists, "authenticator is already exists: %s", kind)
 	d.authenticator[kind] = authenticator
-	logrus.Infof("dispatcher: register:authenticator: %s", kind)
+	logrus.Infof("disp: register:authenticator: %s", kind)
 }
 
 func (d *Dispatcher) lookupDialer(addr net.Address) proxy.Dialer {
 	return d.dialer[dialer.DIRECT]
+}
+
+func (d *Dispatcher) callHook(local proxy.Connector, hookKey any, preErr error, phase string) error {
+	if hook, ok := local.HookFunc(hookKey); ok {
+		if hErr := hook(local.Context(), preErr); hErr != nil {
+			proxy.Logger(local.Context()).Errorf("disp: hook:%s: %s", phase, hErr)
+			if preErr != nil {
+				return fmt.Errorf("%w . call %s hook. %w", preErr, phase, hErr)
+			} else {
+				return fmt.Errorf("call %s hook. %w", phase, hErr)
+			}
+		}
+	}
+	return preErr
 }
 
 func (d *Dispatcher) lookupAuthenticator(auth proxy.Authentication) proxy.Authenticator {
@@ -155,6 +162,6 @@ func (d *Dispatcher) onTailError(connCtx context.Context, tErr error) {
 		if strings.Contains(msg, "connection reset by peer") {
 			return
 		}
-		proxy.Logger(connCtx).Errorf("dispatcher: conn error: %s", tErr)
+		proxy.Logger(connCtx).Errorf("disp: conn error: %s", tErr)
 	}
 }

@@ -10,13 +10,11 @@ type hookCtxKey struct {
 }
 
 var (
-	CtxHookAfterDialed  = hookCtxKey{key: "ctx:hook-func:after-dialed"}
+	CtxHookAfterResolve = hookCtxKey{key: "ctx:hook-func:after-resolve"}
+	CtxHookAfterDial    = hookCtxKey{key: "ctx:hook-func:after-dial"}
 	CtxHookAfterRuleset = hookCtxKey{key: "ctx:hook-func:after-ruleset"}
+	CtxHookAfterConnect = hookCtxKey{key: "ctx:hook-func:after-connect"}
 )
-
-func ContextWithHook(ctx context.Context, k any, v proxy.HookFunc) context.Context {
-	return context.WithValue(ctx, k, v)
-}
 
 func ContextWithHooks(ctx context.Context, hooks map[any]proxy.HookFunc) context.Context {
 	for k, f := range hooks {
