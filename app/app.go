@@ -255,10 +255,10 @@ func (a *App) initRuleset(runCtx context.Context) error {
 	for _, itemConfig := range config {
 		switch strings.ToLower(itemConfig.Type) {
 		case "ipnet":
-			if ruleset, err := ipnetBuilder(itemConfig); err != nil {
+			if inst, err := ipnetBuilder(itemConfig); err != nil {
 				return err
 			} else {
-				rulesets = append(rulesets, ruleset)
+				rulesets = append(rulesets, inst)
 			}
 		}
 	}
